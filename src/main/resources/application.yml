@@ -1,0 +1,119 @@
+spring:
+  application:
+    name: mod-scheduler
+  jackson:
+    default-property-inclusion: non_null
+    deserialization:
+      fail-on-unknown-properties: false
+      accept-single-value-as-array: true
+  datasource:
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_DATABASE:okapi_modules}
+  liquibase:
+    change-log: classpath:changelog/changelog-master.xml
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  mustache:
+    check-template-location: false
+  kafka:
+    bootstrap-servers: ${KAFKA_HOST:kafka}:${KAFKA_PORT:9092}
+    consumer:
+      max-poll-records: ${KAFKA_CONSUMER_MAX_POLL_RECORDS:200}
+      auto-offset-reset: earliest
+    security:
+      protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+    ssl:
+      key-store-password: ${KAFKA_SSL_KEYSTORE_PASSWORD:}
+      key-store-location: ${KAFKA_SSL_KEYSTORE_LOCATION:}
+      trust-store-password: ${KAFKA_SSL_TRUSTSTORE_PASSWORD:}
+      trust-store-location: ${KAFKA_SSL_TRUSTSTORE_LOCATION:}
+  quartz:
+    startup-delay: ${QUARTZ_STARTUP_DELAY:0s}
+    auto-startup: true
+    job-store-type: jdbc
+    jdbc:
+      initialize-schema: never
+    properties:
+      org.quartz:
+        scheduler:
+          idleWaitTime: ${QUARTZ_SCHEDULER_IDLE_WAIT_TIME:10000}
+          instanceId: auto
+        jobStore:
+          tablePrefix: sys_quartz_mod_scheduler.
+          misfireThreshold: ${QUARTZ_MISFIRE_THRESHOLD:250}
+          driverDelegateClass: org.quartz.impl.jdbcjobstore.PostgreSQLDelegate
+          clusterCheckinInterval: ${QUARTZ_CLUSTER_CHECKIN_INTERVAL:15000}
+          isClustered: true
+        threadPool:
+          class: org.quartz.simpl.SimpleThreadPool
+          threadCount: ${QUARTZ_POOL_THREAD_COUNT:5}
+  cloud:
+    openfeign:
+      okhttp:
+        enabled: true
+
+application:
+  keycloak:
+    enabled: ${KC_INTEGRATION_ENABLED:true}
+    base-url: ${KC_URL:http://keycloak:8080}
+    impersonation-client: ${KC_IMPERSONATION_CLIENT:impersonation-client}
+    admin:
+      client-id: ${KC_ADMIN_CLIENT_ID:be-admin-client}
+  secret-store:
+    type: ${SECRET_STORE_TYPE:VAULT}
+    aws-ssm:
+      region: ${SECRET_STORE_AWS_SSM_REGION:}
+      use-iam: ${SECRET_STORE_AWS_SSM_USE_IAM:true}
+      ecs-credentials-endpoint: ${SECRET_STORE_AWS_SSM_ECS_CREDENTIALS_ENDPOINT:}
+      ecs-credentials-path: ${SECRET_STORE_AWS_SSM_ECS_CREDENTIALS_PATH:}
+    vault:
+      token: ${SECRET_STORE_VAULT_TOKEN:}
+      address: ${SECRET_STORE_VAULT_ADDRESS:}
+      enable-ssl: ${SECRET_STORE_VAULT_ENABLE_SSL:false}
+      pem-file-path: ${SECRET_STORE_VAULT_PEM_FILE_PATH:}
+      keystore-password: ${SECRET_STORE_VAULT_KEYSTORE_PASSWORD:}
+      keystore-file-path: ${SECRET_STORE_VAULT_KEYSTORE_FILE_PATH:}
+      truststore-file-path: ${SECRET_STORE_VAULT_TRUSTSTORE_FILE_PATH:}
+  system-user:
+    username-template: ${SYSTEM_USER_USERNAME_TEMPLATE:{tenantId}-system-user}
+  retry:
+    config:
+      system-user:
+        retry-delay: ${SYSTEM_USER_RETRY_DELAY:1s}
+        max-delay: ${SYSTEM_USER_MAX_DELAY:1m}
+        retry-attempts: ${SYSTEM_USER_RETRY_ATTEMPTS:9223372036854775807}
+        retry-multiplier: ${SYSTEM_USER_RETRY_MULTIPLIER:1.5}
+      scheduled-timer-event:
+        retry-delay: ${SCHEDULED_TIMER_EVENT_RETRY_DELAY:1s}
+        retry-attempts: ${SCHEDULED_TIMER_EVENT_ATTEMPTS:9223372036854775807}
+
+coffee-boots:
+  cache:
+    spec:
+      keycloak-user-id: maximumSize=200,expireAfterWrite=6000s
+      system-user-id: maximumSize=200,expireAfterWrite=6000s
+
+okapi.url: ${OKAPI_URL:http://localhost:9130}
+server.port: 8081
+
+folio:
+  environment: ${ENV:folio}
+  jpa:
+    repository:
+      base-packages: org.folio.scheduler.*
+  kafka:
+    listener:
+      scheduled-jobs:
+        concurrency: ${KAFKA_JOB_CONCURRENCY:1}
+        topic-pattern: ${KAFKA_JOB_CONSUMER_PATTERN:(${folio.environment}\.)(.*\.)mgr-tenant-entitlements\.scheduled-job}
+        group-id: ${folio.environment}-mod-scheduler-job-group
+
+management:
+  endpoints.web:
+    base-path: /admin
+    exposure:
+      include: info,health,liquibase,threaddump,heapdump,httptrace,loggers

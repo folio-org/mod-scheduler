@@ -1,0 +1,13 @@
+{
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "modified": "false",
+  "enabled": "true",
+  "routingEntry": {
+    "methods": [
+      "POST"
+    ],
+    "pathPattern": "/testb/timer/20",
+    "unit": "second",
+    "delay": "20"
+  }
+}

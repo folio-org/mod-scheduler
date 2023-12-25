@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "id": "timerDelay.json",
+  "title": "Timer Delay Schema",
+  "description": "Timer Delay unit",
+  "type": "string",
+  "enum": [
+    "millisecond",
+    "second",
+    "minute",
+    "hour",
+    "day"
+  ]
+}

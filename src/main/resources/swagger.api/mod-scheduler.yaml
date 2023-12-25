@@ -1,0 +1,156 @@
+openapi: 3.0.0
+
+info:
+  title: Mod Scheduler API
+  version: v1
+  description: Mod Scheduler API
+
+servers:
+  - url: http://localhost:8081
+    description: Locally deployed server
+
+paths:
+  /scheduler/timers:
+    get:
+      operationId: getSchedulerTimers
+      description: Retrieve timer list
+      parameters:
+        - $ref: '#/components/parameters/query-offset'
+        - $ref: '#/components/parameters/query-limit'
+      responses:
+        '200':
+          description: An scheduler timers list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/timerDescriptorList'
+        '500':
+          $ref: '#/components/responses/internalServerErrorResponse'
+    post:
+      operationId: createSchedulerTimers
+      description: Create timer for a module
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/timerDescriptor'
+      responses:
+        '201':
+          description: An timer descriptor as response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/timerDescriptor'
+        '400':
+          $ref: '#/components/responses/badRequestResponse'
+        '500':
+          $ref: '#/components/responses/internalServerErrorResponse'
+
+  /scheduler/timers/{id}:
+    get:
+      operationId: getSchedulerTimerById
+      description: Retrieve scheduler timer by id
+      parameters:
+        - $ref: '#/components/parameters/path-entity-id'
+      responses:
+        '200':
+          description: A scheduler timer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/timerDescriptor'
+        '404':
+          $ref: '#/components/responses/entityNotFoundResponse'
+        '500':
+          $ref: '#/components/responses/internalServerErrorResponse'
+
+    put:
+      operationId: updateSchedulerTimerById
+      description: Update scheduler timer by id
+      parameters:
+        - $ref: '#/components/parameters/path-entity-id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/timerDescriptor'
+      responses:
+        '200':
+          description: An timer descriptor as response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/timerDescriptor'
+        '404':
+          $ref: '#/components/responses/entityNotFoundResponse'
+        '500':
+          $ref: '#/components/responses/internalServerErrorResponse'
+
+    delete:
+      operationId: deleteSchedulerTimerById
+      description: delete scheduler timer by id
+      parameters:
+        - $ref: '#/components/parameters/path-entity-id'
+      responses:
+        '204':
+          description: A scheduler timer
+        '500':
+          $ref: '#/components/responses/internalServerErrorResponse'
+
+components:
+  schemas:
+    errorResponse:
+      $ref: schemas/errors.json
+    timerDescriptorList:
+      $ref: schemas/timerDescriptorList.json
+    timerDescriptor:
+      $ref: schemas/timerDescriptor.json
+
+  responses:
+    badRequestResponse:
+      description: Error response in JSON format for validation errors.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/errorResponse"
+    internalServerErrorResponse:
+      description: Error response for unhandled or critical server exceptions, e.g. NullPointerException.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/errorResponse"
+    entityNotFoundResponse:
+      description: Error response if entity is not found by id (in json format)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/errorResponse'
+
+  parameters:
+    path-entity-id:
+      in: path
+      required: true
+      name: id
+      description: Entity/document id
+      schema:
+        type: string
+        format: uuid
+    query-limit:
+      in: query
+      required: false
+      name: limit
+      description: Limit the number of elements returned in the response.
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 500
+        default: 10
+    query-offset:
+      in: query
+      required: false
+      name: offset
+      description: Skip over a number of elements by specifying an offset value for the query.
+      schema:
+        type: integer
+        minimum: 0
+        default: 0

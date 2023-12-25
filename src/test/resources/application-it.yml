@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    username: folio_admin
+    password: qwerty123
+  hikari:
+    data-source-properties:
+      preparedStatementCacheQueries: 0
+
+folio:
+  environment: it
+
+okapi:
+  url: http://localhost:9130
+  token: test-token
+
+application:
+  secret-store:
+    type: EPHEMERAL
+    ephemeral:
+      content:
+        folio_master_be-admin-client: ${KC_ADMIN_CLIENT_SECRET}
+        folio_test_impersonation-client: impersonation-client-secret
+  retry:
+    config:
+      system-user:
+        retry-delay: 100ms
+        max-delay: 250ms
+        retry-attempts: 5
+        retry-multiplier: 1.5
