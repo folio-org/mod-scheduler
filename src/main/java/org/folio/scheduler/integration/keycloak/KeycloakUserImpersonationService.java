@@ -5,8 +5,8 @@ import static java.util.Collections.singletonList;
 import static org.folio.scheduler.integration.keycloak.utils.KeycloakSecretUtils.tenantStoreKey;
 import static org.keycloak.OAuth2Constants.TOKEN_EXCHANGE_GRANT_TYPE;
 
-import javax.ws.rs.core.MultivaluedHashMap;
-import javax.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.MultivaluedHashMap;
+import jakarta.ws.rs.core.MultivaluedMap;
 import lombok.RequiredArgsConstructor;
 import org.folio.scheduler.integration.keycloak.configuration.properties.KeycloakProperties;
 import org.folio.scheduler.integration.securestore.SecureStore;

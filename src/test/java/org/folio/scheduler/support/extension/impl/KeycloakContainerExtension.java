@@ -16,7 +16,7 @@ import org.keycloak.representations.idm.PartialImportRepresentation;
 public class KeycloakContainerExtension implements BeforeAllCallback, AfterAllCallback {
 
   @SuppressWarnings("resource")
-  private static final KeycloakContainer CONTAINER = new KeycloakContainer("quay.io/keycloak/keycloak:22.0.1")
+  private static final KeycloakContainer CONTAINER = new KeycloakContainer("quay.io/keycloak/keycloak:23.0.3")
     .withFeaturesEnabled("token-exchange", "admin-fine-grained-authz");
   private static final String REALM = "master";
   private static final String REALM_JSON = "json/keycloak/master-realm.json";
