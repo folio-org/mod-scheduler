@@ -4,6 +4,6 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.9.xsd">
   <changeSet id="initialize quartz tables" author="Pavel Filippov">
-    <sqlFile path="quartz/scripts/quartz-initial-schema.sql" relativeToChangelogFile="true" splitStatements="true"/>
+    <sqlFile path="scripts/quartz-initial-schema.sql" relativeToChangelogFile="true" splitStatements="true"/>
   </changeSet>
 </databaseChangeLog>

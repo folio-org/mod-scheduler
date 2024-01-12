@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.0.4</version>
+    <version>3.2.1</version>
     <relativePath/>
   </parent>
 
@@ -26,14 +26,14 @@
 
   <properties>
     <java.version>17</java.version>
-    <lombok.version>1.18.26</lombok.version>
-    <mapstruct.version>1.5.3.Final</mapstruct.version>
-    <hypersistence-utils-hibernate-60.version>3.2.0</hypersistence-utils-hibernate-60.version>
+    <lombok.version>1.18.30</lombok.version>
+    <mapstruct.version>1.5.5.Final</mapstruct.version>
+    <hypersistence-utils-hibernate-63.version>3.7.0</hypersistence-utils-hibernate-63.version>
     <swagger-annotations.version>2.2.8</swagger-annotations.version>
     <openapi-tools.jackson-databind-nullable.version>0.2.6</openapi-tools.jackson-databind-nullable.version>
-    <folio-spring-support.version>7.0.0</folio-spring-support.version>
+    <folio-spring-support.version>7.3.0-SNAPSHOT</folio-spring-support.version>
     <commons-collections4.version>4.4</commons-collections4.version>
-    <keycloak.admin.client.version>21.1.1</keycloak.admin.client.version>
+    <keycloak.admin.client.version>23.0.3</keycloak.admin.client.version>
     <aws.version>2.20.68</aws.version>
     <vault.version>5.1.0</vault.version>
 
@@ -159,8 +159,8 @@
 
     <dependency>
       <groupId>io.hypersistence</groupId>
-      <artifactId>hypersistence-utils-hibernate-60</artifactId>
-      <version>${hypersistence-utils-hibernate-60.version}</version>
+      <artifactId>hypersistence-utils-hibernate-63</artifactId>
+      <version>${hypersistence-utils-hibernate-63.version}</version>
     </dependency>
 
     <dependency>
