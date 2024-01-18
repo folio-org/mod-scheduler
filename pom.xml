@@ -55,7 +55,7 @@
     <maven-surefire-plugin.version>3.0.0-M9</maven-surefire-plugin.version>
     <maven-failsafe-plugin.version>3.2.5</maven-failsafe-plugin.version>
     <maven-release-plugin.version>3.0.0-M7</maven-release-plugin.version>
-    <openapi-generator.version>6.4.0</openapi-generator.version>
+    <openapi-generator.version>7.2.0</openapi-generator.version>
     <build-helper-maven-plugin.version>3.3.0</build-helper-maven-plugin.version>
     <folio-java-checkstyle.version>1.0.0-SNAPSHOT</folio-java-checkstyle.version>
 
