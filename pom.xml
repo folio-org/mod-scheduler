@@ -1,19 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
     <version>3.2.1</version>
-    <relativePath/>
+    <relativePath />
   </parent>
 
   <name>mod-scheduler</name>
   <groupId>org.folio</groupId>
   <artifactId>mod-scheduler</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.1.0-SNAPSHOT</version>
   <description>mod-scheduler</description>
   <packaging>jar</packaging>
 
@@ -31,7 +30,7 @@
     <hypersistence-utils-hibernate-63.version>3.7.0</hypersistence-utils-hibernate-63.version>
     <swagger-annotations.version>2.2.20</swagger-annotations.version>
     <openapi-tools.jackson-databind-nullable.version>0.2.6</openapi-tools.jackson-databind-nullable.version>
-    <folio-spring-support.version>7.3.0-SNAPSHOT</folio-spring-support.version>
+    <folio-spring-support.version>8.0.0</folio-spring-support.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>23.0.3</keycloak.admin.client.version>
     <aws.version>2.20.68</aws.version>
@@ -42,7 +41,7 @@
 
     <!-- Test dependencies versions -->
     <testcontainer.version>1.17.6</testcontainer.version>
-    <applications-poc-tools.version>1.1.0-SNAPSHOT</applications-poc-tools.version>
+    <applications-poc-tools.version>1.0.0</applications-poc-tools.version>
     <awaitility.version>4.2.0</awaitility.version>
 
     <!-- Plugins versions -->
@@ -54,7 +53,7 @@
     <copy-rename-maven-plugin.version>1.0.1</copy-rename-maven-plugin.version>
     <maven-surefire-plugin.version>3.0.0-M9</maven-surefire-plugin.version>
     <maven-failsafe-plugin.version>3.2.5</maven-failsafe-plugin.version>
-    <maven-release-plugin.version>3.0.0-M7</maven-release-plugin.version>
+    <maven-release-plugin.version>3.0.1</maven-release-plugin.version>
     <openapi-generator.version>7.2.0</openapi-generator.version>
     <build-helper-maven-plugin.version>3.5.0</build-helper-maven-plugin.version>
     <folio-java-checkstyle.version>1.0.0-SNAPSHOT</folio-java-checkstyle.version>
@@ -537,6 +536,14 @@
     </repository>
   </repositories>
 
+  <pluginRepositories>
+    <pluginRepository>
+      <id>folio-nexus</id>
+      <name>FOLIO Maven repository</name>
+      <url>https://repository.folio.org/repository/maven-folio</url>
+    </pluginRepository>
+  </pluginRepositories>
+
   <distributionManagement>
     <repository>
       <id>folio-nexus</id>
@@ -553,6 +560,13 @@
       <layout>default</layout>
     </snapshotRepository>
   </distributionManagement>
+
+  <scm>
+    <url>https://github.com/folio-org/mod-scheduler</url>
+    <connection>scm:git:git://github.com:folio-org/mod-scheduler.git</connection>
+    <developerConnection>scm:git:git@github.com:folio-org/mod-scheduler.git</developerConnection>
+    <tag>HEAD</tag>
+  </scm>
 
   <profiles>
     <profile>
