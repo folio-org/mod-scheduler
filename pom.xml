@@ -56,7 +56,7 @@
     <maven-release-plugin.version>3.0.1</maven-release-plugin.version>
     <openapi-generator.version>7.2.0</openapi-generator.version>
     <build-helper-maven-plugin.version>3.5.0</build-helper-maven-plugin.version>
-    <folio-java-checkstyle.version>1.0.0-SNAPSHOT</folio-java-checkstyle.version>
+    <folio-java-checkstyle.version>1.0.1</folio-java-checkstyle.version>
 
     <sonar.exclusions>
       <!--
