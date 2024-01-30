@@ -32,7 +32,7 @@
     <openapi-tools.jackson-databind-nullable.version>0.2.6</openapi-tools.jackson-databind-nullable.version>
     <folio-spring-support.version>8.0.0</folio-spring-support.version>
     <commons-collections4.version>4.4</commons-collections4.version>
-    <keycloak.admin.client.version>23.0.3</keycloak.admin.client.version>
+    <keycloak.admin.client.version>23.0.5</keycloak.admin.client.version>
     <aws.version>2.20.68</aws.version>
     <vault.version>5.1.0</vault.version>
 
