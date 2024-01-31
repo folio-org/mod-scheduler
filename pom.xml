@@ -46,7 +46,7 @@
 
     <!-- Plugins versions -->
     <maven-clean-plugin.version>3.2.0</maven-clean-plugin.version>
-    <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
+    <maven-compiler-plugin.version>3.12.1</maven-compiler-plugin.version>
     <maven-resources-plugin.version>3.2.0</maven-resources-plugin.version>
     <maven-checkstyle-plugin.version>3.3.0</maven-checkstyle-plugin.version>
     <maven-checkstyle.version>10.12.7</maven-checkstyle.version>
