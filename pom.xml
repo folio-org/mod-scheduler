@@ -33,7 +33,7 @@
     <folio-spring-support.version>8.0.0</folio-spring-support.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>23.0.5</keycloak.admin.client.version>
-    <aws.version>2.20.68</aws.version>
+    <aws.version>2.23.13</aws.version>
     <vault.version>5.1.0</vault.version>
 
     <mod-scheduler.yaml-file>${project.basedir}/src/main/resources/swagger.api/mod-scheduler.yaml
