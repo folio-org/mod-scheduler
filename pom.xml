@@ -33,19 +33,19 @@
     <folio-spring-support.version>8.0.0</folio-spring-support.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>23.0.7</keycloak.admin.client.version>
-    <aws.version>2.24.11</aws.version>
+    <aws.version>2.24.12</aws.version>
     <vault.version>5.1.0</vault.version>
 
     <mod-scheduler.yaml-file>${project.basedir}/src/main/resources/swagger.api/mod-scheduler.yaml
     </mod-scheduler.yaml-file>
 
     <!-- Test dependencies versions -->
-    <testcontainer.version>1.19.5</testcontainer.version>
+    <testcontainer.version>1.19.6</testcontainer.version>
     <applications-poc-tools.version>1.0.0</applications-poc-tools.version>
     <awaitility.version>4.2.0</awaitility.version>
 
     <!-- Plugins versions -->
-    <maven-clean-plugin.version>3.2.0</maven-clean-plugin.version>
+    <maven-clean-plugin.version>3.3.2</maven-clean-plugin.version>
     <maven-compiler-plugin.version>3.12.1</maven-compiler-plugin.version>
     <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
     <maven-checkstyle-plugin.version>3.3.1</maven-checkstyle-plugin.version>
@@ -54,7 +54,7 @@
     <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
     <maven-failsafe-plugin.version>3.2.5</maven-failsafe-plugin.version>
     <maven-release-plugin.version>3.0.1</maven-release-plugin.version>
-    <openapi-generator.version>7.2.0</openapi-generator.version>
+    <openapi-generator.version>7.3.0</openapi-generator.version>
     <build-helper-maven-plugin.version>3.5.0</build-helper-maven-plugin.version>
     <folio-java-checkstyle.version>1.0.1</folio-java-checkstyle.version>
 
