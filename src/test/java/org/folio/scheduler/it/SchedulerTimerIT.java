@@ -22,8 +22,8 @@ import org.folio.scheduler.domain.dto.RoutingEntrySchedule;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.support.TestValues;
 import org.folio.scheduler.support.base.BaseIntegrationTest;
-import org.folio.scheduler.support.extension.EnableKeycloak;
-import org.folio.scheduler.support.extension.KeycloakRealms;
+import org.folio.test.extensions.EnableKeycloak;
+import org.folio.test.extensions.KeycloakRealms;
 import org.folio.test.extensions.WireMockStub;
 import org.folio.test.types.IntegrationTest;
 import org.junit.jupiter.api.AfterAll;
@@ -35,7 +35,7 @@ import org.quartz.SchedulerException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.jdbc.Sql;
 
-@EnableKeycloak
+@EnableKeycloak(tlsEnabled = true)
 @IntegrationTest
 @Sql(scripts = "classpath:/sql/timer-descriptor-it.sql", executionPhase = BEFORE_TEST_METHOD)
 @Sql(scripts = "classpath:/sql/truncate-tables.sql", executionPhase = AFTER_TEST_METHOD)
