@@ -8,7 +8,7 @@ import org.folio.test.extensions.EnableKeycloak;
 import org.folio.test.types.IntegrationTest;
 import org.junit.jupiter.api.Test;
 
-@EnableKeycloak
+@EnableKeycloak(tlsEnabled = true)
 @IntegrationTest
 class ActuatorIT extends BaseIntegrationTest {
 

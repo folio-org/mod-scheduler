@@ -59,7 +59,7 @@ import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.awaitility.core.ConditionFactory;
 
 @Log4j2
-@EnableKeycloak
+@EnableKeycloak(tlsEnabled = true)
 @IntegrationTest
 @Sql(scripts = "classpath:/sql/truncate-tables.sql", executionPhase = AFTER_TEST_METHOD)
 class KafkaMessageListenerIT extends BaseIntegrationTest {
