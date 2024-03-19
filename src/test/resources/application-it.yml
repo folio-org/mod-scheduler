@@ -32,5 +32,5 @@ application:
       client-id: folio-backend-admin-client
     tls:
       enabled: true
-      trustStorePath: classpath:certificates/test.truststore.jks
-      trustStorePassword: secretpassword
+      trust-store-path: classpath:certificates/test.truststore.jks
+      trust-store-password: secretpassword

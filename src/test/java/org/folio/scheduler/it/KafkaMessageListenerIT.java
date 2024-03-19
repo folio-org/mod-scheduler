@@ -31,7 +31,7 @@ import org.folio.scheduler.domain.dto.TimerDescriptorList;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.scheduler.support.base.BaseIntegrationTest;
-import org.folio.test.extensions.EnableKeycloak;
+import org.folio.test.extensions.EnableKeycloakTlsMode;
 import org.folio.test.extensions.KeycloakRealms;
 import org.folio.test.extensions.WireMockStub;
 import org.folio.test.types.IntegrationTest;
@@ -59,7 +59,7 @@ import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.awaitility.core.ConditionFactory;
 
 @Log4j2
-@EnableKeycloak(tlsEnabled = true)
+@EnableKeycloakTlsMode
 @IntegrationTest
 @Sql(scripts = "classpath:/sql/truncate-tables.sql", executionPhase = AFTER_TEST_METHOD)
 class KafkaMessageListenerIT extends BaseIntegrationTest {

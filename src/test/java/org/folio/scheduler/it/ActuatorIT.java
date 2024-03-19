@@ -4,11 +4,11 @@ import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import org.folio.scheduler.support.base.BaseIntegrationTest;
-import org.folio.test.extensions.EnableKeycloak;
+import org.folio.test.extensions.EnableKeycloakTlsMode;
 import org.folio.test.types.IntegrationTest;
 import org.junit.jupiter.api.Test;
 
-@EnableKeycloak(tlsEnabled = true)
+@EnableKeycloakTlsMode
 @IntegrationTest
 class ActuatorIT extends BaseIntegrationTest {
 
