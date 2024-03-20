@@ -32,7 +32,7 @@
     <openapi-tools.jackson-databind-nullable.version>0.2.6</openapi-tools.jackson-databind-nullable.version>
     <folio-spring-support.version>8.1.0</folio-spring-support.version>
     <commons-collections4.version>4.4</commons-collections4.version>
-    <keycloak.admin.client.version>23.0.7</keycloak.admin.client.version>
+    <keycloak.admin.client.version>24.0.0</keycloak.admin.client.version>
     <aws.version>2.25.1</aws.version>
     <vault.version>5.1.0</vault.version>
 
@@ -41,7 +41,7 @@
 
     <!-- Test dependencies versions -->
     <testcontainer.version>1.19.6</testcontainer.version>
-    <applications-poc-tools.version>1.3.0</applications-poc-tools.version>
+    <applications-poc-tools.version>1.4.0-SNAPSHOT</applications-poc-tools.version>
     <awaitility.version>4.2.1</awaitility.version>
 
     <!-- Plugins versions -->

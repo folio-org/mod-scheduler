@@ -63,6 +63,10 @@ application:
     impersonation-client: ${KC_IMPERSONATION_CLIENT:impersonation-client}
     admin:
       client-id: ${KC_ADMIN_CLIENT_ID:be-admin-client}
+    tls:
+      enabled: ${KC_CLIENT_TLS_ENABLED:false}
+      trust-store-path: ${KC_CLIENT_TLS_TRUSTSTORE_PATH:}
+      trust-store-password: ${KC_CLIENT_TLS_TRUSTSTORE_PASSWORD:}
   secret-store:
     type: ${SECRET_STORE_TYPE:VAULT}
     aws-ssm:

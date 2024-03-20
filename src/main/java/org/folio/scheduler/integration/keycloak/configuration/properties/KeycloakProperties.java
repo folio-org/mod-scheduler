@@ -18,4 +18,6 @@ public class KeycloakProperties {
   private String impersonationClient;
   @NestedConfigurationProperty
   private KeycloakAdminProperties admin;
+  @NestedConfigurationProperty
+  private KeycloakTlsProperties tls;
 }
