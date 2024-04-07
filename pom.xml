@@ -33,7 +33,7 @@
     <folio-spring-support.version>8.1.0</folio-spring-support.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>23.0.7</keycloak.admin.client.version>
-    <aws.version>2.25.21</aws.version>
+    <aws.version>2.25.26</aws.version>
     <vault.version>5.1.0</vault.version>
 
     <mod-scheduler.yaml-file>${project.basedir}/src/main/resources/swagger.api/mod-scheduler.yaml
@@ -576,7 +576,7 @@
           <plugin>
             <groupId>org.jacoco</groupId>
             <artifactId>jacoco-maven-plugin</artifactId>
-            <version>0.8.11</version>
+            <version>0.8.12</version>
             <configuration>
               <excludes>
                 <exclude>**/SchedulerApplication.class</exclude>
