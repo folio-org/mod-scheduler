@@ -132,14 +132,14 @@ docker run \
 
 ### Retry environment variables
 
-| Name                              | Default value       | Description                                                                                                                          |
-|:----------------------------------|:--------------------|:-------------------------------------------------------------------------------------------------------------------------------------|
-| SYSTEM_USER_RETRY_DELAY           | 1s                  | Retry delay between attempts to retrieve system user                                                                                 |
-| SYSTEM_USER_MAX_DELAY             | 1m                  | Maximum delay between attempts to retrieve system user (default value is Long.MAX_VALUE ~= infinite amount of retries)               |
-| SYSTEM_USER_RETRY_ATTEMPTS        | 9223372036854775807 | Number of retry attempts to retrieve system user                                                                                     |
-| SYSTEM_USER_RETRY_MULTIPLIER      | 1.5                 | Retry attempts delay multiplier to retrieve system user                                                                              |
-| SCHEDULED_TIMER_EVENT_RETRY_DELAY | 1s                  | Retry delay between attempts to process event from `scheduled-job` Kafka topic                                                       |
-| SCHEDULED_TIMER_EVENT_ATTEMPTS    | 9223372036854775807 | Number of attempts to process event from `scheduled-job` Kafka topic (default value is Long.MAX_VALUE ~= infinite amount of retries) |
+| Name                              | Default value | Description                                                                                                                             |
+|:----------------------------------|:--------------|:----------------------------------------------------------------------------------------------------------------------------------------|
+| SYSTEM_USER_RETRY_DELAY           | 1s            | Retry delay between attempts to retrieve system user                                                                                    |
+| SYSTEM_USER_MAX_DELAY             | 1m            | Maximum delay between attempts to retrieve system user                                                                                  |
+| SYSTEM_USER_RETRY_ATTEMPTS        | 2147483647    | Number of retry attempts to retrieve system user (default value is Long.MAX_VALUE ~= infinite amount of retries)                        |
+| SYSTEM_USER_RETRY_MULTIPLIER      | 1.5           | Retry attempts delay multiplier to retrieve system user                                                                                 |
+| SCHEDULED_TIMER_EVENT_RETRY_DELAY | 1s            | Retry delay between attempts to process event from `scheduled-job` Kafka topic                                                          |
+| SCHEDULED_TIMER_EVENT_ATTEMPTS    | 2147483647    | Number of attempts to process event from `scheduled-job` Kafka topic (default value is Integer.MAX_VALUE ~= infinite amount of retries) |
 
 ### Secure storage environment variables
 
