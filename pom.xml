@@ -41,7 +41,7 @@
 
     <!-- Test dependencies versions -->
     <testcontainer.version>1.19.7</testcontainer.version>
-    <applications-poc-tools.version>1.4.0-SNAPSHOT</applications-poc-tools.version>
+    <applications-poc-tools.version>1.4.0</applications-poc-tools.version>
     <awaitility.version>4.2.1</awaitility.version>
 
     <!-- Plugins versions -->
