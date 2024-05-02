@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -17,6 +18,7 @@ import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.integration.kafka.model.ResourceEventType;
+import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
 import org.folio.scheduler.integration.keycloak.SystemUserService;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.spring.FolioModuleMetadata;
@@ -55,7 +57,7 @@ class KafkaMessageListenerTest {
     var record = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, resourceEvent());
     kafkaMessageListener.handleScheduledJobEvent(record);
 
-    verify(objectMapper).convertValue(routingEntryAsMap(), RoutingEntry.class);
+    verify(objectMapper).convertValue(scheduledTimersAsMap(), ScheduledTimers.class);
     verify(schedulerTimerService).create(new TimerDescriptor().enabled(true).routingEntry(routingEntry()));
   }
 
@@ -70,7 +72,7 @@ class KafkaMessageListenerTest {
     assertThatThrownBy(() -> kafkaMessageListener.handleScheduledJobEvent(record))
       .isInstanceOf(RuntimeException.class);
 
-    verify(objectMapper).convertValue(routingEntryAsMap(), RoutingEntry.class);
+    verify(objectMapper).convertValue(scheduledTimersAsMap(), ScheduledTimers.class);
   }
 
   private static ResourceEvent resourceEvent() {
@@ -78,7 +80,15 @@ class KafkaMessageListenerTest {
       .type(ResourceEventType.CREATE)
       .resourceName("Scheduled Job")
       .tenant(TENANT_ID)
-      .newValue(routingEntryAsMap());
+      .newValue(scheduledTimersAsMap());
+  }
+
+  private static Map<String, Object> scheduledTimersAsMap() {
+    return Map.of(
+      "moduleId", "mod-foo-1.0.0",
+      "applicationId", "app-foo-1.0.0",
+      "timers", List.of(routingEntryAsMap())
+    );
   }
 
   private static Map<String, Object> routingEntryAsMap() {

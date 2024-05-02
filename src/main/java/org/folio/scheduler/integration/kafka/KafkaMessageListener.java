@@ -15,6 +15,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
+import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
 import org.folio.scheduler.integration.keycloak.SystemUserService;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.spring.FolioModuleMetadata;
@@ -48,11 +49,13 @@ public class KafkaMessageListener {
     var tenantId = resourceEvent.getTenant();
 
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(tenantId))) {
-      var routingEntry = objectMapper.convertValue(resourceEvent.getNewValue(), RoutingEntry.class);
-      var routingEntryKey = getRoutingEntryKey(routingEntry);
-      log.info("Processing scheduled job event from kafka [routing entry: '{}']", routingEntryKey);
-      var timerDescriptor = new TimerDescriptor().enabled(true).routingEntry(routingEntry);
-      schedulerTimerService.create(timerDescriptor);
+      var scheduledTimers = objectMapper.convertValue(resourceEvent.getNewValue(), ScheduledTimers.class);
+      for (var routingEntry : scheduledTimers.getTimers()) {
+        var routingEntryKey = getRoutingEntryKey(routingEntry);
+        log.info("Processing scheduled job event from kafka [routing entry: '{}']", routingEntryKey);
+        var timerDescriptor = new TimerDescriptor().enabled(true).routingEntry(routingEntry);
+        schedulerTimerService.create(timerDescriptor);
+      }
     }
   }
 
