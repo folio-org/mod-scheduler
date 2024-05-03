@@ -1,5 +1,6 @@
 package org.folio.scheduler.it;
 
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 import static org.awaitility.Durations.ONE_MINUTE;
@@ -29,6 +30,7 @@ import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerDescriptorList;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
+import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.scheduler.support.base.BaseIntegrationTest;
 import org.folio.test.extensions.EnableKeycloakTlsMode;
@@ -204,7 +206,14 @@ class KafkaMessageListenerIT extends BaseIntegrationTest {
       .resourceName("Scheduled Job")
       .tenant(TENANT_ID)
       .type(CREATE)
-      .newValue(routingEntry());
+      .newValue(scheduledTimers(routingEntry()));
+  }
+
+  private static ScheduledTimers scheduledTimers(RoutingEntry... routingEntries) {
+    return new ScheduledTimers()
+      .moduleId("mod-foo-1.0.0")
+      .applicationId("app-foo-1.0.0")
+      .timers(asList(routingEntries));
   }
 
   private static RoutingEntry routingEntry() {
