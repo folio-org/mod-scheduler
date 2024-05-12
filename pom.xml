@@ -27,20 +27,20 @@
     <java.version>17</java.version>
     <lombok.version>1.18.32</lombok.version>
     <mapstruct.version>1.5.5.Final</mapstruct.version>
-    <hypersistence-utils-hibernate-63.version>3.7.4</hypersistence-utils-hibernate-63.version>
+    <hypersistence-utils-hibernate-63.version>3.7.5</hypersistence-utils-hibernate-63.version>
     <swagger-annotations.version>2.2.21</swagger-annotations.version>
     <openapi-tools.jackson-databind-nullable.version>0.2.6</openapi-tools.jackson-databind-nullable.version>
     <folio-spring-support.version>8.1.0</folio-spring-support.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>23.0.7</keycloak.admin.client.version>
-    <aws.version>2.25.40</aws.version>
+    <aws.version>2.25.50</aws.version>
     <vault.version>5.1.0</vault.version>
 
     <mod-scheduler.yaml-file>${project.basedir}/src/main/resources/swagger.api/mod-scheduler.yaml
     </mod-scheduler.yaml-file>
 
     <!-- Test dependencies versions -->
-    <testcontainer.version>1.19.7</testcontainer.version>
+    <testcontainer.version>1.19.8</testcontainer.version>
     <applications-poc-tools.version>1.4.0</applications-poc-tools.version>
     <awaitility.version>4.2.1</awaitility.version>
 
