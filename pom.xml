@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.2.5</version>
+    <version>3.3.0</version>
     <relativePath />
   </parent>
 
@@ -30,10 +30,10 @@
     <hypersistence-utils-hibernate-63.version>3.7.5</hypersistence-utils-hibernate-63.version>
     <swagger-annotations.version>2.2.22</swagger-annotations.version>
     <openapi-tools.jackson-databind-nullable.version>0.2.6</openapi-tools.jackson-databind-nullable.version>
-    <folio-spring-support.version>8.1.0</folio-spring-support.version>
+    <folio-spring-support.version>8.1.1</folio-spring-support.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>23.0.7</keycloak.admin.client.version>
-    <aws.version>2.25.55</aws.version>
+    <aws.version>2.25.60</aws.version>
     <vault.version>5.1.0</vault.version>
 
     <mod-scheduler.yaml-file>${project.basedir}/src/main/resources/swagger.api/mod-scheduler.yaml
@@ -54,8 +54,8 @@
     <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
     <maven-failsafe-plugin.version>3.2.5</maven-failsafe-plugin.version>
     <maven-release-plugin.version>3.0.1</maven-release-plugin.version>
-    <openapi-generator.version>7.5.0</openapi-generator.version>
-    <build-helper-maven-plugin.version>3.5.0</build-helper-maven-plugin.version>
+    <openapi-generator.version>7.6.0</openapi-generator.version>
+    <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
     <folio-java-checkstyle.version>1.0.1</folio-java-checkstyle.version>
 
     <sonar.exclusions>
