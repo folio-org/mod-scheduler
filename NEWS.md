@@ -1,4 +1,10 @@
-## Version `v1.2.0` (in progress)
+## Version `v1.3.0` (in progress)
+
+---
+
+## Version `v1.2.0` (25.05.2024)
+### Changes:
+* Implement new event format from mgr-tenant-entitlements (MGRENTITLE-21)
 
 ---
 ## Version `v1.1.0` (16.04.2024)
