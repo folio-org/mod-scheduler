@@ -41,7 +41,8 @@
       "type": "string"
     },
     "unit": {
-      "$ref": "timerUnit.json"
+      "$ref": "timerUnit.json",
+      "description": "Time unit for delay"
     },
     "delay": {
       "description": "Delay between calls; a value of zero disables timer",

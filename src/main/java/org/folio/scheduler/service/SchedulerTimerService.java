@@ -1,6 +1,5 @@
 package org.folio.scheduler.service;
 
-import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.ObjectUtils.defaultIfNull;
 
 import jakarta.persistence.EntityExistsException;
@@ -45,7 +44,7 @@ public class SchedulerTimerService {
   public List<TimerDescriptor> findByModuleName(String moduleName) {
     return schedulerTimerRepository.findByModuleName(moduleName).stream()
       .map(TimerDescriptorEntity::getTimerDescriptor)
-      .collect(toList());
+      .toList();
   }
 
   /**
@@ -70,7 +69,7 @@ public class SchedulerTimerService {
   public SearchResult<TimerDescriptor> getAll(Integer offset, Integer limit) {
     return SearchResult.of(schedulerTimerRepository.findAll(OffsetRequest.of(offset, limit)).stream()
       .map(TimerDescriptorEntity::getTimerDescriptor)
-      .collect(toList()));
+      .toList());
   }
 
   /**

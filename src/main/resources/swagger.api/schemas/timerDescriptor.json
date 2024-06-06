@@ -14,7 +14,8 @@
       "type": "boolean"
     },
     "routingEntry": {
-      "$ref": "routingEntry.json"
+      "$ref": "routingEntry.json",
+      "description": "Proxy routing entry"
     },
     "enabled": {
       "description": "Whether enabled",

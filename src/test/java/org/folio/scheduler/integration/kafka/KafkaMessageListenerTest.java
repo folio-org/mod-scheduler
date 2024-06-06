@@ -51,8 +51,8 @@ class KafkaMessageListenerTest {
   void handleScheduledJobEvent_positive_create() {
     when(systemUserService.findSystemUserId(TENANT_ID)).thenReturn(SYSTEM_USER_ID);
 
-    var record = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, createResourceEvent());
-    kafkaMessageListener.handleScheduledJobEvent(record);
+    var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, createResourceEvent());
+    kafkaMessageListener.handleScheduledJobEvent(consumerRecord);
 
     verify(schedulerTimerService).create(
       new TimerDescriptor().enabled(true).moduleName(MODULE_NAME).routingEntry(routingEntry1()));
@@ -64,8 +64,8 @@ class KafkaMessageListenerTest {
     when(schedulerTimerService.findByModuleName(MODULE_NAME)).thenReturn(
       List.of(new TimerDescriptor().id(TIMER_ID).enabled(true).routingEntry(routingEntry1())));
 
-    var record = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, udpateResourceEvent());
-    kafkaMessageListener.handleScheduledJobEvent(record);
+    var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, udpateResourceEvent());
+    kafkaMessageListener.handleScheduledJobEvent(consumerRec);
 
     verify(schedulerTimerService).delete(TIMER_ID);
     verify(schedulerTimerService).findByModuleName(MODULE_NAME);
@@ -79,8 +79,8 @@ class KafkaMessageListenerTest {
     when(schedulerTimerService.findByModuleName(MODULE_NAME)).thenReturn(
       List.of(new TimerDescriptor().id(TIMER_ID).enabled(true).routingEntry(routingEntry1())));
 
-    var record = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, deleteResourceEvent());
-    kafkaMessageListener.handleScheduledJobEvent(record);
+    var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, deleteResourceEvent());
+    kafkaMessageListener.handleScheduledJobEvent(consumerRec);
 
     verify(schedulerTimerService).delete(TIMER_ID);
     verify(schedulerTimerService).findByModuleName(MODULE_NAME);
@@ -92,8 +92,8 @@ class KafkaMessageListenerTest {
     var expectedDescriptor = new TimerDescriptor().enabled(true).moduleName(MODULE_NAME).routingEntry(routingEntry1());
     when(schedulerTimerService.create(expectedDescriptor)).thenThrow(RuntimeException.class);
 
-    var record = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, createResourceEvent());
-    assertThatThrownBy(() -> kafkaMessageListener.handleScheduledJobEvent(record))
+    var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, createResourceEvent());
+    assertThatThrownBy(() -> kafkaMessageListener.handleScheduledJobEvent(consumerRec))
       .isInstanceOf(RuntimeException.class);
 
     verify(schedulerTimerService).create(expectedDescriptor);
