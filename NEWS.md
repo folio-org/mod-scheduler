@@ -1,4 +1,6 @@
-## Version `v1.3.0` (in progress)
+## Version `v1.2.1` (in progress)
+### Changes:
+* Implemented timer events update while application upgrade (MODSCHED-8)
 
 ---
 

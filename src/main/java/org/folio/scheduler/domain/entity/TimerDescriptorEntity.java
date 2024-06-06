@@ -20,6 +20,8 @@ public class TimerDescriptorEntity {
   @Id
   private UUID id;
 
+  private String moduleName;
+
   @Type(JsonBinaryType.class)
   @Column(columnDefinition = "jsonb", name = "timer_descriptor")
   private TimerDescriptor timerDescriptor;

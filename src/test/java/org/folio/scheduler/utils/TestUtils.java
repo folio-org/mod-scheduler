@@ -49,6 +49,16 @@ public class TestUtils {
     }
   }
 
+  @SneakyThrows
+  public static <T> T convertValue(Object value, TypeReference<T> toValueTypeRef) {
+    return OBJECT_MAPPER.convertValue(value, toValueTypeRef);
+  }
+
+  @SneakyThrows
+  public static <T> T convertValue(Object value, Class<T> clazz) {
+    return OBJECT_MAPPER.convertValue(value, clazz);
+  }
+
   public static void cleanUpCaches(CacheManager cacheManager) {
     cacheManager.getCacheNames().forEach(name -> requireNonNull(cacheManager.getCache(name)).clear());
   }

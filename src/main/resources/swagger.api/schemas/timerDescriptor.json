@@ -19,6 +19,10 @@
     "enabled": {
       "description": "Whether enabled",
       "type": "boolean"
+    },
+    "moduleName": {
+      "description": "Module name timer belongs to",
+      "type": "string"
     }
   },
   "required": [ "routingEntry", "enabled" ]

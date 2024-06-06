@@ -5,4 +5,5 @@
                    https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.9.xsd">
 
   <include file="changes/initial_schema.xml" relativeToChangelogFile="true"/>
+  <include file="changes/01_add_module_name_column_to_timer.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

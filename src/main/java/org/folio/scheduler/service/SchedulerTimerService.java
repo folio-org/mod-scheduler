@@ -1,13 +1,14 @@
 package org.folio.scheduler.service;
 
+import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.ObjectUtils.defaultIfNull;
 
 import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityNotFoundException;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
@@ -40,6 +41,13 @@ public class SchedulerTimerService {
     return schedulerTimerRepository.findById(uuid).map(TimerDescriptorEntity::getTimerDescriptor);
   }
 
+  @Transactional(readOnly = true)
+  public List<TimerDescriptor> findByModuleName(String moduleName) {
+    return schedulerTimerRepository.findByModuleName(moduleName).stream()
+      .map(TimerDescriptorEntity::getTimerDescriptor)
+      .collect(toList());
+  }
+
   /**
    * Returns {@link TimerDescriptor} object by id.
    *
@@ -62,7 +70,7 @@ public class SchedulerTimerService {
   public SearchResult<TimerDescriptor> getAll(Integer offset, Integer limit) {
     return SearchResult.of(schedulerTimerRepository.findAll(OffsetRequest.of(offset, limit)).stream()
       .map(TimerDescriptorEntity::getTimerDescriptor)
-      .collect(Collectors.toList()));
+      .collect(toList()));
   }
 
   /**

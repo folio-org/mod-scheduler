@@ -1,6 +1,8 @@
 package org.folio.scheduler.it;
 
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toList;
+import static org.apache.commons.collections4.ListUtils.emptyIfNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 import static org.awaitility.Durations.ONE_MINUTE;
@@ -11,6 +13,9 @@ import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
 import static org.folio.scheduler.integration.kafka.model.ResourceEventType.CREATE;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.utils.TestUtils.asJsonString;
+import static org.folio.scheduler.utils.TestUtils.convertValue;
+import static org.folio.scheduler.utils.TestUtils.parse;
+import static org.folio.scheduler.utils.TestUtils.readString;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -18,6 +23,7 @@ import static org.quartz.impl.matchers.GroupMatcher.anyJobGroup;
 import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.AFTER_TEST_METHOD;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.testcontainers.shaded.org.awaitility.Durations.FIVE_HUNDRED_MILLISECONDS;
 
 import java.sql.SQLDataException;
@@ -25,6 +31,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
+import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
@@ -120,6 +127,48 @@ class KafkaMessageListenerIT extends BaseIntegrationTest {
     await().untilAsserted(() -> getScheduledTimers(expectedTimerDescriptors));
   }
 
+  @Test
+  @WireMockStub("/wiremock/stubs/event-timer-endpoint.json")
+  @KeycloakRealms("/json/keycloak/test-realm.json")
+  void handleScheduledJobEvent_positive_upgradeEvent() {
+    var newTimerEvent = readString("json/events/folio-app1/folio-module1/create-timer-event.json");
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, newTimerEvent);
+    var scheduledTimers1 = parse(newTimerEvent, ResourceEvent.class);
+    var routingEntries1 = convertValue(scheduledTimers1.getNewValue(), ScheduledTimers.class);
+    await().untilAsserted(() -> getScheduledTimers(timerDescriptorList(routingEntries1)));
+
+    var upgradeEvent = readString("json/events/folio-app1/folio-module1/upgrade-timer-event.json");
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, upgradeEvent);
+    var scheduledTimers2 = parse(upgradeEvent, ResourceEvent.class);
+    var routingEntries2 = convertValue(scheduledTimers2.getNewValue(), ScheduledTimers.class);
+    await().untilAsserted(() -> getScheduledTimers(timerDescriptorList(routingEntries2)));
+  }
+
+  @Test
+  @SneakyThrows
+  @WireMockStub("/wiremock/stubs/event-timer-endpoint.json")
+  @KeycloakRealms("/json/keycloak/test-realm.json")
+  void handleScheduledJobEvent_positive_userTimerExistsAfterDeleteEvent() {
+    var userTimerDescriptorRequest =
+      parse(readString("json/user/timer/user-timer-request.json"), TimerDescriptor.class);
+    doPost("/scheduler/timers", userTimerDescriptorRequest)
+      .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+      .andExpect(jsonPath("$.id").hasJsonPath());
+
+    var createTimerEvent = readString("json/events/folio-app1/folio-module1/create-timer-event.json");
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, createTimerEvent);
+    var scheduledTimers1 = parse(createTimerEvent, ResourceEvent.class);
+    var routingEntries1 = convertValue(scheduledTimers1.getNewValue(), ScheduledTimers.class);
+    var timerDescList1 =
+      timerDescriptorList(routingEntries1).addTimerDescriptorsItem(userTimerDescriptorRequest).totalRecords(2);
+    await().untilAsserted(() -> getScheduledTimers(timerDescList1));
+
+    var deleteTimerEvent = readString("json/events/folio-app1/folio-module1/delete-timer-event.json");
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, deleteTimerEvent);
+    var userTimer = timerDescriptorList(userTimerDescriptorRequest);
+    await().untilAsserted(() -> getScheduledTimers(userTimer));
+  }
+
   @MethodSource("exceptionDataProvider")
   @KeycloakRealms("/json/keycloak/test-realm.json")
   @ParameterizedTest(name = "[{index}] name={0}")
@@ -169,6 +218,7 @@ class KafkaMessageListenerIT extends BaseIntegrationTest {
   private static ResultActions getScheduledTimers(TimerDescriptorList timerDescriptorList) throws Exception {
     return doGet("/scheduler/timers")
       .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+      .andExpect(status().isOk())
       .andExpect(content().json(asJsonString(timerDescriptorList)));
   }
 
@@ -195,10 +245,24 @@ class KafkaMessageListenerIT extends BaseIntegrationTest {
     return new TimerDescriptor().enabled(true).routingEntry(routingEntry());
   }
 
+  private static TimerDescriptor timerDescriptor(RoutingEntry routingEntry) {
+    return new TimerDescriptor().enabled(true).routingEntry(routingEntry);
+  }
+
   private static TimerDescriptorList timerDescriptorList(TimerDescriptor... timerDescriptors) {
     return new TimerDescriptorList()
       .totalRecords(timerDescriptors.length)
       .timerDescriptors(List.of(timerDescriptors));
+  }
+
+  private static TimerDescriptorList timerDescriptorList(ScheduledTimers scheduledTimers) {
+    var timerDescriptors = mapToTimerDescriptors(scheduledTimers);
+    return new TimerDescriptorList().timerDescriptors(timerDescriptors);
+  }
+
+  private static List<TimerDescriptor> mapToTimerDescriptors(ScheduledTimers scheduledTimers) {
+    return emptyIfNull(scheduledTimers.getTimers()).stream().map(KafkaMessageListenerIT::timerDescriptor)
+      .collect(toList());
   }
 
   private static ResourceEvent resourceEvent() {
