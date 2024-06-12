@@ -50,17 +50,10 @@ public class KafkaMessageListener {
     var operationType = resourceEvent.getType();
 
     switch (operationType) {
-      case CREATE:
-        createTimers(resourceEvent);
-        break;
-      case UPDATE:
-        updateTimers(resourceEvent);
-        break;
-      case DELETE:
-        deleteTimers(resourceEvent);
-        break;
-      default:
-        log.warn("Unsupported operation type: consumerRecord = {}", consumerRecord);
+      case CREATE -> createTimers(resourceEvent);
+      case UPDATE -> updateTimers(resourceEvent);
+      case DELETE -> deleteTimers(resourceEvent);
+      default -> log.warn("Unsupported operation type: consumerRecord = {}", consumerRecord);
     }
   }
 
