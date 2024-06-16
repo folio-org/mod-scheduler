@@ -32,8 +32,8 @@
     <openapi-tools.jackson-databind-nullable.version>0.2.6</openapi-tools.jackson-databind-nullable.version>
     <folio-spring-support.version>8.1.2</folio-spring-support.version>
     <commons-collections4.version>4.4</commons-collections4.version>
-    <keycloak.admin.client.version>23.0.7</keycloak.admin.client.version>
-    <aws.version>2.25.69</aws.version>
+    <keycloak.admin.client.version>25.0.0</keycloak.admin.client.version>
+    <aws.version>2.26.3</aws.version>
     <vault.version>5.1.0</vault.version>
 
     <mod-scheduler.yaml-file>${project.basedir}/src/main/resources/swagger.api/mod-scheduler.yaml
@@ -51,8 +51,8 @@
     <maven-checkstyle-plugin.version>3.4.0</maven-checkstyle-plugin.version>
     <maven-checkstyle.version>10.17.0</maven-checkstyle.version>
     <copy-rename-maven-plugin.version>1.0.1</copy-rename-maven-plugin.version>
-    <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
-    <maven-failsafe-plugin.version>3.2.5</maven-failsafe-plugin.version>
+    <maven-surefire-plugin.version>3.3.0</maven-surefire-plugin.version>
+    <maven-failsafe-plugin.version>3.3.0</maven-failsafe-plugin.version>
     <maven-release-plugin.version>3.0.1</maven-release-plugin.version>
     <openapi-generator.version>7.6.0</openapi-generator.version>
     <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
