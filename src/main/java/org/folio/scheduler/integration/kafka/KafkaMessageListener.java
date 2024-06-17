@@ -2,6 +2,7 @@ package org.folio.scheduler.integration.kafka;
 
 import static java.lang.Boolean.TRUE;
 import static java.util.Collections.singletonList;
+import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.folio.scheduler.utils.OkapiRequestUtils.getStaticPath;
 import static org.folio.spring.integration.XOkapiHeaders.TENANT;
@@ -74,8 +75,8 @@ public class KafkaMessageListener {
       prepareContextHeaders(resourceEvent.getTenant()))) {
       var moduleName = SemverUtils.getName(resourceEvent.getNewValue().getModuleId());
       var timers = schedulerTimerService.findByModuleName(moduleName);
-      logDeletingTimers(timers);
       if (isNotEmpty(timers)) {
+        logDeletingTimers(timers);
         for (var timer : timers) {
           schedulerTimerService.delete(timer.getId());
         }
@@ -95,11 +96,13 @@ public class KafkaMessageListener {
       prepareContextHeaders(resourceEvent.getTenant()))) {
       var moduleName = SemverUtils.getName(resourceEvent.getOldValue().getModuleId());
       var timers = schedulerTimerService.findByModuleName(moduleName);
+      if (isEmpty(timers)) {
+        return;
+      }
+
       logDeletingTimers(timers);
-      if (isNotEmpty(timers)) {
-        for (var timer : timers) {
-          schedulerTimerService.delete(timer.getId());
-        }
+      for (var timer : timers) {
+        schedulerTimerService.delete(timer.getId());
       }
     }
   }
