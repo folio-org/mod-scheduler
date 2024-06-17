@@ -1,0 +1,31 @@
+{
+  "type": "UPDATE",
+  "tenant": "test",
+  "resourceName": "Scheduled Job",
+  "old": {
+    "moduleId": "folio-module1-1.0.0",
+    "applicationId": "folio-app1-1.1.1",
+    "timers": [
+      {
+        "methods": [ "GET" ],
+        "pathPattern": "/folio-module1/v3/scheduled-timer",
+        "schedule": {
+          "cron": "0 6,18 * * *",
+          "zone": "CET"
+        }
+      }
+    ]
+  },
+  "new": {
+    "moduleId": "folio-module1-1.0.2",
+    "applicationId": "folio-app1-1.1.2",
+    "timers": [
+      {
+        "methods": [ "GET" ],
+        "pathPattern": "/folio-module1/v3/scheduled-timer",
+        "unit": "second",
+        "delay": "20"
+      }
+    ]
+  }
+}

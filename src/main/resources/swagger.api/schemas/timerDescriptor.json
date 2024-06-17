@@ -14,11 +14,16 @@
       "type": "boolean"
     },
     "routingEntry": {
-      "$ref": "routingEntry.json"
+      "$ref": "routingEntry.json",
+      "description": "Proxy routing entry"
     },
     "enabled": {
       "description": "Whether enabled",
       "type": "boolean"
+    },
+    "moduleName": {
+      "description": "Module name timer belongs to",
+      "type": "string"
     }
   },
   "required": [ "routingEntry", "enabled" ]

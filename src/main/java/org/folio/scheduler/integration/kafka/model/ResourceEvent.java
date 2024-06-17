@@ -30,13 +30,13 @@ public class ResourceEvent {
    * New value (if resource is created or updated).
    */
   @JsonProperty("new")
-  private Object newValue;
+  private ScheduledTimers newValue;
 
   /**
    * Previous version value (if resource was updated or deleted).
    */
   @JsonProperty("old")
-  private Object oldValue;
+  private ScheduledTimers oldValue;
 
   /**
    * Sets the id and returns updated {@link ResourceEvent} object.
@@ -88,7 +88,7 @@ public class ResourceEvent {
    * @param newValue - resource event new value.
    * @return updated {@link ResourceEvent} object
    */
-  public ResourceEvent newValue(Object newValue) {
+  public ResourceEvent newValue(ScheduledTimers newValue) {
     this.newValue = newValue;
     return this;
   }
@@ -99,7 +99,7 @@ public class ResourceEvent {
    * @param oldValue - resource event previous version value
    * @return updated {@link ResourceEvent} object
    */
-  public ResourceEvent oldValue(Object oldValue) {
+  public ResourceEvent oldValue(ScheduledTimers oldValue) {
     this.oldValue = oldValue;
     return this;
   }

@@ -1,0 +1,20 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPattern": "/folio-module1/v3/scheduled-timer",
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "message": "success!"
+    }
+  }
+}

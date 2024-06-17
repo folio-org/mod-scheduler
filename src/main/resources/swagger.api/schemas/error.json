@@ -12,10 +12,12 @@
       "description": "Error message type"
     },
     "code": {
-      "$ref": "errorCode.json"
+      "$ref": "errorCode.json",
+      "description": "Error code"
     },
     "parameters": {
-      "$ref": "parameters.json"
+      "$ref": "parameters.json",
+      "description": "Error message parameters"
     }
   }
 }
