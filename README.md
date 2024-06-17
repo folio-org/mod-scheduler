@@ -114,6 +114,7 @@ docker run \
 | KC_CLIENT_TLS_ENABLED             | false                   | Enables TLS for keycloak clients.                                                                                                                                     |
 | KC_CLIENT_TLS_TRUSTSTORE_PATH     | -                       | Truststore file path for keycloak clients.                                                                                                                            |
 | KC_CLIENT_TLS_TRUSTSTORE_PASSWORD | -                       | Truststore password for keycloak clients.                                                                                                                             |
+| KC_CLIENT_TLS_TRUSTSTORE_TYPE     | -                       | Truststore file type for keycloak clients.                                                                                                                            |
 
 ### Kafka environment variables
 

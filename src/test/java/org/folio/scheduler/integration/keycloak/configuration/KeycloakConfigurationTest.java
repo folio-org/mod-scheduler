@@ -6,10 +6,10 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
-import org.apache.http.ssl.SSLInitializationException;
+import org.folio.common.configuration.properties.TlsProperties;
+import org.folio.common.utils.exception.SslInitializationException;
 import org.folio.scheduler.integration.keycloak.configuration.properties.KeycloakAdminProperties;
 import org.folio.scheduler.integration.keycloak.configuration.properties.KeycloakProperties;
-import org.folio.scheduler.integration.keycloak.configuration.properties.KeycloakTlsProperties;
 import org.folio.scheduler.integration.securestore.SecureStore;
 import org.folio.scheduler.integration.securestore.exception.NotFoundException;
 import org.folio.test.types.UnitTest;
@@ -26,7 +26,7 @@ class KeycloakConfigurationTest {
   @InjectMocks private KeycloakConfiguration keycloakConfiguration;
 
   @Mock private KeycloakProperties keycloakProperties;
-  @Mock private KeycloakTlsProperties keycloakTlsProperties;
+  @Mock private TlsProperties tlsProperties;
   @Mock private KeycloakAdminProperties keycloakAdminProperties;
   @Mock private SecureStore secureStore;
 
@@ -42,8 +42,8 @@ class KeycloakConfigurationTest {
   @Test
   void keycloak_positive_tlsDisabled() {
     mockProperties();
-    when(keycloakProperties.getTls()).thenReturn(keycloakTlsProperties);
-    when(keycloakTlsProperties.isEnabled()).thenReturn(false);
+    when(keycloakProperties.getTls()).thenReturn(tlsProperties);
+    when(tlsProperties.isEnabled()).thenReturn(false);
     var keycloakAdminClient = keycloakConfiguration.keycloak();
 
     assertThat(keycloakAdminClient).isNotNull();
@@ -52,7 +52,7 @@ class KeycloakConfigurationTest {
   @Test
   void keycloak_positive_tlsEnabled() {
     mockProperties();
-    when(keycloakProperties.getTls()).thenReturn(keycloakTlsProperties);
+    when(keycloakProperties.getTls()).thenReturn(tlsProperties);
     mockKeycloakTlsProperties();
     var keycloakAdminClient = keycloakConfiguration.keycloak();
 
@@ -71,22 +71,21 @@ class KeycloakConfigurationTest {
   @Test
   void keycloak_negative_trustStoreNotFound() {
     mockProperties();
-    when(keycloakProperties.getTls()).thenReturn(keycloakTlsProperties);
+    when(keycloakProperties.getTls()).thenReturn(tlsProperties);
     mockWrongTrustStoreKeycloakTlsProperties();
 
-    assertThrows(SSLInitializationException.class, () -> keycloakConfiguration.keycloak());
+    assertThrows(SslInitializationException.class, () -> keycloakConfiguration.keycloak());
   }
 
   private void mockKeycloakTlsProperties() {
-    when(keycloakTlsProperties.getTrustStorePath()).thenReturn("classpath:certificates/test.truststore.jks");
-    when(keycloakTlsProperties.getTrustStorePassword()).thenReturn("secretpassword");
-    when(keycloakTlsProperties.isEnabled()).thenReturn(true);
+    when(tlsProperties.getTrustStorePath()).thenReturn("classpath:certificates/test.truststore.jks");
+    when(tlsProperties.getTrustStorePassword()).thenReturn("secretpassword");
+    when(tlsProperties.isEnabled()).thenReturn(true);
   }
 
   private void mockWrongTrustStoreKeycloakTlsProperties() {
-    when(keycloakTlsProperties.getTrustStorePath()).thenReturn("fake.jks");
-    when(keycloakTlsProperties.getTrustStorePassword()).thenReturn("secretpassword");
-    when(keycloakTlsProperties.isEnabled()).thenReturn(true);
+    when(tlsProperties.getTrustStorePath()).thenReturn("fake.jks");
+    when(tlsProperties.isEnabled()).thenReturn(true);
   }
 
   private void mockProperties() {
