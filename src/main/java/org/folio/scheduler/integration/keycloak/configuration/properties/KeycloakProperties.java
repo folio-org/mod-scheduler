@@ -2,6 +2,7 @@ package org.folio.scheduler.integration.keycloak.configuration.properties;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+import org.folio.common.configuration.properties.TlsProperties;
 import org.hibernate.validator.constraints.URL;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
@@ -19,5 +20,5 @@ public class KeycloakProperties {
   @NestedConfigurationProperty
   private KeycloakAdminProperties admin;
   @NestedConfigurationProperty
-  private KeycloakTlsProperties tls;
+  private TlsProperties tls;
 }
