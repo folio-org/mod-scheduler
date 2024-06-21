@@ -1,7 +1,8 @@
-## Version `v1.2.1` (in progress)
+## Version `v1.2.1` (20.06.2024)
 ### Changes:
 * Implemented timer events update while application upgrade (MODSCHED-8)
-
+* Pack application to Docker Image and push into ECR (RANCHER-1515)
+* Apply build SslContext from app-poc-tools lib with support of keystore custom type (APPPOCTOOL-20)
 ---
 
 ## Version `v1.2.0` (25.05.2024)
