@@ -40,8 +40,7 @@
     </mod-scheduler.yaml-file>
 
     <!-- Test dependencies versions -->
-    <testcontainer.version>1.19.8</testcontainer.version>
-    <applications-poc-tools.version>1.5.1</applications-poc-tools.version>
+    <applications-poc-tools.version>1.5.3-SNAPSHOT</applications-poc-tools.version>
     <awaitility.version>4.2.1</awaitility.version>
 
     <!-- Plugins versions -->
@@ -258,18 +257,6 @@
     </dependency>
 
   </dependencies>
-
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>org.testcontainers</groupId>
-        <artifactId>testcontainers-bom</artifactId>
-        <version>${testcontainer.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
 
   <build>
     <plugins>
