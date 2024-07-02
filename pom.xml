@@ -40,7 +40,7 @@
     </mod-scheduler.yaml-file>
 
     <!-- Test dependencies versions -->
-    <applications-poc-tools.version>1.5.3-SNAPSHOT</applications-poc-tools.version>
+    <applications-poc-tools.version>1.5.3</applications-poc-tools.version>
     <awaitility.version>4.2.1</awaitility.version>
 
     <!-- Plugins versions -->
