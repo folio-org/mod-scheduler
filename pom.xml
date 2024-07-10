@@ -33,6 +33,7 @@
     <folio-spring-support.version>8.1.2</folio-spring-support.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>25.0.1</keycloak.admin.client.version>
+    <applications-poc-tools.version>1.5.4</applications-poc-tools.version>
     <aws.version>2.26.16</aws.version>
     <vault.version>5.1.0</vault.version>
 
@@ -40,7 +41,6 @@
     </mod-scheduler.yaml-file>
 
     <!-- Test dependencies versions -->
-    <applications-poc-tools.version>1.5.3</applications-poc-tools.version>
     <awaitility.version>4.2.1</awaitility.version>
 
     <!-- Plugins versions -->
@@ -215,12 +215,6 @@
       <groupId>io.swagger.core.v3</groupId>
       <artifactId>swagger-annotations</artifactId>
       <version>${swagger-annotations.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>folio-backend-common</artifactId>
-      <version>${applications-poc-tools.version}</version>
     </dependency>
 
     <!-- Test dependencies -->

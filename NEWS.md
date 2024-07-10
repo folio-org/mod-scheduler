@@ -1,3 +1,8 @@
+## Version `v1.2.2` (07.10.2024)
+### Changes:
+* Upgrade keycloak-client to v25.0.1 (KEYCLOAK-11)
+---
+
 ## Version `v1.2.1` (20.06.2024)
 ### Changes:
 * Implemented timer events update while application upgrade (MODSCHED-8)
