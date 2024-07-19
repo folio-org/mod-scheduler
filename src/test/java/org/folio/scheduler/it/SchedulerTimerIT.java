@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.ONE_SECOND;
 import static org.awaitility.Durations.TEN_SECONDS;
-simport static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
+import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
