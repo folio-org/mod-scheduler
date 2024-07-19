@@ -92,7 +92,7 @@ public class SchedulerTimerService {
     var naturalKey = TimerDescriptorEntity.toNaturalKey(timerDescriptor);
     return schedulerTimerRepository.findByNaturalKey(naturalKey).map(existingTimer -> {
       timerDescriptor.setId(existingTimer.getId());
-      return update(existingTimer.getId(), timerDescriptor);
+      return doUpdate(timerDescriptor);
     }).orElseGet(() -> {
       var entity = timerDescriptorMapper.convert(timerDescriptor);
       var savedEntity = schedulerTimerRepository.save(entity);
@@ -119,9 +119,14 @@ public class SchedulerTimerService {
       throw new RequestValidationException("Id in the url and in the entity must match", "id", "not matched");
     }
 
-    var oldTimerDescriptor = schedulerTimerRepository.findById(uuid)
-      .map(TimerDescriptorEntity::getTimerDescriptor)
-      .orElseThrow(() -> new EntityNotFoundException("Unable to find timer descriptor with id " + uuid));
+    return doUpdate(newDescriptor);
+  }
+
+  protected TimerDescriptor doUpdate(TimerDescriptor newDescriptor) {
+    var oldTimerDescriptor =
+      schedulerTimerRepository.findById(newDescriptor.getId()).map(TimerDescriptorEntity::getTimerDescriptor)
+        .orElseThrow(
+          () -> new EntityNotFoundException("Unable to find timer descriptor with id " + newDescriptor.getId()));
 
     newDescriptor.modified(true);
     var convertedValue = timerDescriptorMapper.convert(newDescriptor);
