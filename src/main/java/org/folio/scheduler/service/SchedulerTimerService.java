@@ -89,11 +89,16 @@ public class SchedulerTimerService {
     }
 
     timerDescriptor.setId(defaultIfNull(id, UUID.randomUUID()));
-    var entity = timerDescriptorMapper.convert(timerDescriptor);
-    var savedEntity = schedulerTimerRepository.save(entity);
-    jobSchedulingService.schedule(timerDescriptor);
-
-    return savedEntity.getTimerDescriptor();
+    var naturalKey = TimerDescriptorEntity.toNaturalKey(timerDescriptor);
+    return schedulerTimerRepository.findByNaturalKey(naturalKey).map(existingTimer -> {
+      timerDescriptor.setId(existingTimer.getId());
+      return update(existingTimer.getId(), timerDescriptor);
+    }).orElseGet(() -> {
+      var entity = timerDescriptorMapper.convert(timerDescriptor);
+      var savedEntity = schedulerTimerRepository.save(entity);
+      jobSchedulingService.schedule(timerDescriptor);
+      return savedEntity.getTimerDescriptor();
+    });
   }
 
   /**

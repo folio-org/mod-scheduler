@@ -6,4 +6,5 @@
 
   <include file="changes/initial_schema.xml" relativeToChangelogFile="true"/>
   <include file="changes/01_add_module_name_column_to_timer.xml" relativeToChangelogFile="true"/>
+  <include file="changes/02_add_natural_key_column_to_timer.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
