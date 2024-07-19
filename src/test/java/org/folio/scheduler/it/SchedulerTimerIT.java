@@ -166,7 +166,9 @@ class SchedulerTimerIT extends BaseIntegrationTest {
         .delay("1")
         .unit(SECOND));
 
-    var initialTimersCount = objectMapper.readValue(doGet("/scheduler/timers").andReturn().getResponse().getContentAsString(), TimerDescriptorList.class).getTotalRecords();
+    var initialTimersCount =
+      objectMapper.readValue(doGet("/scheduler/timers").andReturn().getResponse().getContentAsString(),
+        TimerDescriptorList.class).getTotalRecords();
 
     doPost("/scheduler/timers", timerDescriptor)
       .andExpect(jsonPath("$.id", notNullValue()))
