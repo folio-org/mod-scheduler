@@ -34,7 +34,7 @@ public class UnscheduleDuplicatesMigration implements CustomTaskChange {
         FROM
           timer
         WHERE timer_descriptor->'enabled' = 'true'
-      )
+      ) AS tmp
       WHERE
         rn > 1
       """)) {
