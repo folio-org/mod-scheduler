@@ -29,7 +29,5 @@ public class QuartzSchemaInitializer implements InitializingBean {
 
     folioSpringLiquibase.setChangeLog(liquibaseProperties.getChangeLog());
     folioSpringLiquibase.setDefaultSchema(liquibaseProperties.getDefaultSchema());
-
-    folioSpringLiquibase.performLiquibaseUpdate();
   }
 }
