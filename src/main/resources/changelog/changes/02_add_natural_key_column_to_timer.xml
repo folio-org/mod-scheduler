@@ -27,6 +27,7 @@
           )
         );
     </sql>
+    <customChange class="org.folio.scheduler.migration.UnscheduleDuplicatesMigration" />
     <!-- Delete duplicates by natural_key -->
     <sql>
       WITH ranked_rows AS (
