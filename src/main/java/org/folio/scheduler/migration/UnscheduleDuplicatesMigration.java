@@ -29,14 +29,14 @@ public class UnscheduleDuplicatesMigration implements CustomTaskChange {
         id
       FROM (
         SELECT
-      	  id,
-      	  row_number() over (partition by natural_key order by id) as rn
+          id,
+          row_number() over (partition by natural_key order by id) as rn
         FROM
-      	  timer
+          timer
         WHERE timer_descriptor->'enabled' = 'true'
       )
       WHERE
-      	rn > 1
+        rn > 1
       """)) {
       var resultSet = statement.executeQuery();
       var idsOfTimersToUnschedule = new HashSet<String>();
@@ -57,7 +57,6 @@ public class UnscheduleDuplicatesMigration implements CustomTaskChange {
           }
         });
       }
-
     } catch (Exception e) {
       throw new RuntimeException("Failed to execute migration " + this.getClass().getSimpleName(), e);
     }
