@@ -9,6 +9,8 @@
       UPDATE
         timer
       SET natural_key = CONCAT(
+          timer_descriptor->>'moduleName',
+          '#',
           COALESCE(
             (SELECT
               string_agg(methods, ',')

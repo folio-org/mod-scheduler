@@ -17,8 +17,7 @@ import org.hibernate.annotations.Type;
 @Table(name = "timer")
 public class TimerDescriptorEntity {
 
-  @Id
-  private UUID id;
+  @Id private UUID id;
 
   private String moduleName;
 
@@ -45,10 +44,12 @@ public class TimerDescriptorEntity {
     if (timerDescriptor.getRoutingEntry() == null) {
       return null;
     }
+
     var methods = timerDescriptor.getRoutingEntry().getMethods() != null ? String.join(",",
       timerDescriptor.getRoutingEntry().getMethods()) : "";
     var path = timerDescriptor.getRoutingEntry().getPath() != null ? timerDescriptor.getRoutingEntry().getPath()
       : timerDescriptor.getRoutingEntry().getPathPattern();
-    return String.format("%s#%s", methods, path);
+    return String.format("%s#%s#%s", timerDescriptor.getModuleName() != null ? timerDescriptor.getModuleName() : "",
+      methods, path);
   }
 }

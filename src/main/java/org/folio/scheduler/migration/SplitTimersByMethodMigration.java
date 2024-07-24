@@ -53,7 +53,9 @@ public class SplitTimersByMethodMigration implements CustomTaskChange {
           schedulerTimerRepository.save(timer);
           timerRoutingEntryHttpMethods.remove(0);
           var newTimers = timerRoutingEntryHttpMethods.stream().map(httpMethod -> {
-            timer.setId(UUID.randomUUID());
+            UUID newId = UUID.randomUUID();
+            timer.setId(newId);
+            timer.getTimerDescriptor().setId(newId);
             timer.getTimerDescriptor().getRoutingEntry().setMethods(List.of(httpMethod));
             return schedulerTimerRepository.save(timer);
           }).toList();
