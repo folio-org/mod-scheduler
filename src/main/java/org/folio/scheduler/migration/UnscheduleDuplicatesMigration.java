@@ -15,6 +15,7 @@ import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.springframework.context.ApplicationContext;
+import org.springframework.transaction.annotation.Transactional;
 
 @Log4j2
 public class UnscheduleDuplicatesMigration implements CustomTaskChange {
@@ -22,6 +23,7 @@ public class UnscheduleDuplicatesMigration implements CustomTaskChange {
   private ApplicationContext springApplicationContext;
 
   @Override
+  @Transactional
   public void execute(Database database) throws CustomChangeException {
     JdbcConnection connection = (JdbcConnection) database.getConnection();
     try (var statement = connection.getWrappedConnection().prepareStatement("""

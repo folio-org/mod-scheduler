@@ -42,8 +42,7 @@ public class SchedulerTimerService {
 
   @Transactional(readOnly = true)
   public List<TimerDescriptor> findByModuleName(String moduleName) {
-    return schedulerTimerRepository.findByModuleName(moduleName).stream()
-      .map(TimerDescriptorEntity::getTimerDescriptor)
+    return schedulerTimerRepository.findByModuleName(moduleName).stream().map(TimerDescriptorEntity::getTimerDescriptor)
       .toList();
   }
 
@@ -56,8 +55,8 @@ public class SchedulerTimerService {
    */
   @Transactional(readOnly = true)
   public TimerDescriptor getById(UUID uuid) {
-    return findById(uuid).orElseThrow(() ->
-      new EntityNotFoundException("Unable to find TimerDescriptor with id " + uuid));
+    return findById(uuid).orElseThrow(
+      () -> new EntityNotFoundException("Unable to find TimerDescriptor with id " + uuid));
   }
 
   /**
@@ -68,8 +67,7 @@ public class SchedulerTimerService {
   @Transactional(readOnly = true)
   public SearchResult<TimerDescriptor> getAll(Integer offset, Integer limit) {
     return SearchResult.of(schedulerTimerRepository.findAll(OffsetRequest.of(offset, limit)).stream()
-      .map(TimerDescriptorEntity::getTimerDescriptor)
-      .toList());
+      .map(TimerDescriptorEntity::getTimerDescriptor).toList());
   }
 
   /**
@@ -87,6 +85,8 @@ public class SchedulerTimerService {
         throw new EntityExistsException("TimerDescriptor already exist for id " + id);
       }
     }
+
+    validate(timerDescriptor);
 
     timerDescriptor.setId(defaultIfNull(id, UUID.randomUUID()));
     var naturalKey = TimerDescriptorEntity.toNaturalKey(timerDescriptor);
@@ -118,6 +118,8 @@ public class SchedulerTimerService {
     if (!Objects.equals(uuid, newDescriptor.getId())) {
       throw new RequestValidationException("Id in the url and in the entity must match", "id", "not matched");
     }
+
+    validate(newDescriptor);
 
     return doUpdate(newDescriptor);
   }
@@ -159,6 +161,13 @@ public class SchedulerTimerService {
     for (var timerDescriptorEntity : allEntities) {
       schedulerTimerRepository.delete(timerDescriptorEntity);
       jobSchedulingService.delete(timerDescriptorEntity.getTimerDescriptor());
+    }
+  }
+
+  protected void validate(TimerDescriptor timerDescriptor) {
+    if (timerDescriptor.getRoutingEntry() != null && timerDescriptor.getRoutingEntry().getMethods() != null
+      && timerDescriptor.getRoutingEntry().getMethods().size() > 1) {
+      throw new IllegalArgumentException("Only 1 method is allowed per timer");
     }
   }
 }

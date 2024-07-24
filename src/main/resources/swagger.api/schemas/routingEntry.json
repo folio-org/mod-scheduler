@@ -10,7 +10,8 @@
       "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "maxItems": 1
     },
     "pathPattern": {
       "description": "Path pattern match. * matches any path. {x} matches one or more characters but not slash",

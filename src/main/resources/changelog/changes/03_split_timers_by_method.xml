@@ -3,9 +3,7 @@
   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.9.xsd">
-  <changeSet id="add natural_key column for timers" author="Mykola Makhin">
-    <addColumn tableName="timer">
-      <column name="natural_key" type="varchar(2080)"/>
-    </addColumn>
+  <changeSet id="split timers by method" author="Mykola Makhin">
+    <customChange class="org.folio.scheduler.migration.SplitTimersByMethodMigration" />
   </changeSet>
 </databaseChangeLog>
