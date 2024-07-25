@@ -72,7 +72,7 @@ class SplitTimersByMethodMigrationTest {
       Optional.of(TimerDescriptorEntity.of(new TimerDescriptor(routingEntry2, false))));
 
     var methodsPassed = new ArrayList<>();
-    lenient().when(mockSchedulerTimerRepository.save(any())).thenAnswer(inv -> {
+    when(mockSchedulerTimerRepository.save(any())).thenAnswer(inv -> {
       TimerDescriptorEntity timer = inv.getArgument(0);
       methodsPassed.add(new ArrayList<>(timer.getTimerDescriptor().getRoutingEntry().getMethods()));
       return timer;
