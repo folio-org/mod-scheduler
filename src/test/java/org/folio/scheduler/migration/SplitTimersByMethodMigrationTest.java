@@ -83,8 +83,6 @@ class SplitTimersByMethodMigrationTest {
 
     verify(mockSchedulerTimerRepository, times(5)).save(any());
 
-    System.out.println(methodsPassed);
-
     // To ensure order of IDs matches the order used by Migration, that in its
     // turn uses Hash set - use Hash-based sorting by ID
     var idsOfTimersToSplit = new HashMap<String, RoutingEntry>();
