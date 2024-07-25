@@ -1,8 +1,6 @@
 package org.folio.scheduler.migration;
 
 import java.sql.ResultSet;
-import java.util.HashSet;
-import java.util.function.Consumer;
 import liquibase.change.custom.CustomTaskChange;
 import liquibase.database.Database;
 import liquibase.database.jvm.JdbcConnection;
