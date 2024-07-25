@@ -45,7 +45,7 @@ public class SplitTimersByMethodMigrationTest {
   @Mock SchedulerTimerRepository mockSchedulerTimerRepository;
 
   @BeforeEach
-  public void init() {
+  void init() {
     unit.setFileOpener(new SpringResourceAccessor(mockAppContext));
     lenient().when(mockAppContext.getBean(JobSchedulingService.class)).thenReturn(mockJobSchedulingService);
     lenient().when(mockAppContext.getBean(SchedulerTimerRepository.class)).thenReturn(mockSchedulerTimerRepository);
@@ -53,7 +53,7 @@ public class SplitTimersByMethodMigrationTest {
   }
 
   @Test
-  public void test_execute_positive() throws Exception {
+  void test_execute_positive() throws Exception {
     var routingEntry1 = new RoutingEntry();
     routingEntry1.methods(of("GET", "POST", "PUT"));
     var routingEntry2 = new RoutingEntry();
