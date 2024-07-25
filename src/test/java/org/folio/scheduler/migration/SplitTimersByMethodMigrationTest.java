@@ -37,7 +37,7 @@ import org.springframework.context.ApplicationContext;
 
 @UnitTest
 @ExtendWith(MockitoExtension.class)
-public class SplitTimersByMethodMigrationTest {
+class SplitTimersByMethodMigrationTest {
 
   SplitTimersByMethodMigration unit = new SplitTimersByMethodMigration();
   @Mock ApplicationContext mockAppContext;
