@@ -8,6 +8,7 @@ import liquibase.exception.ValidationErrors;
 import liquibase.integration.spring.SpringResourceAccessor;
 import liquibase.resource.ResourceAccessor;
 import org.apache.commons.lang3.reflect.FieldUtils;
+import org.folio.scheduler.exception.MigrationException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.util.function.ThrowingConsumer;
 
@@ -32,7 +33,7 @@ public abstract class AbstractCustomTaskChangeMigration implements CustomTaskCha
       springApplicationContext =
         (ApplicationContext) FieldUtils.readField(springResourceAccessor, "resourceLoader", true);
     } catch (IllegalAccessException e) {
-      throw new RuntimeException("Failed to obtain Spring Application Context", e);
+      throw new IllegalStateException("Failed to obtain Spring Application Context", e);
     }
   }
 
@@ -49,7 +50,7 @@ public abstract class AbstractCustomTaskChangeMigration implements CustomTaskCha
         rowConsumer.accept(resultSet);
       }
     } catch (Exception e) {
-      throw new RuntimeException("Failed to execute migration " + this.getClass().getSimpleName(), e);
+      throw new MigrationException("Failed to execute migration " + this.getClass().getSimpleName(), e);
     }
   }
 }

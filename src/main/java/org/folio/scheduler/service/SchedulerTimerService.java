@@ -55,7 +55,7 @@ public class SchedulerTimerService {
    */
   @Transactional(readOnly = true)
   public TimerDescriptor getById(UUID uuid) {
-    return findById(uuid).orElseThrow(
+    return schedulerTimerRepository.findById(uuid).map(TimerDescriptorEntity::getTimerDescriptor).orElseThrow(
       () -> new EntityNotFoundException("Unable to find TimerDescriptor with id " + uuid));
   }
 
@@ -165,7 +165,7 @@ public class SchedulerTimerService {
   }
 
   protected void validate(TimerDescriptor timerDescriptor) {
-    if (timerDescriptor.getRoutingEntry() != null && timerDescriptor.getRoutingEntry().getMethods() != null
+    if (timerDescriptor.getRoutingEntry().getMethods() != null
       && timerDescriptor.getRoutingEntry().getMethods().size() > 1) {
       throw new IllegalArgumentException("Only 1 method is allowed per timer");
     }
