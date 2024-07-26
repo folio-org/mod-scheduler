@@ -11,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import org.folio.scheduler.integration.keycloak.configuration.properties.KeycloakProperties;
 import org.folio.scheduler.integration.securestore.SecureStore;
 import org.folio.scheduler.service.UserImpersonationService;
-import org.jetbrains.annotations.NotNull;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.token.TokenService;
 
@@ -31,7 +30,6 @@ public class KeycloakUserImpersonationService implements UserImpersonationServic
     return accessTokenResponse.getToken();
   }
 
-  @NotNull
   private MultivaluedMap<String, String> prepareRequestData(String tenant, String userId) {
     MultivaluedMap<String, String> data = new MultivaluedHashMap<>();
     var impersonationClient = properties.getImpersonationClient();

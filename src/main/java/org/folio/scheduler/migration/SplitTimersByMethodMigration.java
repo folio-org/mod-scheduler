@@ -9,7 +9,6 @@ import lombok.extern.log4j.Log4j2;
 import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 import org.folio.scheduler.repository.SchedulerTimerRepository;
 import org.folio.scheduler.service.JobSchedulingService;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.transaction.annotation.Transactional;
 
 @Log4j2
@@ -55,7 +54,7 @@ public class SplitTimersByMethodMigration extends AbstractCustomTaskChangeMigrat
     }
   }
 
-  private static @NotNull TimerDescriptorEntity createNewTimer(TimerDescriptorEntity timer,
+  private static TimerDescriptorEntity createNewTimer(TimerDescriptorEntity timer,
     SchedulerTimerRepository schedulerTimerRepository, String httpMethod) {
     UUID newId = UUID.randomUUID();
     timer.setId(newId);
