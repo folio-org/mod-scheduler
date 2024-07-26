@@ -1,0 +1,32 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.9.xsd">
+  <changeSet id="remove unnecessary fields from timers" author="Mykola Makhin">
+    <sql>
+      WITH updated_json AS (
+        SELECT id, timer_descriptor - 'routingEntry' ||
+          jsonb_build_object(
+            'routingEntry',
+            (timer_descriptor->'routingEntry')
+              - 'rewritePath'
+              - 'phase'
+              - 'level'
+              - 'type'
+              - 'redirectPath'
+              - 'permissionsRequired'
+              - 'permissionsDesired'
+              - 'modulePermissions'
+              - 'permissionsRequiredTenant'
+              - 'delegateCORS'
+          ) AS new_timer_descriptor
+        FROM timer
+      )
+      UPDATE timer
+      SET timer_descriptor = updated_json.new_timer_descriptor
+      FROM updated_json
+      WHERE timer.id = updated_json.id;
+    </sql>
+  </changeSet>
+</databaseChangeLog>

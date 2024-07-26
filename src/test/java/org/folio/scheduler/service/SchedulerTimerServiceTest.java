@@ -196,4 +196,20 @@ class SchedulerTimerServiceTest {
     verify(schedulerTimerRepository).delete(entity);
     verify(jobSchedulingService).delete(timerDescriptor());
   }
+
+  @Test
+  void create_duplicate() {
+    var descriptor = timerDescriptor();
+    descriptor.setId(null);
+    var entity = timerDescriptorEntity();
+
+    when(timerDescriptorMapper.convert(descriptor)).thenReturn(entity);
+    when(schedulerTimerRepository.save(entity)).thenReturn(entity);
+    when(schedulerTimerRepository.findByNaturalKey(any())).thenReturn(Optional.of(entity));
+    when(schedulerTimerRepository.findById(entity.getId())).thenReturn(Optional.of(entity));
+
+    var actual = schedulerTimerService.create(descriptor);
+    descriptor.setModified(null);
+    assertThat(actual).isEqualTo(descriptor);
+  }
 }

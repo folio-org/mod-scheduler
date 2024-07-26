@@ -10,7 +10,8 @@
       "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "maxItems": 1
     },
     "pathPattern": {
       "description": "Path pattern match. * matches any path. {x} matches one or more characters but not slash",
@@ -18,26 +19,6 @@
     },
     "path": {
       "description": "Path prefix match",
-      "type": "string"
-    },
-    "rewritePath": {
-      "description": "Rewrite path. e.g. have filter rewrite '/*' to '/events/*'",
-      "type": "string"
-    },
-    "phase": {
-      "description": "If given, may be auth, pre or post",
-      "type": "string"
-    },
-    "level": {
-      "description": "Processing level. Default is 50 (handlers)",
-      "type": "string"
-    },
-    "type": {
-      "description": "Proxy handling. One of: request-response, request-only, headers, redirect, system, internal, request-response-1.0. The default is request-response",
-      "type": "string"
-    },
-    "redirectPath": {
-      "description": "If given, path that we internally redirect to",
       "type": "string"
     },
     "unit": {
@@ -63,38 +44,6 @@
         }
       },
       "required": [ "cron" ]
-    },
-    "permissionsRequired": {
-      "description": "Required permissions for this entry",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "permissionsDesired": {
-      "description": "Desired permissions for this entry",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "modulePermissions": {
-      "description": "Module permissions for this entry",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "permissionsRequiredTenant": {
-      "description": "Required permissions that replace permissionsRequired when the user is authenticated and either the tenant matches each {tenantId} in pathPattern or pathPattern doesn't contain {tenantId}",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "delegateCORS": {
-      "description": "Okapi handles CORS by default. Set to true to delegate CORS handling to the module. This only applies to calls made via /_/invoke/tenant/<tid>/<path>. No OPTIONS entry in the methods array is needed for this.",
-      "type": "boolean"
     }
   }
 }

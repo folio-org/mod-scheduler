@@ -1,0 +1,48 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.9.xsd">
+  <changeSet id="populate natural_key column and deduplicate" author="Mykola Makhin">
+    <!-- Populate natural_key column based on methods and path or pathPattern -->
+    <sql>
+      UPDATE
+        timer
+      SET natural_key = CONCAT(
+          timer_descriptor->>'moduleName',
+          '#',
+          COALESCE(
+            (SELECT
+              string_agg(methods, ',')
+                FROM
+                  jsonb_array_elements_text(
+                    (timer_descriptor->'routingEntry'->>'methods')::jsonb
+              ) AS methods),
+            ''),
+          '#',
+          COALESCE(
+            timer_descriptor->'routingEntry'->>'path',
+            timer_descriptor->'routingEntry'->>'pathPattern'
+          )
+        );
+    </sql>
+    <customChange class="org.folio.scheduler.migration.UnscheduleDuplicatesMigration" />
+    <!-- Delete duplicates by natural_key -->
+    <sql>
+      WITH ranked_rows AS (
+          SELECT
+              id,
+              ROW_NUMBER() OVER (PARTITION BY natural_key ORDER BY id) AS rn
+          FROM timer
+      )
+      DELETE FROM timer
+      USING ranked_rows
+      WHERE timer.id = ranked_rows.id
+        AND ranked_rows.rn > 1;
+    </sql>
+    <!-- Make natural_key unique -->
+    <createIndex tableName="timer" indexName="natural_key_index" unique="true">
+      <column name="natural_key"/>
+    </createIndex>
+  </changeSet>
+</databaseChangeLog>

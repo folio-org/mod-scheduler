@@ -8,7 +8,7 @@
     "timers": [
       {
         "methods": [ "GET" ],
-        "pathPattern": "/folio-module1/v3/scheduled-timer",
+        "pathPattern": "/folio-module1/v3/another-scheduled-timer",
         "schedule": {
           "cron": "0 6,18 * * *",
           "zone": "CET"
