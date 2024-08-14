@@ -1,4 +1,9 @@
-## Version `v1.2.2` (07.10.2024)
+## Version `v1.2.3` (14.08.2024)
+### Changes:
+* Fix duplicated timers (MODSCHED-16)
+---
+
+## Version `v1.2.2` (10.07.2024)
 ### Changes:
 * Upgrade keycloak-client to v25.0.1 (KEYCLOAK-11)
 ---
