@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.3.2</version>
+    <version>3.3.3</version>
     <relativePath />
   </parent>
 
@@ -34,7 +34,7 @@
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>25.0.4</keycloak.admin.client.version>
     <applications-poc-tools.version>1.5.5</applications-poc-tools.version>
-    <aws.version>2.27.7</aws.version>
+    <aws.version>2.27.12</aws.version>
     <vault.version>5.1.0</vault.version>
 
     <mod-scheduler.yaml-file>${project.basedir}/src/main/resources/swagger.api/mod-scheduler.yaml
@@ -47,8 +47,8 @@
     <maven-clean-plugin.version>3.4.0</maven-clean-plugin.version>
     <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
     <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
-    <maven-checkstyle-plugin.version>3.4.0</maven-checkstyle-plugin.version>
-    <maven-checkstyle.version>10.17.0</maven-checkstyle.version>
+    <maven-checkstyle-plugin.version>3.5.0</maven-checkstyle-plugin.version>
+    <maven-checkstyle.version>10.18.0</maven-checkstyle.version>
     <copy-rename-maven-plugin.version>1.0.1</copy-rename-maven-plugin.version>
     <maven-surefire-plugin.version>3.4.0</maven-surefire-plugin.version>
     <maven-failsafe-plugin.version>3.4.0</maven-failsafe-plugin.version>
