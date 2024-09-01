@@ -28,13 +28,13 @@
     <lombok.version>1.18.34</lombok.version>
     <mapstruct.version>1.6.0</mapstruct.version>
     <hypersistence-utils-hibernate-63.version>3.8.2</hypersistence-utils-hibernate-63.version>
-    <swagger-annotations.version>2.2.22</swagger-annotations.version>
+    <swagger-annotations.version>2.2.23</swagger-annotations.version>
     <openapi-tools.jackson-databind-nullable.version>0.2.6</openapi-tools.jackson-databind-nullable.version>
     <folio-spring-support.version>8.1.2</folio-spring-support.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>25.0.4</keycloak.admin.client.version>
     <applications-poc-tools.version>1.5.5</applications-poc-tools.version>
-    <aws.version>2.27.12</aws.version>
+    <aws.version>2.27.17</aws.version>
     <vault.version>5.1.0</vault.version>
 
     <mod-scheduler.yaml-file>${project.basedir}/src/main/resources/swagger.api/mod-scheduler.yaml
@@ -48,10 +48,10 @@
     <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
     <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
     <maven-checkstyle-plugin.version>3.5.0</maven-checkstyle-plugin.version>
-    <maven-checkstyle.version>10.18.0</maven-checkstyle.version>
+    <maven-checkstyle.version>10.18.1</maven-checkstyle.version>
     <copy-rename-maven-plugin.version>1.0.1</copy-rename-maven-plugin.version>
-    <maven-surefire-plugin.version>3.4.0</maven-surefire-plugin.version>
-    <maven-failsafe-plugin.version>3.4.0</maven-failsafe-plugin.version>
+    <maven-surefire-plugin.version>3.5.0</maven-surefire-plugin.version>
+    <maven-failsafe-plugin.version>3.5.0</maven-failsafe-plugin.version>
     <maven-release-plugin.version>3.1.1</maven-release-plugin.version>
     <openapi-generator.version>7.8.0</openapi-generator.version>
     <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
