@@ -31,9 +31,10 @@
     <swagger-annotations.version>2.2.23</swagger-annotations.version>
     <openapi-tools.jackson-databind-nullable.version>0.2.6</openapi-tools.jackson-databind-nullable.version>
     <folio-spring-support.version>8.1.2</folio-spring-support.version>
+    <commons-lang3.version>3.17.0</commons-lang3.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>25.0.4</keycloak.admin.client.version>
-    <applications-poc-tools.version>1.5.5</applications-poc-tools.version>
+    <applications-poc-tools.version>1.5.6</applications-poc-tools.version>
     <aws.version>2.27.17</aws.version>
     <vault.version>5.1.0</vault.version>
 
@@ -89,6 +90,12 @@
       <groupId>org.folio</groupId>
       <artifactId>folio-spring-cql</artifactId>
       <version>${folio-spring-support.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>folio-tls-utils</artifactId>
+      <version>${applications-poc-tools.version}</version>
     </dependency>
 
     <dependency>
@@ -171,12 +178,6 @@
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
       <scope>provided</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-collections4</artifactId>
-      <version>${commons-collections4.version}</version>
     </dependency>
 
     <dependency>
