@@ -1,3 +1,8 @@
+## Version `v1.2.4` (25.09.2024)
+### Changes:
+* Bumped up applications-poc-tools dependencies to 1.5.6 to support Hostname Verification for TLS connections
+---
+
 ## Version `v1.2.3` (14.08.2024)
 ### Changes:
 * Fix duplicated timers (MODSCHED-16)
