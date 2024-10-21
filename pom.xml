@@ -35,7 +35,7 @@
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>26.0.0</keycloak.admin.client.version>
     <applications-poc-tools.version>1.5.8-SNAPSHOT</applications-poc-tools.version>
-    <aws.version>2.28.21</aws.version>
+    <aws.version>2.28.26</aws.version>
     <vault.version>5.1.0</vault.version>
 
     <mod-scheduler.yaml-file>${project.basedir}/src/main/resources/swagger.api/mod-scheduler.yaml
