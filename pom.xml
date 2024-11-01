@@ -57,6 +57,7 @@
     <openapi-generator.version>7.9.0</openapi-generator.version>
     <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
     <folio-java-checkstyle.version>1.0.1</folio-java-checkstyle.version>
+    <folio-module-descriptor-validator.version>1.0.0</folio-module-descriptor-validator.version>
 
     <sonar.exclusions>
       <!--
@@ -510,6 +511,19 @@
               <output>${project.build.directory}/docs/mod-scheduler</output>
               <generatorName>html2</generatorName>
             </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.folio</groupId>
+        <artifactId>folio-module-descriptor-validator</artifactId>
+        <version>${folio-module-descriptor-validator.version}</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>validate</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
