@@ -26,8 +26,8 @@
   <properties>
     <java.version>17</java.version>
     <lombok.version>1.18.34</lombok.version>
-    <mapstruct.version>1.6.2</mapstruct.version>
-    <hypersistence-utils-hibernate-63.version>3.8.3</hypersistence-utils-hibernate-63.version>
+    <mapstruct.version>1.6.3</mapstruct.version>
+    <hypersistence-utils-hibernate-63.version>3.9.0</hypersistence-utils-hibernate-63.version>
     <swagger-annotations.version>2.2.25</swagger-annotations.version>
     <openapi-tools.jackson-databind-nullable.version>0.2.6</openapi-tools.jackson-databind-nullable.version>
     <folio-spring-support.version>8.2.1</folio-spring-support.version>
@@ -35,7 +35,7 @@
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>26.0.0</keycloak.admin.client.version>
     <applications-poc-tools.version>2.1.0-SNAPSHOT</applications-poc-tools.version>
-    <aws.version>2.29.6</aws.version>
+    <aws.version>2.29.9</aws.version>
     <vault.version>5.1.0</vault.version>
 
     <mod-scheduler.yaml-file>${project.basedir}/src/main/resources/swagger.api/mod-scheduler.yaml
@@ -49,7 +49,7 @@
     <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
     <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
     <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
-    <maven-checkstyle.version>10.20.0</maven-checkstyle.version>
+    <maven-checkstyle.version>10.20.1</maven-checkstyle.version>
     <copy-rename-maven-plugin.version>1.0.1</copy-rename-maven-plugin.version>
     <maven-surefire-plugin.version>3.5.2</maven-surefire-plugin.version>
     <maven-failsafe-plugin.version>3.5.2</maven-failsafe-plugin.version>
@@ -57,7 +57,7 @@
     <openapi-generator.version>7.9.0</openapi-generator.version>
     <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
     <folio-java-checkstyle.version>1.0.1</folio-java-checkstyle.version>
-    <folio-module-descriptor-validator.version>1.0.0</folio-module-descriptor-validator.version>
+    <folio-module-descriptor-validator.version>1.0.1</folio-module-descriptor-validator.version>
 
     <sonar.exclusions>
       <!--
