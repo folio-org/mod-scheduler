@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.3.5</version>
+    <version>3.4.0</version>
     <relativePath />
   </parent>
 
@@ -35,7 +35,7 @@
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>26.0.0</keycloak.admin.client.version>
     <applications-poc-tools.version>2.1.0-SNAPSHOT</applications-poc-tools.version>
-    <aws.version>2.29.23</aws.version>
+    <aws.version>2.29.29</aws.version>
     <vault.version>5.1.0</vault.version>
 
     <mod-scheduler.yaml-file>${project.basedir}/src/main/resources/swagger.api/mod-scheduler.yaml
