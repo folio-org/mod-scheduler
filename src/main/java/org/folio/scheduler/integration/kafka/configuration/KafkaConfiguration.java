@@ -44,9 +44,10 @@ public class KafkaConfiguration {
    * @return {@link ConcurrentKafkaListenerContainerFactory} object as Spring bean.
    */
   @Bean
-  public ConcurrentKafkaListenerContainerFactory<String, ResourceEvent> kafkaListenerContainerFactory() {
+  public ConcurrentKafkaListenerContainerFactory<String, ResourceEvent> kafkaListenerContainerFactory(
+    ConsumerFactory<String, ResourceEvent> consumerFactory) {
     var factory = new ConcurrentKafkaListenerContainerFactory<String, ResourceEvent>();
-    factory.setConsumerFactory(jsonNodeConsumerFactory());
+    factory.setConsumerFactory(consumerFactory);
     factory.setCommonErrorHandler(scheduledTimerErrorHandler());
     return factory;
   }
@@ -61,7 +62,7 @@ public class KafkaConfiguration {
   @Bean
   public ConsumerFactory<String, ResourceEvent> jsonNodeConsumerFactory() {
     var deserializer = new JsonDeserializer<>(ResourceEvent.class, objectMapper);
-    Map<String, Object> config = new HashMap<>(kafkaProperties.buildConsumerProperties());
+    Map<String, Object> config = new HashMap<>(kafkaProperties.buildConsumerProperties(null));
     config.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     config.put(VALUE_DESERIALIZER_CLASS_CONFIG, deserializer);
     config.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
