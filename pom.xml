@@ -30,11 +30,11 @@
     <hypersistence-utils-hibernate-63.version>3.9.0</hypersistence-utils-hibernate-63.version>
     <swagger-annotations.version>2.2.27</swagger-annotations.version>
     <openapi-tools.jackson-databind-nullable.version>0.2.6</openapi-tools.jackson-databind-nullable.version>
-    <folio-spring-support.version>8.2.2</folio-spring-support.version>
+    <folio-spring-support.version>8.3.0-SNAPSHOT</folio-spring-support.version>
     <commons-lang3.version>3.17.0</commons-lang3.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>26.0.0</keycloak.admin.client.version>
-    <applications-poc-tools.version>2.1.0-SNAPSHOT</applications-poc-tools.version>
+    <applications-poc-tools.version>2.2.0-SNAPSHOT</applications-poc-tools.version>
     <aws.version>2.29.34</aws.version>
     <vault.version>5.1.0</vault.version>
 
@@ -113,6 +113,12 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-jpa</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-starter-logging</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
