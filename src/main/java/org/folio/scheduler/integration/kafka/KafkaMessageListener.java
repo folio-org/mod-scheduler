@@ -60,12 +60,13 @@ public class KafkaMessageListener {
 
   private void createTimers(ResourceEvent event) {
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(event.getTenant()))) {
-      var moduleName = SemverUtils.getName(event.getNewValue().getModuleId());
+      var moduleId = event.getNewValue().getModuleId();
+      var moduleName = SemverUtils.getName(moduleId);
       var timers = event.getNewValue().getTimers();
+
       logCreatingTimers(timers);
       for (var routingEntry : timers) {
-        var timerDescriptor = new TimerDescriptor().enabled(TRUE).moduleName(moduleName).routingEntry(routingEntry);
-        schedulerTimerService.create(timerDescriptor);
+        schedulerTimerService.create(createTimerDescriptor(routingEntry, moduleName, moduleId));
       }
     }
   }
@@ -73,7 +74,9 @@ public class KafkaMessageListener {
   private void updateTimers(ResourceEvent resourceEvent) {
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata,
       prepareContextHeaders(resourceEvent.getTenant()))) {
-      var moduleName = SemverUtils.getName(resourceEvent.getNewValue().getModuleId());
+      var moduleId = resourceEvent.getNewValue().getModuleId();
+      var moduleName = SemverUtils.getName(moduleId);
+
       var timers = schedulerTimerService.findByModuleName(moduleName);
       if (isNotEmpty(timers)) {
         logDeletingTimers(timers);
@@ -85,8 +88,7 @@ public class KafkaMessageListener {
       var timerToCreate = resourceEvent.getNewValue();
       logCreatingTimers(timerToCreate.getTimers());
       for (var routingEntry : timerToCreate.getTimers()) {
-        var timerDescriptor = new TimerDescriptor().enabled(TRUE).moduleName(moduleName).routingEntry(routingEntry);
-        schedulerTimerService.create(timerDescriptor);
+        schedulerTimerService.create(createTimerDescriptor(routingEntry, moduleName, moduleId));
       }
     }
   }
@@ -112,6 +114,13 @@ public class KafkaMessageListener {
     headers.put(TENANT, singletonList(tenant));
     headers.put(USER_ID, singletonList(systemUserService.findSystemUserId(tenant)));
     return headers;
+  }
+
+  private static TimerDescriptor createTimerDescriptor(RoutingEntry routingEntry, String moduleName, String moduleId) {
+    return new TimerDescriptor().enabled(TRUE)
+      .moduleName(moduleName)
+      .moduleId(moduleId)
+      .routingEntry(routingEntry);
   }
 
   private static String getRoutingEntryKey(RoutingEntry routingEntry) {

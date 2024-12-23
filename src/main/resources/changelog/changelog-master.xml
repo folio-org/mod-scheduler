@@ -10,4 +10,5 @@
   <include file="changes/03_add_natural_key_column_to_timer.xml" relativeToChangelogFile="true"/>
   <include file="changes/04_split_timers_by_method.xml" relativeToChangelogFile="true"/>
   <include file="changes/05_populate_natural_key_and_deduplicate.xml" relativeToChangelogFile="true"/>
+  <include file="changes/06_add_module_id_column_to_timer.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

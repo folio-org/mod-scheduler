@@ -1,6 +1,7 @@
 package org.folio.scheduler.service;
 
 import static org.apache.commons.lang3.ObjectUtils.defaultIfNull;
+import static org.folio.common.utils.CollectionUtils.mapItems;
 
 import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityNotFoundException;
@@ -42,8 +43,7 @@ public class SchedulerTimerService {
 
   @Transactional(readOnly = true)
   public List<TimerDescriptor> findByModuleName(String moduleName) {
-    return schedulerTimerRepository.findByModuleName(moduleName).stream().map(TimerDescriptorEntity::getTimerDescriptor)
-      .toList();
+    return mapItems(schedulerTimerRepository.findByModuleName(moduleName), TimerDescriptorEntity::getTimerDescriptor);
   }
 
   /**
@@ -90,15 +90,12 @@ public class SchedulerTimerService {
 
     timerDescriptor.setId(defaultIfNull(id, UUID.randomUUID()));
     var naturalKey = TimerDescriptorEntity.toNaturalKey(timerDescriptor);
-    return schedulerTimerRepository.findByNaturalKey(naturalKey).map(existingTimer -> {
-      timerDescriptor.setId(existingTimer.getId());
-      return doUpdate(timerDescriptor);
-    }).orElseGet(() -> {
-      var entity = timerDescriptorMapper.convert(timerDescriptor);
-      var savedEntity = schedulerTimerRepository.save(entity);
-      jobSchedulingService.schedule(timerDescriptor);
-      return savedEntity.getTimerDescriptor();
-    });
+    return schedulerTimerRepository.findByNaturalKey(naturalKey)
+      .map(existingTimer -> {
+        timerDescriptor.setId(existingTimer.getId());
+        return doUpdate(timerDescriptor);
+      })
+      .orElseGet(() -> doCreate(timerDescriptor));
   }
 
   /**
@@ -122,21 +119,6 @@ public class SchedulerTimerService {
     validate(newDescriptor);
 
     return doUpdate(newDescriptor);
-  }
-
-  protected TimerDescriptor doUpdate(TimerDescriptor newDescriptor) {
-    var oldTimerDescriptor =
-      schedulerTimerRepository.findById(newDescriptor.getId()).map(TimerDescriptorEntity::getTimerDescriptor)
-        .orElseThrow(
-          () -> new EntityNotFoundException("Unable to find timer descriptor with id " + newDescriptor.getId()));
-
-    newDescriptor.modified(true);
-    var convertedValue = timerDescriptorMapper.convert(newDescriptor);
-    var updatedEntity = schedulerTimerRepository.save(convertedValue);
-    var timerDescriptor = updatedEntity.getTimerDescriptor();
-    jobSchedulingService.reschedule(oldTimerDescriptor, timerDescriptor);
-
-    return timerDescriptor;
   }
 
   /**
@@ -164,10 +146,32 @@ public class SchedulerTimerService {
     }
   }
 
-  protected void validate(TimerDescriptor timerDescriptor) {
+  private void validate(TimerDescriptor timerDescriptor) {
     if (timerDescriptor.getRoutingEntry().getMethods() != null
       && timerDescriptor.getRoutingEntry().getMethods().size() > 1) {
       throw new IllegalArgumentException("Only 1 method is allowed per timer");
     }
+  }
+
+  private TimerDescriptor doCreate(TimerDescriptor timerDescriptor) {
+    var entity = timerDescriptorMapper.convert(timerDescriptor);
+    var savedEntity = schedulerTimerRepository.save(entity);
+    jobSchedulingService.schedule(timerDescriptor);
+    return savedEntity.getTimerDescriptor();
+  }
+
+  private TimerDescriptor doUpdate(TimerDescriptor newDescriptor) {
+    var oldTimerDescriptor =
+      schedulerTimerRepository.findById(newDescriptor.getId()).map(TimerDescriptorEntity::getTimerDescriptor)
+        .orElseThrow(
+          () -> new EntityNotFoundException("Unable to find timer descriptor with id " + newDescriptor.getId()));
+
+    newDescriptor.modified(true);
+    var convertedValue = timerDescriptorMapper.convert(newDescriptor);
+    var updatedEntity = schedulerTimerRepository.save(convertedValue);
+    var timerDescriptor = updatedEntity.getTimerDescriptor();
+    jobSchedulingService.reschedule(oldTimerDescriptor, timerDescriptor);
+
+    return timerDescriptor;
   }
 }

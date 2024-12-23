@@ -8,6 +8,7 @@ import jakarta.persistence.Table;
 import java.util.UUID;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.hibernate.annotations.Type;
 
@@ -20,6 +21,8 @@ public class TimerDescriptorEntity {
   @Id private UUID id;
 
   private String moduleName;
+
+  private String moduleId;
 
   private String naturalKey;
 
@@ -41,14 +44,13 @@ public class TimerDescriptorEntity {
   }
 
   public static String toNaturalKey(TimerDescriptor timerDescriptor) {
-    if (timerDescriptor.getRoutingEntry() == null) {
+    RoutingEntry re = timerDescriptor.getRoutingEntry();
+    if (re == null) {
       return null;
     }
 
-    var methods = timerDescriptor.getRoutingEntry().getMethods() != null ? String.join(",",
-      timerDescriptor.getRoutingEntry().getMethods()) : "";
-    var path = timerDescriptor.getRoutingEntry().getPath() != null ? timerDescriptor.getRoutingEntry().getPath()
-      : timerDescriptor.getRoutingEntry().getPathPattern();
+    var methods = re.getMethods() != null ? String.join(",", re.getMethods()) : "";
+    var path = re.getPath() != null ? re.getPath() : re.getPathPattern();
     return String.format("%s#%s#%s", timerDescriptor.getModuleName() != null ? timerDescriptor.getModuleName() : "",
       methods, path);
   }

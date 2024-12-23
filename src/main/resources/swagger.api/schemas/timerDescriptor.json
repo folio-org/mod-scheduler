@@ -22,7 +22,11 @@
       "type": "boolean"
     },
     "moduleName": {
-      "description": "Module name timer belongs to",
+      "description": "Module name timer belongs to (module id should be used instead)",
+      "type": "string"
+    },
+    "moduleId": {
+      "description": "Module id timer belongs to (if present module name is not needed)",
       "type": "string"
     }
   },
