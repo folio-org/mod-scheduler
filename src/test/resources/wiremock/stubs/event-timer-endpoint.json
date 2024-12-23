@@ -5,6 +5,18 @@
     "headers": {
       "Content-Type": {
         "equalTo": "application/json"
+      },
+      "x-okapi-module-hint": {
+        "matches" : "^folio\\-module1\\-\\d\\.\\d\\.\\d$"
+      },
+      "x-okapi-tenant": {
+        "equalTo": "test"
+      },
+      "x-okapi-request-id": {
+        "matches" : "^\\d{6}$"
+      },
+      "x-okapi-url": {
+        "matches" : "^http://localhost:\\d{1,5}$"
       }
     }
   },

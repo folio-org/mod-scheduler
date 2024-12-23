@@ -48,6 +48,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   private static final String UNKNOWN_ID = "51fd5dff-5d51-4169-a296-d441e1d234c9";
   private static final UUID TIMER_ID_TO_UPDATE = UUID.fromString("123e4567-e89b-12d3-a456-426614174001");
   private static final String TIMER_ID_TO_DELETE = "123e4567-e89b-12d3-a456-426614174002";
+  private static final String MODULE_ID = "mod-foo-1.0.0";
 
   @Autowired private Scheduler scheduler;
   @Autowired private ObjectMapper objectMapper;
@@ -89,6 +90,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
     var timerDescriptor = new TimerDescriptor()
       .id(timerId)
       .enabled(true)
+      .moduleId(MODULE_ID)
       .routingEntry(new RoutingEntry()
         .methods(List.of("POST"))
         .pathPattern("/test")
@@ -115,6 +117,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
     var timerDescriptor = new TimerDescriptor()
       .id(UUID.fromString(timerId))
       .enabled(true)
+      .moduleId(MODULE_ID)
       .routingEntry(new RoutingEntry()
         .methods(List.of("POST"))
         .pathPattern("/test")
@@ -134,7 +137,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
 
   @Test
   void update_positive() throws Exception {
-    var desc = TestValues.timerDescriptor(TIMER_ID_TO_UPDATE);
+    var desc = TestValues.timerDescriptor(TIMER_ID_TO_UPDATE).moduleId(MODULE_ID);
     doPut("/scheduler/timers/{id}", desc, TIMER_ID_TO_UPDATE)
       .andExpect(jsonPath("$.id", notNullValue()))
       .andExpect(jsonPath("$.enabled", is(true)));
@@ -160,6 +163,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   void create_duplicate() throws Exception {
     var timerDescriptor = new TimerDescriptor()
       .enabled(true)
+      .moduleId(MODULE_ID)
       .routingEntry(new RoutingEntry()
         .methods(List.of("POST"))
         .pathPattern("/test/sometimer")

@@ -1,6 +1,7 @@
 package org.folio.scheduler.service;
 
 import static org.apache.commons.lang3.ObjectUtils.defaultIfNull;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.common.utils.CollectionUtils.mapItems;
 
 import jakarta.persistence.EntityExistsException;
@@ -150,6 +151,10 @@ public class SchedulerTimerService {
     if (timerDescriptor.getRoutingEntry().getMethods() != null
       && timerDescriptor.getRoutingEntry().getMethods().size() > 1) {
       throw new IllegalArgumentException("Only 1 method is allowed per timer");
+    }
+
+    if (isEmpty(timerDescriptor.getModuleId()) && isEmpty(timerDescriptor.getModuleName())) {
+      throw new IllegalArgumentException("Module id or module name is required");
     }
   }
 

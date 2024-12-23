@@ -1,5 +1,6 @@
 {
   "enabled": true,
+  "moduleId": "folio-module1-1.0.0",
   "routingEntry": {
     "methods": [ "GET" ],
     "pathPattern": "/folio-module1/v3/scheduled-timer",

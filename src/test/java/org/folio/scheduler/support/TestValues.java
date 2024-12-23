@@ -41,6 +41,8 @@ public class TestValues {
     var entity = new TimerDescriptorEntity();
     entity.setId(TIMER_UUID);
     entity.setTimerDescriptor(descriptor);
+    entity.setModuleId(descriptor.getModuleId());
+    entity.setModuleName(descriptor.getModuleName());
     return entity;
   }
 }
