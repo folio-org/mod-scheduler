@@ -6,7 +6,6 @@ import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.support.TestConstants.TIMER_ID;
 import static org.folio.scheduler.support.TestConstants.TIMER_UUID;
 import static org.folio.scheduler.support.TestConstants.USER_TOKEN;
-import static org.folio.scheduler.support.TestValues.timerDescriptor;
 import static org.folio.spring.integration.XOkapiHeaders.TENANT;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -23,10 +22,12 @@ import java.util.List;
 import java.util.Optional;
 import org.folio.scheduler.configuration.properties.OkapiConfigurationProperties;
 import org.folio.scheduler.domain.dto.RoutingEntry;
+import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.integration.OkapiClient;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.scheduler.service.UserImpersonationService;
 import org.folio.scheduler.support.TestConstants;
+import org.folio.scheduler.support.TestValues;
 import org.folio.spring.FolioModuleMetadata;
 import org.folio.spring.integration.XOkapiHeaders;
 import org.folio.test.types.UnitTest;
@@ -44,8 +45,11 @@ import org.quartz.impl.JobDetailImpl;
 @ExtendWith(MockitoExtension.class)
 class OkapiHttpRequestExecutorTest {
 
-  private final String okapiUrl = "http://okapi:9130";
-  private final String moduleName = "mod-scheduler";
+  private static final String TEST_MODULE_ID = "mod-test-1.0";
+  private static final String TEST_MODULE_NAME = "mod-test";
+
+  private static final String OKAPI_URL = "http://okapi:9130";
+  private static final String MODULE_NAME = "mod-scheduler";
 
   @InjectMocks private OkapiHttpRequestExecutor job;
   @Mock private OkapiClient okapiClient;
@@ -69,41 +73,55 @@ class OkapiHttpRequestExecutorTest {
   @Test
   void execute_positive_userTokenIsNull() {
     var re = new RoutingEntry().methods(List.of("GET")).pathPattern("/test-endpoint");
-    when(folioModuleMetadata.getModuleName()).thenReturn(moduleName);
-    when(okapiConfigurationProperties.getUrl()).thenReturn(okapiUrl);
+    when(folioModuleMetadata.getModuleName()).thenReturn(MODULE_NAME);
+    when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
     when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail());
-    when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(of(timerDescriptor().routingEntry(re)));
+    when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(of(timerDescriptor(re)));
     when(userImpersonationService.impersonate(TENANT_ID, TestConstants.USER_ID)).thenReturn(null);
 
     job.execute(jobExecutionContext);
 
-    verify(okapiClient).doGet(fromUriString("http://test-endpoint").build().toUri());
+    verify(okapiClient).doGet(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_ID);
   }
 
   @Test
   void execute_positive_userTokenIsNotNull() {
     var re = new RoutingEntry().methods(List.of("GET")).pathPattern("/test-endpoint");
-    when(folioModuleMetadata.getModuleName()).thenReturn(moduleName);
+    when(folioModuleMetadata.getModuleName()).thenReturn(MODULE_NAME);
     when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail());
-    when(okapiConfigurationProperties.getUrl()).thenReturn(okapiUrl);
-    when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(of(timerDescriptor().routingEntry(re)));
+    when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
+    when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(of(timerDescriptor(re)));
 
     job.execute(jobExecutionContext);
 
-    verify(okapiClient).doGet(fromUriString("http://test-endpoint").build().toUri());
+    verify(okapiClient).doGet(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_ID);
   }
 
   @Test
   void execute_positive_methodNotDefined() {
     var re = new RoutingEntry().path("test-endpoint");
-    when(folioModuleMetadata.getModuleName()).thenReturn(moduleName);
-    when(okapiConfigurationProperties.getUrl()).thenReturn(okapiUrl);
+    when(folioModuleMetadata.getModuleName()).thenReturn(MODULE_NAME);
+    when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
     when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail());
-    when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(of(timerDescriptor().routingEntry(re)));
+    when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(of(timerDescriptor(re)));
 
     job.execute(jobExecutionContext);
 
-    verify(okapiClient).doPost(fromUriString("http://test-endpoint").build().toUri());
+    verify(okapiClient).doPost(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_ID);
+  }
+
+  @Test
+  void execute_positive_moduleNameAsHint() {
+    var re = new RoutingEntry().methods(List.of("GET")).pathPattern("/test-endpoint");
+    when(folioModuleMetadata.getModuleName()).thenReturn(MODULE_NAME);
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail());
+    when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
+    when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(of(
+      TestValues.timerDescriptor().routingEntry(re).moduleName(TEST_MODULE_NAME)));
+
+    job.execute(jobExecutionContext);
+
+    verify(okapiClient).doGet(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_NAME);
   }
 
   @Test
@@ -112,26 +130,27 @@ class OkapiHttpRequestExecutorTest {
     var expectedUri = fromUriString("http://test-endpoint").build().toUri();
     var request = Request.create(HttpMethod.DELETE, "http://test-endpoint", emptyMap(), null, (RequestTemplate) null);
 
-    when(folioModuleMetadata.getModuleName()).thenReturn(moduleName);
-    when(okapiConfigurationProperties.getUrl()).thenReturn(okapiUrl);
+    when(folioModuleMetadata.getModuleName()).thenReturn(MODULE_NAME);
+    when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
     when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail());
-    when(okapiConfigurationProperties.getUrl()).thenReturn(okapiUrl);
-    when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(of(timerDescriptor().routingEntry(re)));
-    doThrow(new NotFound("Not Found", request, null, emptyMap())).when(okapiClient).doDelete(expectedUri);
+    when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
+    when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(of(timerDescriptor(re)));
+    doThrow(new NotFound("Not Found", request, null, emptyMap())).when(okapiClient).doDelete(expectedUri,
+      TEST_MODULE_ID);
 
     job.execute(jobExecutionContext);
 
-    verify(okapiClient).doDelete(expectedUri);
+    verify(okapiClient).doDelete(expectedUri, TEST_MODULE_ID);
   }
 
   @Test
   void execute_negative_unsupportedMethod() {
     var re = new RoutingEntry().path("/test-endpoint").methods(List.of("PATCH"));
 
-    when(folioModuleMetadata.getModuleName()).thenReturn(moduleName);
-    when(okapiConfigurationProperties.getUrl()).thenReturn(okapiUrl);
+    when(folioModuleMetadata.getModuleName()).thenReturn(MODULE_NAME);
+    when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
     when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail());
-    when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(of(timerDescriptor().routingEntry(re)));
+    when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(of(timerDescriptor(re)));
 
     job.execute(jobExecutionContext);
 
@@ -140,8 +159,8 @@ class OkapiHttpRequestExecutorTest {
 
   @Test
   void execute_negative_timerDescriptorNotFound() {
-    when(folioModuleMetadata.getModuleName()).thenReturn(moduleName);
-    when(okapiConfigurationProperties.getUrl()).thenReturn(okapiUrl);
+    when(folioModuleMetadata.getModuleName()).thenReturn(MODULE_NAME);
+    when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
     when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail());
     when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(Optional.empty());
 
@@ -156,5 +175,9 @@ class OkapiHttpRequestExecutorTest {
     jobDetail.getJobDataMap().put(TENANT, TENANT_ID);
     jobDetail.getJobDataMap().put(XOkapiHeaders.USER_ID, TestConstants.USER_ID);
     return jobDetail;
+  }
+
+  private static TimerDescriptor timerDescriptor(RoutingEntry re) {
+    return TestValues.timerDescriptor().routingEntry(re).moduleId(TEST_MODULE_ID);
   }
 }

@@ -36,6 +36,8 @@ class KafkaMessageListenerTest {
   private static final String SYSTEM_USER_ID = UUID.randomUUID().toString();
   private static final UUID TIMER_ID = UUID.randomUUID();
   private static final String MODULE_NAME = "mod-foo";
+  private static final String MODULE_ID1 = "mod-foo-1.0.0";
+  private static final String MODULE_ID2 = "mod-foo-1.0.1";
 
   @InjectMocks private KafkaMessageListener kafkaMessageListener;
   @Mock private SystemUserService systemUserService;
@@ -55,7 +57,7 @@ class KafkaMessageListenerTest {
     kafkaMessageListener.handleScheduledJobEvent(consumerRecord);
 
     verify(schedulerTimerService).create(
-      new TimerDescriptor().enabled(true).moduleName(MODULE_NAME).routingEntry(routingEntry1()));
+      new TimerDescriptor().enabled(true).moduleName(MODULE_NAME).moduleId(MODULE_ID1).routingEntry(routingEntry1()));
   }
 
   @Test
@@ -70,7 +72,7 @@ class KafkaMessageListenerTest {
     verify(schedulerTimerService).delete(TIMER_ID);
     verify(schedulerTimerService).findByModuleName(MODULE_NAME);
     verify(schedulerTimerService).create(
-      new TimerDescriptor().enabled(true).moduleName(MODULE_NAME).routingEntry(routingEntry2()));
+      new TimerDescriptor().enabled(true).moduleName(MODULE_NAME).moduleId(MODULE_ID2).routingEntry(routingEntry2()));
   }
 
   @Test
@@ -89,7 +91,8 @@ class KafkaMessageListenerTest {
   @Test
   void handleScheduledJobEvent_negative() {
     when(systemUserService.findSystemUserId(TENANT_ID)).thenReturn(SYSTEM_USER_ID);
-    var expectedDescriptor = new TimerDescriptor().enabled(true).moduleName(MODULE_NAME).routingEntry(routingEntry1());
+    var expectedDescriptor = new TimerDescriptor().enabled(true)
+      .moduleName(MODULE_NAME).moduleId(MODULE_ID1).routingEntry(routingEntry1());
     when(schedulerTimerService.create(expectedDescriptor)).thenThrow(RuntimeException.class);
 
     var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, createResourceEvent());
@@ -126,14 +129,14 @@ class KafkaMessageListenerTest {
 
   private static ScheduledTimers scheduledTimersBeforeUpgrade() {
     return new ScheduledTimers()
-      .moduleId("mod-foo-1.0.0")
+      .moduleId(MODULE_ID1)
       .applicationId("app-foo-1.0.0")
       .timers(List.of(routingEntry1()));
   }
 
   private static ScheduledTimers scheduledTimersAfterUpgrade() {
     return new ScheduledTimers()
-      .moduleId("mod-foo-1.0.1")
+      .moduleId(MODULE_ID2)
       .applicationId("app-foo-1.0.1")
       .timers(List.of(routingEntry2()));
   }
