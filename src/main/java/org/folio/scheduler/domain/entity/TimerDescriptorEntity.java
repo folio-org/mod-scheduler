@@ -3,6 +3,8 @@ package org.folio.scheduler.domain.entity;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.util.UUID;
@@ -10,7 +12,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
+import org.folio.scheduler.domain.model.TimerType;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Type;
+import org.hibernate.type.SqlTypes;
 
 @Data
 @Entity
@@ -19,6 +24,11 @@ import org.hibernate.annotations.Type;
 public class TimerDescriptorEntity {
 
   @Id private UUID id;
+
+  @Enumerated(EnumType.STRING)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(name = "type", columnDefinition = "timer_type")
+  private TimerType type;
 
   private String moduleName;
 
@@ -35,23 +45,15 @@ public class TimerDescriptorEntity {
     this.naturalKey = toNaturalKey(timerDescriptor);
   }
 
-  public static TimerDescriptorEntity of(TimerDescriptor timerDescriptor) {
-    var entity = new TimerDescriptorEntity();
-    entity.id = timerDescriptor.getId();
-    entity.timerDescriptor = timerDescriptor;
-    entity.naturalKey = toNaturalKey(timerDescriptor);
-    return entity;
-  }
-
-  public static String toNaturalKey(TimerDescriptor timerDescriptor) {
-    RoutingEntry re = timerDescriptor.getRoutingEntry();
+  public static String toNaturalKey(TimerDescriptor td) {
+    RoutingEntry re = td.getRoutingEntry();
     if (re == null) {
       return null;
     }
 
     var methods = re.getMethods() != null ? String.join(",", re.getMethods()) : "";
     var path = re.getPath() != null ? re.getPath() : re.getPathPattern();
-    return String.format("%s#%s#%s", timerDescriptor.getModuleName() != null ? timerDescriptor.getModuleName() : "",
+    return String.format("%s#%s#%s#%s", td.getType(), td.getModuleName() != null ? td.getModuleName() : "",
       methods, path);
   }
 }

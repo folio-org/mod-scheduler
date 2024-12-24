@@ -28,6 +28,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.scheduler.configuration.properties.OkapiConfigurationProperties;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
+import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.integration.OkapiClient;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.scheduler.service.UserImpersonationService;
@@ -115,7 +116,9 @@ public class OkapiHttpRequestExecutor implements Job {
   }
 
   private static String moduleHint(TimerDescriptor td) {
-    return StringUtils.isNotEmpty(td.getModuleId()) ? td.getModuleId() : td.getModuleName();
+    return td.getType() == TimerType.USER
+      ? td.getModuleName()
+      : StringUtils.isNotEmpty(td.getModuleId()) ? td.getModuleId() : td.getModuleName();
   }
 
   private static String getStaticPath(RoutingEntry re) {

@@ -15,6 +15,7 @@ import lombok.extern.log4j.Log4j2;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 import org.folio.scheduler.domain.model.SearchResult;
+import org.folio.scheduler.domain.model.TimerType;
 import org.folio.scheduler.exception.RequestValidationException;
 import org.folio.scheduler.mapper.TimerDescriptorMapper;
 import org.folio.scheduler.repository.SchedulerTimerRepository;
@@ -43,8 +44,9 @@ public class SchedulerTimerService {
   }
 
   @Transactional(readOnly = true)
-  public List<TimerDescriptor> findByModuleName(String moduleName) {
-    return mapItems(schedulerTimerRepository.findByModuleName(moduleName), TimerDescriptorEntity::getTimerDescriptor);
+  public List<TimerDescriptor> findByModuleNameAndType(String moduleName, TimerType type) {
+    return mapItems(schedulerTimerRepository.findByModuleNameAndType(moduleName, type),
+      TimerDescriptorEntity::getTimerDescriptor);
   }
 
   /**
@@ -155,6 +157,10 @@ public class SchedulerTimerService {
 
     if (isEmpty(timerDescriptor.getModuleId()) && isEmpty(timerDescriptor.getModuleName())) {
       throw new IllegalArgumentException("Module id or module name is required");
+    }
+
+    if (timerDescriptor.getType() == null) {
+      throw new IllegalArgumentException("Timer type is required");
     }
   }
 

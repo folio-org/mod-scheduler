@@ -9,6 +9,10 @@
       "type": "string",
       "format": "uuid"
     },
+    "type": {
+      "$ref": "timerType.json",
+      "description": "Timer type"
+    },
     "modified": {
       "description": "Whether modified",
       "type": "boolean"

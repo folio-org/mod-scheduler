@@ -2,6 +2,7 @@ package org.folio.scheduler.integration.kafka;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.folio.scheduler.domain.dto.TimerUnit.MINUTE;
+import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
 import static org.folio.scheduler.integration.kafka.model.ResourceEventType.CREATE;
 import static org.folio.scheduler.integration.kafka.model.ResourceEventType.DELETE;
 import static org.folio.scheduler.integration.kafka.model.ResourceEventType.UPDATE;
@@ -63,14 +64,14 @@ class KafkaMessageListenerTest {
   @Test
   void handleScheduledJobEvent_positive_update() {
     when(systemUserService.findSystemUserId(TENANT_ID)).thenReturn(SYSTEM_USER_ID);
-    when(schedulerTimerService.findByModuleName(MODULE_NAME)).thenReturn(
+    when(schedulerTimerService.findByModuleNameAndType(MODULE_NAME, SYSTEM)).thenReturn(
       List.of(new TimerDescriptor().id(TIMER_ID).enabled(true).routingEntry(routingEntry1())));
 
     var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, udpateResourceEvent());
     kafkaMessageListener.handleScheduledJobEvent(consumerRec);
 
     verify(schedulerTimerService).delete(TIMER_ID);
-    verify(schedulerTimerService).findByModuleName(MODULE_NAME);
+    verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
     verify(schedulerTimerService).create(
       new TimerDescriptor().enabled(true).moduleName(MODULE_NAME).moduleId(MODULE_ID2).routingEntry(routingEntry2()));
   }
@@ -78,14 +79,14 @@ class KafkaMessageListenerTest {
   @Test
   void handleScheduledJobEvent_positive_delete() {
     when(systemUserService.findSystemUserId(TENANT_ID)).thenReturn(SYSTEM_USER_ID);
-    when(schedulerTimerService.findByModuleName(MODULE_NAME)).thenReturn(
+    when(schedulerTimerService.findByModuleNameAndType(MODULE_NAME, SYSTEM)).thenReturn(
       List.of(new TimerDescriptor().id(TIMER_ID).enabled(true).routingEntry(routingEntry1())));
 
     var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, deleteResourceEvent());
     kafkaMessageListener.handleScheduledJobEvent(consumerRec);
 
     verify(schedulerTimerService).delete(TIMER_ID);
-    verify(schedulerTimerService).findByModuleName(MODULE_NAME);
+    verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
   }
 
   @Test
