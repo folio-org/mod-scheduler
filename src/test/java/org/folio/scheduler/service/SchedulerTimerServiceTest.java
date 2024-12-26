@@ -128,7 +128,7 @@ class SchedulerTimerServiceTest {
 
   @Test
   void create_negative_moduleIdAndNameIsEmpty() {
-    var descriptor = timerDescriptor();
+    var descriptor = timerDescriptor().moduleId(null).moduleName(null);
 
     assertThatThrownBy(() -> schedulerTimerService.create(descriptor))
       .isInstanceOf(IllegalArgumentException.class)
@@ -178,7 +178,7 @@ class SchedulerTimerServiceTest {
 
   @Test
   void update_negative_moduleIdAndNameIsEmpty() {
-    var descriptor = timerDescriptor();
+    var descriptor = timerDescriptor().moduleId(null).moduleName(null);
 
     assertThatThrownBy(() -> schedulerTimerService.update(TIMER_UUID, descriptor))
       .isInstanceOf(IllegalArgumentException.class)

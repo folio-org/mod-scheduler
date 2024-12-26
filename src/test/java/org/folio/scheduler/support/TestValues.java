@@ -14,6 +14,8 @@ import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class TestValues {
 
+  public static final String MODULE_NAME = "mod-foo";
+
   public static UUID randomUuid() {
     return UUID.randomUUID();
   }
@@ -26,6 +28,7 @@ public class TestValues {
     return new TimerDescriptor()
       .id(uuid)
       .enabled(true)
+      .moduleName(MODULE_NAME)
       .routingEntry(new RoutingEntry()
         .methods(List.of("POST"))
         .pathPattern("/testb/timer/20")

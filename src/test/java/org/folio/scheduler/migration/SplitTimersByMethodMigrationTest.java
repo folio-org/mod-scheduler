@@ -3,6 +3,7 @@ package org.folio.scheduler.migration;
 import static java.util.List.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.folio.scheduler.domain.entity.TimerDescriptorEntity.toNaturalKey;
+import static org.folio.scheduler.support.TestValues.MODULE_NAME;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -68,9 +69,9 @@ class SplitTimersByMethodMigrationTest {
 
     when(mockResultSet.getString("id")).thenReturn(uuid1.toString()).thenReturn(uuid2.toString());
     when(mockSchedulerTimerRepository.findById(uuid1)).thenReturn(
-      Optional.of(entity(new TimerDescriptor(routingEntry1, true))));
+      Optional.of(entity(new TimerDescriptor(routingEntry1, true).moduleName(MODULE_NAME))));
     when(mockSchedulerTimerRepository.findById(uuid2)).thenReturn(
-      Optional.of(entity(new TimerDescriptor(routingEntry2, false))));
+      Optional.of(entity(new TimerDescriptor(routingEntry2, false).moduleName(MODULE_NAME))));
 
     var methodsPassed = new ArrayList<>();
     when(mockSchedulerTimerRepository.save(any())).thenAnswer(inv -> {

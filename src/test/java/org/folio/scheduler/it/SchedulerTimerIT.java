@@ -83,7 +83,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   }
 
   @Test
-  @WireMockStub("/wiremock/stubs/timer-endpoint.json")
+  @WireMockStub("/wiremock/stubs/user-timer-endpoint.json")
   @KeycloakRealms("/json/keycloak/test-realm.json")
   void create_positive_simpleTrigger() throws Exception {
     var timerId = UUID.randomUUID();
@@ -110,7 +110,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   }
 
   @Test
-  @WireMockStub("/wiremock/stubs/timer-endpoint.json")
+  @WireMockStub("/wiremock/stubs/user-timer-endpoint.json")
   @KeycloakRealms("/json/keycloak/test-realm.json")
   void create_positive_cronTrigger() throws Exception {
     var timerId = UUID.randomUUID().toString();

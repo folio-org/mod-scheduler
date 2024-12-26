@@ -3,6 +3,7 @@ package org.folio.scheduler.service;
 import static org.apache.commons.lang3.ObjectUtils.defaultIfNull;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.common.utils.CollectionUtils.mapItems;
+import static org.folio.scheduler.utils.TimerDescriptorUtils.evalModuleName;
 
 import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityNotFoundException;
@@ -92,6 +93,8 @@ public class SchedulerTimerService {
     validate(timerDescriptor);
 
     timerDescriptor.setId(defaultIfNull(id, UUID.randomUUID()));
+    timerDescriptor.setModuleName(evalModuleName(timerDescriptor));
+
     var naturalKey = TimerDescriptorEntity.toNaturalKey(timerDescriptor);
     return schedulerTimerRepository.findByNaturalKey(naturalKey)
       .map(existingTimer -> {
@@ -120,6 +123,7 @@ public class SchedulerTimerService {
     }
 
     validate(newDescriptor);
+    newDescriptor.setModuleName(evalModuleName(newDescriptor));
 
     return doUpdate(newDescriptor);
   }

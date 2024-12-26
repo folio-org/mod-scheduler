@@ -1,5 +1,7 @@
 package org.folio.scheduler.domain.entity;
 
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -51,9 +53,12 @@ public class TimerDescriptorEntity {
       return null;
     }
 
+    if (isEmpty(td.getModuleName())) {
+      throw new IllegalArgumentException("Module name is required");
+    }
+
     var methods = re.getMethods() != null ? String.join(",", re.getMethods()) : "";
     var path = re.getPath() != null ? re.getPath() : re.getPathPattern();
-    return String.format("%s#%s#%s#%s", td.getType(), td.getModuleName() != null ? td.getModuleName() : "",
-      methods, path);
+    return String.format("%s#%s#%s#%s", td.getType(), td.getModuleName(), methods, path);
   }
 }

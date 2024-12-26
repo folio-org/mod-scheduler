@@ -1,9 +1,9 @@
 {
   "enabled": true,
-  "moduleId": "folio-module1-1.0.0",
+  "moduleId": "mod-foo-1.0.0",
   "routingEntry": {
     "methods": [ "GET" ],
-    "pathPattern": "/folio-module1/v3/scheduled-timer",
+    "pathPattern": "/mod-foo/v3/scheduled-timer",
     "schedule": {
       "cron": "0 6,18 * * *",
       "zone": "CET"

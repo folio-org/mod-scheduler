@@ -1,13 +1,13 @@
 {
   "request": {
-    "method": "GET",
-    "urlPattern": "/mod-foo/v3/scheduled-timer",
+    "method": "POST",
+    "url": "/test",
     "headers": {
       "Content-Type": {
         "equalTo": "application/json"
       },
       "x-okapi-module-hint": {
-        "matches" : "^mod\\-foo\\-\\d\\.\\d\\.\\d$"
+        "equalTo": "mod-foo"
       },
       "x-okapi-tenant": {
         "equalTo": "test"
@@ -21,7 +21,7 @@
     }
   },
   "response": {
-    "status": 200,
+    "status": 201,
     "headers": {
       "Content-Type": "application/json"
     },
