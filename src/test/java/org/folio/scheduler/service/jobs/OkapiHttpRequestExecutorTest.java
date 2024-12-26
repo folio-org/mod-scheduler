@@ -23,6 +23,7 @@ import java.util.Optional;
 import org.folio.scheduler.configuration.properties.OkapiConfigurationProperties;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
+import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.integration.OkapiClient;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.scheduler.service.UserImpersonationService;
@@ -178,6 +179,6 @@ class OkapiHttpRequestExecutorTest {
   }
 
   private static TimerDescriptor timerDescriptor(RoutingEntry re) {
-    return TestValues.timerDescriptor().routingEntry(re).moduleId(TEST_MODULE_ID);
+    return TestValues.timerDescriptor().type(TimerType.SYSTEM).routingEntry(re).moduleId(TEST_MODULE_ID);
   }
 }
