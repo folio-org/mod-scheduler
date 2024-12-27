@@ -30,4 +30,18 @@
       <where>module_name IS NULL AND natural_key NOT LIKE 'USER%'</where>
     </update>
   </changeSet>
+
+  <changeSet id="update-type-in-timer-descriptors" author="dmtkachenko">
+    <sql>
+      -- Update 'type' attribute in timer_descriptor jsonb column for those records where 'type' is not null
+      -- Set 'type' attribute to "user" if type is 'USER' and to "system" if type is 'SYSTEM'
+      UPDATE timer
+        SET timer_descriptor = jsonb_set(timer_descriptor, '{type}', to_jsonb(CASE
+            WHEN type = 'USER' THEN 'user'
+            WHEN type = 'SYSTEM' THEN 'system'
+            ELSE NULL
+        END))
+        WHERE type IS NOT NULL;
+    </sql>
+  </changeSet>
 </databaseChangeLog>
