@@ -16,7 +16,7 @@
         "matches" : "^\\d{6}$"
       },
       "x-okapi-url": {
-        "matches" : "^http://localhost:\\d{1,5}$"
+        "matches" : "^http://[a-zA-Z0-9.-]+:\\d{1,5}$"
       }
     }
   },
