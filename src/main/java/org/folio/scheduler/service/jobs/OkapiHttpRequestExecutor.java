@@ -116,9 +116,11 @@ public class OkapiHttpRequestExecutor implements Job {
   }
 
   private static String moduleHint(TimerDescriptor td) {
-    return td.getType() == TimerType.USER
-      ? td.getModuleName()
-      : StringUtils.isNotEmpty(td.getModuleId()) ? td.getModuleId() : td.getModuleName();
+    return td.getType() == TimerType.USER ? td.getModuleName() : moduleIdOrName(td);
+  }
+
+  private static String moduleIdOrName(TimerDescriptor td) {
+    return StringUtils.isNotEmpty(td.getModuleId()) ? td.getModuleId() : td.getModuleName();
   }
 
   private static String getStaticPath(RoutingEntry re) {

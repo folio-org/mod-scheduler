@@ -15,6 +15,7 @@ import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 public class TestValues {
 
   public static final String MODULE_NAME = "mod-foo";
+  public static final String MODULE_ID = "mod-foo-1.0.0";
 
   public static UUID randomUuid() {
     return UUID.randomUUID();

@@ -136,6 +136,15 @@ class SchedulerTimerServiceTest {
   }
 
   @Test
+  void create_negative_timerTypeIsNull() {
+    var descriptor = timerDescriptor().type(null);
+
+    assertThatThrownBy(() -> schedulerTimerService.create(descriptor))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Timer type is required");
+  }
+
+  @Test
   void update_positive() {
     var expectedDescriptor = timerDescriptor().moduleId(MODULE_ID).modified(true);
     var existingEntity = timerDescriptorEntity();
@@ -183,6 +192,15 @@ class SchedulerTimerServiceTest {
     assertThatThrownBy(() -> schedulerTimerService.update(TIMER_UUID, descriptor))
       .isInstanceOf(IllegalArgumentException.class)
       .hasMessage("Module id or module name is required");
+  }
+
+  @Test
+  void update_negative_timerTypeIsNull() {
+    var descriptor = timerDescriptor().type(null);
+
+    assertThatThrownBy(() -> schedulerTimerService.update(TIMER_UUID, descriptor))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Timer type is required");
   }
 
   @Test
