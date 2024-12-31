@@ -4,6 +4,8 @@ import static java.lang.Boolean.TRUE;
 import static java.util.Collections.singletonList;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
+import static org.folio.common.utils.CollectionUtils.mapItems;
+import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
 import static org.folio.scheduler.utils.OkapiRequestUtils.getStaticPath;
 import static org.folio.spring.integration.XOkapiHeaders.TENANT;
 import static org.folio.spring.integration.XOkapiHeaders.USER_ID;
@@ -18,6 +20,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.folio.common.utils.SemverUtils;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
+import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.integration.keycloak.SystemUserService;
 import org.folio.scheduler.service.SchedulerTimerService;
@@ -60,12 +63,13 @@ public class KafkaMessageListener {
 
   private void createTimers(ResourceEvent event) {
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(event.getTenant()))) {
-      var moduleName = SemverUtils.getName(event.getNewValue().getModuleId());
+      var moduleId = event.getNewValue().getModuleId();
+      var moduleName = SemverUtils.getName(moduleId);
       var timers = event.getNewValue().getTimers();
+
       logCreatingTimers(timers);
       for (var routingEntry : timers) {
-        var timerDescriptor = new TimerDescriptor().enabled(TRUE).moduleName(moduleName).routingEntry(routingEntry);
-        schedulerTimerService.create(timerDescriptor);
+        schedulerTimerService.create(createTimerDescriptor(routingEntry, moduleName, moduleId));
       }
     }
   }
@@ -73,8 +77,10 @@ public class KafkaMessageListener {
   private void updateTimers(ResourceEvent resourceEvent) {
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata,
       prepareContextHeaders(resourceEvent.getTenant()))) {
-      var moduleName = SemverUtils.getName(resourceEvent.getNewValue().getModuleId());
-      var timers = schedulerTimerService.findByModuleName(moduleName);
+      var moduleId = resourceEvent.getNewValue().getModuleId();
+      var moduleName = SemverUtils.getName(moduleId);
+
+      var timers = schedulerTimerService.findByModuleNameAndType(moduleName, SYSTEM);
       if (isNotEmpty(timers)) {
         logDeletingTimers(timers);
         for (var timer : timers) {
@@ -85,8 +91,7 @@ public class KafkaMessageListener {
       var timerToCreate = resourceEvent.getNewValue();
       logCreatingTimers(timerToCreate.getTimers());
       for (var routingEntry : timerToCreate.getTimers()) {
-        var timerDescriptor = new TimerDescriptor().enabled(TRUE).moduleName(moduleName).routingEntry(routingEntry);
-        schedulerTimerService.create(timerDescriptor);
+        schedulerTimerService.create(createTimerDescriptor(routingEntry, moduleName, moduleId));
       }
     }
   }
@@ -95,7 +100,7 @@ public class KafkaMessageListener {
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata,
       prepareContextHeaders(resourceEvent.getTenant()))) {
       var moduleName = SemverUtils.getName(resourceEvent.getOldValue().getModuleId());
-      var timers = schedulerTimerService.findByModuleName(moduleName);
+      var timers = schedulerTimerService.findByModuleNameAndType(moduleName, SYSTEM);
       if (isEmpty(timers)) {
         return;
       }
@@ -114,18 +119,26 @@ public class KafkaMessageListener {
     return headers;
   }
 
+  private static TimerDescriptor createTimerDescriptor(RoutingEntry routingEntry, String moduleName, String moduleId) {
+    return new TimerDescriptor().enabled(TRUE)
+      .type(TimerType.SYSTEM)
+      .moduleName(moduleName)
+      .moduleId(moduleId)
+      .routingEntry(routingEntry);
+  }
+
   private static String getRoutingEntryKey(RoutingEntry routingEntry) {
     var methods = String.join("|", routingEntry.getMethods());
     return methods + " " + getStaticPath(routingEntry);
   }
 
   private static void logCreatingTimers(List<RoutingEntry> entries) {
-    var methods = entries.stream().map(KafkaMessageListener::getRoutingEntryKey).toList();
-    log.info("Processing scheduled job event from kafka: timers = {}", methods);
+    log.info("Processing scheduled job event from kafka: timers = {}",
+      () -> mapItems(entries, KafkaMessageListener::getRoutingEntryKey));
   }
 
   private static void logDeletingTimers(List<TimerDescriptor> timers) {
-    var methods = timers.stream().map(t -> getRoutingEntryKey(t.getRoutingEntry())).toList();
-    log.info("Deleting timers: timers = {}", methods);
+    log.info("Deleting timers: timers = {}",
+      () -> mapItems(timers, t -> getRoutingEntryKey(t.getRoutingEntry())));
   }
 }

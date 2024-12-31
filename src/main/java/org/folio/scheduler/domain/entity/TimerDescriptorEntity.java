@@ -1,15 +1,23 @@
 package org.folio.scheduler.domain.entity;
 
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.util.UUID;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
+import org.folio.scheduler.domain.model.TimerType;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Type;
+import org.hibernate.type.SqlTypes;
 
 @Data
 @Entity
@@ -19,7 +27,14 @@ public class TimerDescriptorEntity {
 
   @Id private UUID id;
 
+  @Enumerated(EnumType.STRING)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(name = "type", columnDefinition = "timer_type")
+  private TimerType type;
+
   private String moduleName;
+
+  private String moduleId;
 
   private String naturalKey;
 
@@ -32,24 +47,18 @@ public class TimerDescriptorEntity {
     this.naturalKey = toNaturalKey(timerDescriptor);
   }
 
-  public static TimerDescriptorEntity of(TimerDescriptor timerDescriptor) {
-    var entity = new TimerDescriptorEntity();
-    entity.id = timerDescriptor.getId();
-    entity.timerDescriptor = timerDescriptor;
-    entity.naturalKey = toNaturalKey(timerDescriptor);
-    return entity;
-  }
-
-  public static String toNaturalKey(TimerDescriptor timerDescriptor) {
-    if (timerDescriptor.getRoutingEntry() == null) {
+  public static String toNaturalKey(TimerDescriptor td) {
+    RoutingEntry re = td.getRoutingEntry();
+    if (re == null) {
       return null;
     }
 
-    var methods = timerDescriptor.getRoutingEntry().getMethods() != null ? String.join(",",
-      timerDescriptor.getRoutingEntry().getMethods()) : "";
-    var path = timerDescriptor.getRoutingEntry().getPath() != null ? timerDescriptor.getRoutingEntry().getPath()
-      : timerDescriptor.getRoutingEntry().getPathPattern();
-    return String.format("%s#%s#%s", timerDescriptor.getModuleName() != null ? timerDescriptor.getModuleName() : "",
-      methods, path);
+    if (isEmpty(td.getModuleName())) {
+      throw new IllegalArgumentException("Module name is required");
+    }
+
+    var methods = re.getMethods() != null ? String.join(",", re.getMethods()) : "";
+    var path = re.getPath() != null ? re.getPath() : re.getPathPattern();
+    return String.format("%s#%s#%s#%s", td.getType(), td.getModuleName(), methods, path);
   }
 }

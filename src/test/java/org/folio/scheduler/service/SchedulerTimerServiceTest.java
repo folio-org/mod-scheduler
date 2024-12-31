@@ -38,6 +38,8 @@ import org.springframework.data.domain.PageImpl;
 @ExtendWith(MockitoExtension.class)
 class SchedulerTimerServiceTest {
 
+  private static final String MODULE_ID = "mod-foo-1.0.0";
+
   @InjectMocks SchedulerTimerService schedulerTimerService;
   @Mock private SchedulerTimerRepository schedulerTimerRepository;
   @Mock private TimerDescriptorMapper timerDescriptorMapper;
@@ -88,8 +90,8 @@ class SchedulerTimerServiceTest {
 
   @Test
   void create_positive() {
-    var descriptor = timerDescriptor();
-    var entity = timerDescriptorEntity();
+    var descriptor = timerDescriptor().moduleId(MODULE_ID);
+    var entity = timerDescriptorEntity(descriptor);
 
     when(timerDescriptorMapper.convert(descriptor)).thenReturn(entity);
     when(schedulerTimerRepository.save(entity)).thenReturn(entity);
@@ -101,7 +103,7 @@ class SchedulerTimerServiceTest {
 
   @Test
   void create_positive_entityIdIsNull() {
-    var descriptor = timerDescriptor(null);
+    var descriptor = timerDescriptor(null).moduleId(MODULE_ID);
     when(timerDescriptorMapper.convert(timerDescriptorCaptor.capture()))
       .thenAnswer(inv -> timerDescriptorEntity(inv.getArgument(0)));
     when(schedulerTimerRepository.save(any(TimerDescriptorEntity.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -125,8 +127,26 @@ class SchedulerTimerServiceTest {
   }
 
   @Test
+  void create_negative_moduleIdAndNameIsEmpty() {
+    var descriptor = timerDescriptor().moduleId(null).moduleName(null);
+
+    assertThatThrownBy(() -> schedulerTimerService.create(descriptor))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Module id or module name is required");
+  }
+
+  @Test
+  void create_negative_timerTypeIsNull() {
+    var descriptor = timerDescriptor().type(null);
+
+    assertThatThrownBy(() -> schedulerTimerService.create(descriptor))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Timer type is required");
+  }
+
+  @Test
   void update_positive() {
-    var expectedDescriptor = timerDescriptor().modified(true);
+    var expectedDescriptor = timerDescriptor().moduleId(MODULE_ID).modified(true);
     var existingEntity = timerDescriptorEntity();
     var entityToUpdate = timerDescriptorEntity(expectedDescriptor);
 
@@ -135,7 +155,7 @@ class SchedulerTimerServiceTest {
     when(schedulerTimerRepository.save(entityToUpdate)).thenReturn(entityToUpdate);
     doNothing().when(jobSchedulingService).reschedule(existingEntity.getTimerDescriptor(), expectedDescriptor);
 
-    var actual = schedulerTimerService.update(TIMER_UUID, timerDescriptor());
+    var actual = schedulerTimerService.update(TIMER_UUID, timerDescriptor().moduleId(MODULE_ID));
 
     assertThat(actual).isEqualTo(expectedDescriptor);
   }
@@ -158,11 +178,29 @@ class SchedulerTimerServiceTest {
 
   @Test
   void update_negative_entityNotFound() {
-    var descriptor = timerDescriptor();
+    var descriptor = timerDescriptor().moduleId(MODULE_ID);
     when(schedulerTimerRepository.findById(TIMER_UUID)).thenReturn(Optional.empty());
     assertThatThrownBy(() -> schedulerTimerService.update(TIMER_UUID, descriptor))
       .isInstanceOf(EntityNotFoundException.class)
       .hasMessage("Unable to find timer descriptor with id " + TIMER_UUID);
+  }
+
+  @Test
+  void update_negative_moduleIdAndNameIsEmpty() {
+    var descriptor = timerDescriptor().moduleId(null).moduleName(null);
+
+    assertThatThrownBy(() -> schedulerTimerService.update(TIMER_UUID, descriptor))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Module id or module name is required");
+  }
+
+  @Test
+  void update_negative_timerTypeIsNull() {
+    var descriptor = timerDescriptor().type(null);
+
+    assertThatThrownBy(() -> schedulerTimerService.update(TIMER_UUID, descriptor))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Timer type is required");
   }
 
   @Test
@@ -199,9 +237,9 @@ class SchedulerTimerServiceTest {
 
   @Test
   void create_duplicate() {
-    var descriptor = timerDescriptor();
+    var descriptor = timerDescriptor().moduleId(MODULE_ID);
     descriptor.setId(null);
-    var entity = timerDescriptorEntity();
+    var entity = timerDescriptorEntity(descriptor);
 
     when(timerDescriptorMapper.convert(descriptor)).thenReturn(entity);
     when(schedulerTimerRepository.save(entity)).thenReturn(entity);
