@@ -1,0 +1,47 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.9.xsd">
+  <changeSet id="create-timer-type-enum" author="dmtkachenko">
+    <sql>
+      CREATE TYPE timer_type AS ENUM ('USER', 'SYSTEM');
+    </sql>
+  </changeSet>
+
+  <changeSet id="add-timer-type-to-timer" author="dmtkachenko">
+    <addColumn tableName="timer">
+      <column name="type" type="timer_type" defaultValue="USER">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="update-type-natural-key-in-timers" author="dmtkachenko">
+    <update tableName="timer">
+      <column name="type" value="SYSTEM"/>
+      <column name="natural_key" valueComputed="CONCAT('SYSTEM', '#', natural_key)"/>
+      <where>module_name IS NOT NULL AND natural_key NOT LIKE 'SYSTEM%'</where>
+    </update>
+
+    <update tableName="timer">
+      <column name="type" value="USER"/>
+      <column name="natural_key" valueComputed="CONCAT('USER', '#', natural_key)"/>
+      <where>module_name IS NULL AND natural_key NOT LIKE 'USER%'</where>
+    </update>
+  </changeSet>
+
+  <changeSet id="update-type-in-timer-descriptors" author="dmtkachenko">
+    <sql>
+      -- Update 'type' attribute in timer_descriptor jsonb column for those records where 'type' is not null
+      -- Set 'type' attribute to "user" if type is 'USER' and to "system" if type is 'SYSTEM'
+      UPDATE timer
+        SET timer_descriptor = jsonb_set(timer_descriptor, '{type}', to_jsonb(CASE
+            WHEN type = 'USER' THEN 'user'
+            WHEN type = 'SYSTEM' THEN 'system'
+            ELSE NULL
+        END))
+        WHERE type IS NOT NULL;
+    </sql>
+  </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,10 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "id": "timerType.json",
+  "title": "Timer Type Schema",
+  "description": "Timer type",
+  "default": "user",
+  "type": "string",
+  "enum": [ "user", "system" ],
+  "x-enum-varnames": [ "USER", "SYSTEM" ]
+}

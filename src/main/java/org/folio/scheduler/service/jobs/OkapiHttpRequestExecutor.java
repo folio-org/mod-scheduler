@@ -8,7 +8,6 @@ import static java.util.Collections.singletonList;
 import static java.util.Map.entry;
 import static java.util.concurrent.ThreadLocalRandom.current;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
-import static org.folio.spring.integration.XOkapiHeaders.MODULE_ID;
 import static org.folio.spring.integration.XOkapiHeaders.REQUEST_ID;
 import static org.folio.spring.integration.XOkapiHeaders.TENANT;
 import static org.folio.spring.integration.XOkapiHeaders.TOKEN;
@@ -23,12 +22,13 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.scheduler.configuration.properties.OkapiConfigurationProperties;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
+import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.integration.OkapiClient;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.scheduler.service.UserImpersonationService;
@@ -46,7 +46,7 @@ public class OkapiHttpRequestExecutor implements Job {
   private final FolioModuleMetadata folioModuleMetadata;
   private final SchedulerTimerService schedulerTimerService;
   private final OkapiConfigurationProperties okapiConfigurationProperties;
-  private final Map<HttpMethod, Consumer<URI>> okapiCallMap;
+  private final Map<HttpMethod, BiConsumer<URI, String>> okapiCallMap;
   private final UserImpersonationService userImpersonationService;
 
   /**
@@ -105,12 +105,22 @@ public class OkapiHttpRequestExecutor implements Job {
     }
 
     var staticPath = getStaticPath(re);
-    log.info("Calling specified HTTP method [timerId: {}, method: {}, path: {}]", timerId, httpMethod, staticPath);
+    var moduleHint = moduleHint(timerDescriptor);
+    log.info("Calling specified HTTP method [timerId: {}, method: {}, path: {}, moduleHint: {}]",
+      timerId, httpMethod, staticPath, moduleHint);
     try {
-      okapiCallExecutor.accept(fromUriString("http:/" + staticPath).build().toUri());
+      okapiCallExecutor.accept(fromUriString("http:/" + staticPath).build().toUri(), moduleHint);
     } catch (FeignException e) {
       log.warn("Failed to perform HTTP request [id: {}, method: {}, path: /{}]", timerId, httpMethod, staticPath, e);
     }
+  }
+
+  private static String moduleHint(TimerDescriptor td) {
+    return td.getType() == TimerType.USER ? td.getModuleName() : moduleIdOrName(td);
+  }
+
+  private static String moduleIdOrName(TimerDescriptor td) {
+    return StringUtils.isNotEmpty(td.getModuleId()) ? td.getModuleId() : td.getModuleName();
   }
 
   private static String getStaticPath(RoutingEntry re) {
@@ -125,7 +135,6 @@ public class OkapiHttpRequestExecutor implements Job {
     headers.put(URL, singletonList(okapiConfigurationProperties.getUrl()));
     headers.put(TOKEN, singletonList(userImpersonationService.impersonate(tenant, userId)));
     headers.put(REQUEST_ID, singletonList(String.format("%06d", current().nextInt(1000000))));
-    headers.put(MODULE_ID, singletonList(folioModuleMetadata.getModuleName()));
     headers.put(TENANT, singletonList(tenant));
     return headers;
   }

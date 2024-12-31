@@ -2,6 +2,7 @@ package org.folio.scheduler.integration.kafka;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.folio.scheduler.domain.dto.TimerUnit.MINUTE;
+import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
 import static org.folio.scheduler.integration.kafka.model.ResourceEventType.CREATE;
 import static org.folio.scheduler.integration.kafka.model.ResourceEventType.DELETE;
 import static org.folio.scheduler.integration.kafka.model.ResourceEventType.UPDATE;
@@ -15,6 +16,7 @@ import java.util.UUID;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
+import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
 import org.folio.scheduler.integration.keycloak.SystemUserService;
@@ -36,6 +38,8 @@ class KafkaMessageListenerTest {
   private static final String SYSTEM_USER_ID = UUID.randomUUID().toString();
   private static final UUID TIMER_ID = UUID.randomUUID();
   private static final String MODULE_NAME = "mod-foo";
+  private static final String MODULE_ID1 = "mod-foo-1.0.0";
+  private static final String MODULE_ID2 = "mod-foo-1.0.1";
 
   @InjectMocks private KafkaMessageListener kafkaMessageListener;
   @Mock private SystemUserService systemUserService;
@@ -55,41 +59,44 @@ class KafkaMessageListenerTest {
     kafkaMessageListener.handleScheduledJobEvent(consumerRecord);
 
     verify(schedulerTimerService).create(
-      new TimerDescriptor().enabled(true).moduleName(MODULE_NAME).routingEntry(routingEntry1()));
+      new TimerDescriptor().enabled(true).type(TimerType.SYSTEM)
+        .moduleName(MODULE_NAME).moduleId(MODULE_ID1).routingEntry(routingEntry1()));
   }
 
   @Test
   void handleScheduledJobEvent_positive_update() {
     when(systemUserService.findSystemUserId(TENANT_ID)).thenReturn(SYSTEM_USER_ID);
-    when(schedulerTimerService.findByModuleName(MODULE_NAME)).thenReturn(
-      List.of(new TimerDescriptor().id(TIMER_ID).enabled(true).routingEntry(routingEntry1())));
+    when(schedulerTimerService.findByModuleNameAndType(MODULE_NAME, SYSTEM)).thenReturn(
+      List.of(new TimerDescriptor().id(TIMER_ID).type(TimerType.SYSTEM).enabled(true).routingEntry(routingEntry1())));
 
     var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, udpateResourceEvent());
     kafkaMessageListener.handleScheduledJobEvent(consumerRec);
 
     verify(schedulerTimerService).delete(TIMER_ID);
-    verify(schedulerTimerService).findByModuleName(MODULE_NAME);
+    verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
     verify(schedulerTimerService).create(
-      new TimerDescriptor().enabled(true).moduleName(MODULE_NAME).routingEntry(routingEntry2()));
+      new TimerDescriptor().type(TimerType.SYSTEM).enabled(true)
+        .moduleName(MODULE_NAME).moduleId(MODULE_ID2).routingEntry(routingEntry2()));
   }
 
   @Test
   void handleScheduledJobEvent_positive_delete() {
     when(systemUserService.findSystemUserId(TENANT_ID)).thenReturn(SYSTEM_USER_ID);
-    when(schedulerTimerService.findByModuleName(MODULE_NAME)).thenReturn(
+    when(schedulerTimerService.findByModuleNameAndType(MODULE_NAME, SYSTEM)).thenReturn(
       List.of(new TimerDescriptor().id(TIMER_ID).enabled(true).routingEntry(routingEntry1())));
 
     var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, deleteResourceEvent());
     kafkaMessageListener.handleScheduledJobEvent(consumerRec);
 
     verify(schedulerTimerService).delete(TIMER_ID);
-    verify(schedulerTimerService).findByModuleName(MODULE_NAME);
+    verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
   }
 
   @Test
   void handleScheduledJobEvent_negative() {
     when(systemUserService.findSystemUserId(TENANT_ID)).thenReturn(SYSTEM_USER_ID);
-    var expectedDescriptor = new TimerDescriptor().enabled(true).moduleName(MODULE_NAME).routingEntry(routingEntry1());
+    var expectedDescriptor = new TimerDescriptor().enabled(true).type(TimerType.SYSTEM)
+      .moduleName(MODULE_NAME).moduleId(MODULE_ID1).routingEntry(routingEntry1());
     when(schedulerTimerService.create(expectedDescriptor)).thenThrow(RuntimeException.class);
 
     var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, createResourceEvent());
@@ -126,14 +133,14 @@ class KafkaMessageListenerTest {
 
   private static ScheduledTimers scheduledTimersBeforeUpgrade() {
     return new ScheduledTimers()
-      .moduleId("mod-foo-1.0.0")
+      .moduleId(MODULE_ID1)
       .applicationId("app-foo-1.0.0")
       .timers(List.of(routingEntry1()));
   }
 
   private static ScheduledTimers scheduledTimersAfterUpgrade() {
     return new ScheduledTimers()
-      .moduleId("mod-foo-1.0.1")
+      .moduleId(MODULE_ID2)
       .applicationId("app-foo-1.0.1")
       .timers(List.of(routingEntry2()));
   }

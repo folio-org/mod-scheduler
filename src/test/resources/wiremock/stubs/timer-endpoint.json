@@ -5,6 +5,18 @@
     "headers": {
       "Content-Type": {
         "equalTo": "application/json"
+      },
+      "x-okapi-module-hint": {
+        "equalTo": "mod-foo-1.0.0"
+      },
+      "x-okapi-tenant": {
+        "equalTo": "test"
+      },
+      "x-okapi-request-id": {
+        "matches" : "^\\d{6}$"
+      },
+      "x-okapi-url": {
+        "matches" : "^http://[a-zA-Z0-9.-]+:\\d{1,5}$"
       }
     }
   },
