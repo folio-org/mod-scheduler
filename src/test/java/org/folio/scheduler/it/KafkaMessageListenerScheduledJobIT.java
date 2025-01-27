@@ -3,15 +3,15 @@ package org.folio.scheduler.it;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
-import static org.awaitility.Durations.ONE_MINUTE;
 import static org.awaitility.Durations.ONE_SECOND;
-import static org.awaitility.Durations.TWO_HUNDRED_MILLISECONDS;
 import static org.awaitility.Durations.TWO_SECONDS;
 import static org.folio.common.utils.CollectionUtils.mapItems;
 import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
 import static org.folio.scheduler.integration.kafka.model.ResourceEventType.CREATE;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.utils.TestUtils.asJsonString;
+import static org.folio.scheduler.utils.TestUtils.await;
+import static org.folio.scheduler.utils.TestUtils.awaitFor;
 import static org.folio.scheduler.utils.TestUtils.convertValue;
 import static org.folio.scheduler.utils.TestUtils.parse;
 import static org.folio.scheduler.utils.TestUtils.readString;
@@ -26,9 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.testcontainers.shaded.org.awaitility.Durations.FIVE_HUNDRED_MILLISECONDS;
 
 import java.sql.SQLDataException;
-import java.time.Duration;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
@@ -65,14 +63,12 @@ import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.ResultActions;
-import org.testcontainers.shaded.org.awaitility.Awaitility;
-import org.testcontainers.shaded.org.awaitility.core.ConditionFactory;
 
 @Log4j2
 @EnableKeycloakTlsMode
 @IntegrationTest
 @Sql(scripts = "classpath:/sql/truncate-tables.sql", executionPhase = AFTER_TEST_METHOD)
-class KafkaMessageListenerIT extends BaseIntegrationTest {
+class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
 
   private static final String SCHEDULED_TIMER_TOPIC = "it.test.mgr-tenant-entitlements.scheduled-job";
   private static final String MODULE_ID = "mod-foo-1.0.0";
@@ -223,25 +219,6 @@ class KafkaMessageListenerIT extends BaseIntegrationTest {
       .andExpect(content().contentType(MediaType.APPLICATION_JSON))
       .andExpect(status().isOk())
       .andExpect(content().json(asJsonString(timerDescriptorList)));
-  }
-
-  private static ConditionFactory await() {
-    return Awaitility.await().atMost(ONE_MINUTE).pollInterval(TWO_HUNDRED_MILLISECONDS);
-  }
-
-  /**
-   * Sonar friendly Thread.sleep(millis) implementation
-   *
-   * @param duration - duration to await.
-   */
-  @SuppressWarnings({"SameParameterValue"})
-  private static void awaitFor(Duration duration) {
-    var sampleResult = Optional.of(1);
-    Awaitility.await()
-      .pollInSameThread()
-      .atMost(duration.plus(Duration.ofMillis(250)))
-      .pollDelay(duration)
-      .untilAsserted(() -> assertThat(sampleResult).isPresent());
   }
 
   private static TimerDescriptor timerDescriptor() {

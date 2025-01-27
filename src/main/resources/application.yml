@@ -95,6 +95,9 @@ application:
       scheduled-timer-event:
         retry-delay: ${SCHEDULED_TIMER_EVENT_RETRY_DELAY:1s}
         retry-attempts: ${SCHEDULED_TIMER_EVENT_ATTEMPTS:2147483647}
+      entitlement-event:
+        retry-delay: ${ENTITLEMENT_EVENT_RETRY_DELAY:1s}
+        retry-attempts: ${ENTITLEMENT_EVENT_ATTEMPTS:2147483647}
 
 coffee-boots:
   cache:
@@ -116,6 +119,10 @@ folio:
         concurrency: ${KAFKA_JOB_CONCURRENCY:1}
         topic-pattern: ${KAFKA_JOB_CONSUMER_PATTERN:(${folio.environment}\.)(.*\.)mgr-tenant-entitlements\.scheduled-job}
         group-id: ${folio.environment}-mod-scheduler-job-group
+      entitlement-events:
+        concurrency: ${KAFKA_ENTITLEMENT_CONCURRENCY:1}
+        topic-pattern: ${KAFKA_ENTITLEMENT_CONSUMER_PATTERN:(${folio.environment}\.)(.*\.)entitlement}
+        group-id: ${folio.environment}-mod-scheduler-entitlement-group
 
 management:
   endpoints.web:

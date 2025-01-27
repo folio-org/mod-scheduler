@@ -153,6 +153,14 @@ public class SchedulerTimerService {
     }
   }
 
+  /**
+   * Switch module's scheduled timers.
+   */
+  @Transactional
+  public int switchModuleTimers(String moduleName, TimerType type, boolean enable) {
+    return schedulerTimerRepository.switchTimersByModuleNameAndType(moduleName, type.name(), enable);
+  }
+
   private void validate(TimerDescriptor timerDescriptor) {
     if (timerDescriptor.getRoutingEntry().getMethods() != null
       && timerDescriptor.getRoutingEntry().getMethods().size() > 1) {

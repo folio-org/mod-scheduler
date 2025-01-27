@@ -1,18 +1,25 @@
 package org.folio.scheduler.utils;
 
 import static java.util.Objects.requireNonNull;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Durations.ONE_MINUTE;
+import static org.awaitility.Durations.TWO_HUNDRED_MILLISECONDS;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Optional;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.SneakyThrows;
 import org.apache.commons.io.IOUtils;
 import org.springframework.cache.CacheManager;
 import org.springframework.test.web.servlet.MvcResult;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
+import org.testcontainers.shaded.org.awaitility.core.ConditionFactory;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class TestUtils {
@@ -61,5 +68,24 @@ public class TestUtils {
 
   public static void cleanUpCaches(CacheManager cacheManager) {
     cacheManager.getCacheNames().forEach(name -> requireNonNull(cacheManager.getCache(name)).clear());
+  }
+
+  public static ConditionFactory await() {
+    return Awaitility.await().atMost(ONE_MINUTE).pollInterval(TWO_HUNDRED_MILLISECONDS);
+  }
+
+  /**
+   * Sonar friendly Thread.sleep(millis) implementation
+   *
+   * @param duration - duration to await.
+   */
+  @SuppressWarnings({"SameParameterValue"})
+  public static void awaitFor(Duration duration) {
+    var sampleResult = Optional.of(1);
+    Awaitility.await()
+      .pollInSameThread()
+      .atMost(duration.plus(Duration.ofMillis(250)))
+      .pollDelay(duration)
+      .untilAsserted(() -> assertThat(sampleResult).isPresent());
   }
 }

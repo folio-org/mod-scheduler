@@ -9,6 +9,7 @@ import static org.folio.scheduler.support.TestValues.timerDescriptor;
 import static org.folio.scheduler.support.TestValues.timerDescriptorEntity;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -20,6 +21,7 @@ import java.util.Optional;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 import org.folio.scheduler.domain.model.SearchResult;
+import org.folio.scheduler.domain.model.TimerType;
 import org.folio.scheduler.exception.RequestValidationException;
 import org.folio.scheduler.mapper.TimerDescriptorMapper;
 import org.folio.scheduler.repository.SchedulerTimerRepository;
@@ -249,5 +251,19 @@ class SchedulerTimerServiceTest {
     var actual = schedulerTimerService.create(descriptor);
     descriptor.setModified(null);
     assertThat(actual).isEqualTo(descriptor);
+  }
+
+  @Test
+  void switchModuleTimers_callsRepo() {
+    var module = "mod-foo";
+    var type = TimerType.USER;
+    var enabled = true;
+    int expectedResult = 7;
+    doReturn(expectedResult)
+      .when(schedulerTimerRepository).switchTimersByModuleNameAndType(module, type.name(), enabled);
+
+    int result = schedulerTimerService.switchModuleTimers(module, type, enabled);
+
+    assertThat(result).isEqualTo(expectedResult);
   }
 }
