@@ -3,6 +3,10 @@ package org.folio.scheduler.integration.kafka;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.folio.scheduler.domain.dto.TimerUnit.MINUTE;
 import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
+import static org.folio.scheduler.domain.model.TimerType.USER;
+import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.ENTITLE;
+import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.REVOKE;
+import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.UPGRADE;
 import static org.folio.scheduler.integration.kafka.model.ResourceEventType.CREATE;
 import static org.folio.scheduler.integration.kafka.model.ResourceEventType.DELETE;
 import static org.folio.scheduler.integration.kafka.model.ResourceEventType.UPDATE;
@@ -17,6 +21,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
+import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
 import org.folio.scheduler.integration.keycloak.SystemUserService;
@@ -106,6 +111,39 @@ class KafkaMessageListenerTest {
     verify(schedulerTimerService).create(expectedDescriptor);
   }
 
+  @Test
+  void handleEntitlementEvent() {
+    var event = entitlementEvent();
+    var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+    when(systemUserService.findSystemUserId(TENANT_ID)).thenReturn(SYSTEM_USER_ID);
+
+    kafkaMessageListener.handleEntitlementEvent(consumerRec);
+
+    verify(schedulerTimerService).switchModuleTimers("mod-foo", USER, true);
+  }
+
+  @Test
+  void handleEntitlementEvent_upgrade() {
+    var event = entitlementUpgradeEvent();
+    var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+    when(systemUserService.findSystemUserId(TENANT_ID)).thenReturn(SYSTEM_USER_ID);
+
+    kafkaMessageListener.handleEntitlementEvent(consumerRec);
+
+    verify(schedulerTimerService).switchModuleTimers("mod-foo", USER, true);
+  }
+
+  @Test
+  void handleEntitlementEvent_revoke() {
+    var event = entitlementRevokeEvent();
+    var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+    when(systemUserService.findSystemUserId(TENANT_ID)).thenReturn(SYSTEM_USER_ID);
+
+    kafkaMessageListener.handleEntitlementEvent(consumerRec);
+
+    verify(schedulerTimerService).switchModuleTimers("mod-foo", USER, false);
+  }
+
   private static ResourceEvent createResourceEvent() {
     return new ResourceEvent()
       .type(CREATE)
@@ -129,6 +167,27 @@ class KafkaMessageListenerTest {
       .resourceName("Scheduled Job")
       .tenant(TENANT_ID)
       .oldValue(scheduledTimersBeforeUpgrade());
+  }
+
+  private static EntitlementEvent entitlementEvent() {
+    return new EntitlementEvent()
+      .setModuleId("mod-foo-1.0.0")
+      .setType(ENTITLE)
+      .setTenantName(TENANT_ID);
+  }
+
+  private static EntitlementEvent entitlementUpgradeEvent() {
+    return new EntitlementEvent()
+      .setModuleId("mod-foo-1.0.0")
+      .setType(UPGRADE)
+      .setTenantName(TENANT_ID);
+  }
+
+  private static EntitlementEvent entitlementRevokeEvent() {
+    return new EntitlementEvent()
+      .setModuleId("mod-foo-1.0.0")
+      .setType(REVOKE)
+      .setTenantName(TENANT_ID);
   }
 
   private static ScheduledTimers scheduledTimersBeforeUpgrade() {

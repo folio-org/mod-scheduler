@@ -13,6 +13,7 @@ import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties;
+import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.hibernate.exception.SQLGrammarException;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
@@ -47,7 +48,21 @@ public class KafkaConfiguration {
   public ConcurrentKafkaListenerContainerFactory<String, ResourceEvent> kafkaListenerContainerFactory() {
     var factory = new ConcurrentKafkaListenerContainerFactory<String, ResourceEvent>();
     factory.setConsumerFactory(jsonNodeConsumerFactory());
-    factory.setCommonErrorHandler(scheduledTimerErrorHandler());
+    factory.setCommonErrorHandler(errorHandler(ResourceEvent.class));
+    return factory;
+  }
+
+  /**
+   * Creates and configures {@link ConcurrentKafkaListenerContainerFactory} as Spring bean for consuming
+   * entitlement events from Apache Kafka.
+   *
+   * @return {@link ConcurrentKafkaListenerContainerFactory} object as Spring bean.
+   */
+  @Bean
+  public ConcurrentKafkaListenerContainerFactory<String, EntitlementEvent> listenerContainerFactoryEntitlementEvent() {
+    var factory = new ConcurrentKafkaListenerContainerFactory<String, EntitlementEvent>();
+    factory.setConsumerFactory(consumerFactoryEntitlementEvent());
+    factory.setCommonErrorHandler(errorHandler(EntitlementEvent.class));
     return factory;
   }
 
@@ -60,32 +75,55 @@ public class KafkaConfiguration {
    */
   @Bean
   public ConsumerFactory<String, ResourceEvent> jsonNodeConsumerFactory() {
-    var deserializer = new JsonDeserializer<>(ResourceEvent.class, objectMapper);
-    Map<String, Object> config = new HashMap<>(kafkaProperties.buildConsumerProperties());
+    return getConsumerFactory(ResourceEvent.class);
+  }
+
+  /**
+   * Creates and configures {@link ConsumerFactory} as Spring bean.
+   *
+   * <p>Key type - {@link String}, value - {@link EntitlementEvent}.</p>
+   *
+   * @return typed {@link ConsumerFactory} object as Spring bean.
+   */
+  @Bean
+  public ConsumerFactory<String, EntitlementEvent> consumerFactoryEntitlementEvent() {
+    return getConsumerFactory(EntitlementEvent.class);
+  }
+
+  private <T> DefaultKafkaConsumerFactory<String, T> getConsumerFactory(Class<T> eventClass) {
+    var deserializer = new JsonDeserializer<>(eventClass, objectMapper);
+    Map<String, Object> config = new HashMap<>(kafkaProperties.buildConsumerProperties(null));
     config.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     config.put(VALUE_DESERIALIZER_CLASS_CONFIG, deserializer);
     config.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
     return new DefaultKafkaConsumerFactory<>(config, new StringDeserializer(), deserializer);
   }
 
-  private DefaultErrorHandler scheduledTimerErrorHandler() {
+  private DefaultErrorHandler errorHandler(Class<?> eventClass) {
     var errorHandler = new DefaultErrorHandler((message, exception) ->
-      log.warn("Failed to process scheduled timer event [record: {}]", message, exception.getCause()));
-    errorHandler.setBackOffFunction((message, exception) -> getBackOff(exception));
+      log.warn("Failed to process event [record: {}]", message, exception.getCause()));
+    errorHandler.setBackOffFunction((message, exception) -> getBackOff(exception, eventClass));
     errorHandler.setLogLevel(Level.DEBUG);
 
     return errorHandler;
   }
 
-  private BackOff getBackOff(Exception exception) {
+  private BackOff getBackOff(Exception exception, Class<?> eventClass) {
     var relationDoesNotExistsMessage = findRelationDoesNotExistsMessage(exception);
     if (relationDoesNotExistsMessage.isPresent()) {
-      var retryProperties = retryConfiguration.getConfig().get("scheduled-timer-event");
+      var retryProperties = getRetryProperties(eventClass);
       log.warn("Tenant table is not found, retrying until created [message: {}]", relationDoesNotExistsMessage.get());
       return new FixedBackOff(retryProperties.getRetryDelay().toMillis(), retryProperties.getRetryAttempts());
     }
 
     return new FixedBackOff(0L, 0L);
+  }
+
+  private RetryConfigurationProperties.RetryProperties getRetryProperties(Class<?> eventClass) {
+    var propertyKey = eventClass == EntitlementEvent.class
+      ? "entitlement-event"
+      : "scheduled-timer-event";
+    return retryConfiguration.getConfig().get(propertyKey);
   }
 
   private static Optional<String> findRelationDoesNotExistsMessage(Exception exception) {
