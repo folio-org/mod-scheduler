@@ -30,7 +30,7 @@ import org.springframework.test.context.jdbc.Sql;
 @IntegrationTest
 @Sql(scripts = "classpath:/sql/timer-repo-it.sql", executionPhase = BEFORE_TEST_METHOD)
 @Sql(scripts = "classpath:/sql/truncate-tables.sql", executionPhase = AFTER_TEST_METHOD)
-public class SchedulerTimerRepositoryIT extends BaseIntegrationTest {
+class SchedulerTimerRepositoryIT extends BaseIntegrationTest {
 
   @Autowired
   private SchedulerTimerRepository repository;
