@@ -9,19 +9,12 @@ import org.mapstruct.Mapping;
 public interface TimerDescriptorMapper {
 
   /**
-   * Converts {@link TimerDescriptorEntity} to {@link TimerDescriptor} object.
-   *
-   * @param entity - {@link TimerDescriptorEntity} object
-   * @return converted {@link TimerDescriptor} object
-   */
-  TimerDescriptor convert(TimerDescriptorEntity entity);
-
-  /**
    * Converts {@link TimerDescriptor} to {@link TimerDescriptorEntity} object.
    *
    * @param descriptor - {@link TimerDescriptor} object
    * @return converted {@link TimerDescriptorEntity} object
    */
+  @Mapping(target = "naturalKey", ignore = true)
   @Mapping(target = "timerDescriptor", source = "descriptor")
   TimerDescriptorEntity convert(TimerDescriptor descriptor);
 }
