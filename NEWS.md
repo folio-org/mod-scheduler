@@ -1,3 +1,8 @@
+## Version `v2.0.1` (31.01.2025)
+### Changes:
+* Increase keycloak-admin-client to v26.0.4, application-poc-tools to v2.1.1 (MODSCHED-27)
+---
+
 ## Version `v2.0.0` (01.11.2024)
 ### Changes:
 * Increase keycloak-admin-client to v25.0.6 (KEYCLOAK-24)
