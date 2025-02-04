@@ -12,7 +12,7 @@
   <name>mod-scheduler</name>
   <groupId>org.folio</groupId>
   <artifactId>mod-scheduler</artifactId>
-  <version>1.3.1</version>
+  <version>1.3.2-SNAPSHOT</version>
   <description>mod-scheduler</description>
   <packaging>jar</packaging>
 
@@ -559,7 +559,7 @@
     <url>https://github.com/folio-org/mod-scheduler</url>
     <connection>scm:git:git://github.com:folio-org/mod-scheduler.git</connection>
     <developerConnection>scm:git:git@github.com:folio-org/mod-scheduler.git</developerConnection>
-    <tag>v1.3.1</tag>
+    <tag>v1.3.0</tag>
   </scm>
 
   <profiles>
