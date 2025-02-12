@@ -6,6 +6,7 @@ import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.folio.common.utils.CollectionUtils.mapItems;
 import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
+import static org.folio.scheduler.domain.model.TimerType.USER;
 import static org.folio.scheduler.utils.OkapiRequestUtils.getStaticPath;
 import static org.folio.spring.integration.XOkapiHeaders.TENANT;
 import static org.folio.spring.integration.XOkapiHeaders.USER_ID;
@@ -21,6 +22,7 @@ import org.folio.common.utils.SemverUtils;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
+import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.integration.keycloak.SystemUserService;
 import org.folio.scheduler.service.SchedulerTimerService;
@@ -57,7 +59,28 @@ public class KafkaMessageListener {
       case CREATE -> createTimers(resourceEvent);
       case UPDATE -> updateTimers(resourceEvent);
       case DELETE -> deleteTimers(resourceEvent);
-      default -> log.warn("Unsupported operation type: consumerRecord = {}", consumerRecord);
+      default -> logUnsupportedOperationType(consumerRecord);
+    }
+  }
+
+  /**
+   * Handles entitlement events.
+   *
+   * @param consumerRecord - a consumer records from Apache Kafka to process.
+   */
+  @KafkaListener(
+    id = KafkaConstants.ENTITLEMENT_EVENTS_LISTENER_ID,
+    containerFactory = "listenerContainerFactoryEntitlementEvent",
+    topicPattern = "#{folioKafkaProperties.listener['entitlement-events'].topicPattern}",
+    groupId = "#{folioKafkaProperties.listener['entitlement-events'].groupId}",
+    concurrency = "#{folioKafkaProperties.listener['entitlement-events'].concurrency}")
+  public void handleEntitlementEvent(ConsumerRecord<String, EntitlementEvent> consumerRecord) {
+    var event = consumerRecord.value();
+    var operationType = event.getType();
+    switch (operationType) {
+      case REVOKE -> switchTimers(event.getModuleId(), event.getTenantName(), false);
+      case ENTITLE, UPGRADE -> switchTimers(event.getModuleId(), event.getTenantName(), true);
+      default -> logUnsupportedOperationType(consumerRecord);
     }
   }
 
@@ -112,6 +135,15 @@ public class KafkaMessageListener {
     }
   }
 
+  private void switchTimers(String moduleId, String tenantName, boolean enable) {
+    try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(tenantName))) {
+      var moduleName = SemverUtils.getName(moduleId);
+      int switched = schedulerTimerService.switchModuleTimers(moduleName, USER, enable);
+      log.info("{} timers were switched to enabled={} state for module {} and tenant {}",
+        switched, enable, moduleName, tenantName);
+    }
+  }
+
   private Map<String, Collection<String>> prepareContextHeaders(String tenant) {
     var headers = new HashMap<String, Collection<String>>();
     headers.put(TENANT, singletonList(tenant));
@@ -140,5 +172,9 @@ public class KafkaMessageListener {
   private static void logDeletingTimers(List<TimerDescriptor> timers) {
     log.info("Deleting timers: timers = {}",
       () -> mapItems(timers, t -> getRoutingEntryKey(t.getRoutingEntry())));
+  }
+
+  private static void logUnsupportedOperationType(ConsumerRecord<?, ?> consumerRecord) {
+    log.warn("Unsupported operation type: consumerRecord = {}", consumerRecord);
   }
 }
