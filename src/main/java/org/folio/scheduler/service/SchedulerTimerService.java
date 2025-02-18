@@ -162,9 +162,10 @@ public class SchedulerTimerService {
     var timers = schedulerTimerRepository.findByModuleNameAndTypeAndEnabledState(moduleName, type.name(), enable);
 
     Consumer<TimerDescriptor> operation = enable ? jobSchedulingService::schedule : jobSchedulingService::delete;
-    timers.stream().peek(
+    timers.forEach(
       timer -> log.info(enable ? "Scheduling timer {} {} for module {}" : "Removing timer {} {} for module {}",
-        timer.getId(), type, moduleName)).map(TimerDescriptorEntity::getTimerDescriptor).forEach(operation);
+        timer.getId(), type, moduleName));
+    timers.stream().map(TimerDescriptorEntity::getTimerDescriptor).forEach(operation);
 
     schedulerTimerRepository.switchTimersByIds(timers.stream().map(TimerDescriptorEntity::getId).toList(), enable);
 
