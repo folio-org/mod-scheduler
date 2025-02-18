@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
@@ -158,7 +159,16 @@ public class SchedulerTimerService {
    */
   @Transactional
   public int switchModuleTimers(String moduleName, TimerType type, boolean enable) {
-    return schedulerTimerRepository.switchTimersByModuleNameAndType(moduleName, type.name(), enable);
+    var timers = schedulerTimerRepository.findByModuleNameAndTypeAndEnabledState(moduleName, type.name(), enable);
+
+    Consumer<TimerDescriptor> operation = enable ? jobSchedulingService::schedule : jobSchedulingService::delete;
+    timers.stream().peek(
+      timer -> log.info(enable ? "Scheduling timer {} {} for module {}" : "Removing timer {} {} for module {}",
+        timer.getId(), type, moduleName)).map(TimerDescriptorEntity::getTimerDescriptor).forEach(operation);
+
+    schedulerTimerRepository.switchTimersByIds(timers.stream().map(TimerDescriptorEntity::getId).toList(), enable);
+
+    return timers.size();
   }
 
   private void validate(TimerDescriptor timerDescriptor) {
