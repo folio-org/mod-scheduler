@@ -10,6 +10,7 @@ import static org.folio.scheduler.support.TestValues.timerDescriptorEntity;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -18,6 +19,7 @@ import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 import org.folio.scheduler.domain.model.SearchResult;
@@ -258,12 +260,25 @@ class SchedulerTimerServiceTest {
     var module = "mod-foo";
     var type = TimerType.USER;
     var enabled = true;
-    int expectedResult = 7;
-    doReturn(expectedResult)
-      .when(schedulerTimerRepository).switchTimersByModuleNameAndType(module, type.name(), enabled);
+
+    var id1 = UUID.randomUUID();
+    var id2 = UUID.randomUUID();
+    var id3 = UUID.randomUUID();
+
+    doReturn(
+      List.of(mockTimerDescriptorEntity(id1), mockTimerDescriptorEntity(id2), mockTimerDescriptorEntity(id3))).when(
+      schedulerTimerRepository).findByModuleNameAndTypeAndEnabledState(module, type.name(), enabled);
 
     int result = schedulerTimerService.switchModuleTimers(module, type, enabled);
 
-    assertThat(result).isEqualTo(expectedResult);
+    assertThat(result).isEqualTo(3);
+
+    verify(schedulerTimerRepository, times(1)).switchTimersByIds(List.of(id1, id2, id3), enabled);
+  }
+
+  TimerDescriptorEntity mockTimerDescriptorEntity(UUID id) {
+    var result = new TimerDescriptorEntity();
+    result.setId(id);
+    return result;
   }
 }

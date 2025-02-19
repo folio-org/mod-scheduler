@@ -5,6 +5,7 @@ import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.spring.integration.XOkapiHeaders.TENANT;
 import static org.folio.spring.integration.XOkapiHeaders.USER_ID;
 import static org.folio.test.TestUtils.asJsonString;
+import static org.quartz.impl.matchers.GroupMatcher.anyJobGroup;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -24,6 +25,7 @@ import org.folio.test.extensions.EnableKafka;
 import org.folio.test.extensions.EnableWireMock;
 import org.folio.test.extensions.impl.WireMockAdminClient;
 import org.folio.test.extensions.impl.WireMockAdminClient.RequestCriteria;
+import org.quartz.Scheduler;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
@@ -144,5 +146,9 @@ public abstract class BaseIntegrationTest extends BaseBackendIntegrationTest {
       .build());
 
     assertThat(count).isPositive();
+  }
+
+  protected static void deleteAllQuartzJobs(Scheduler scheduler) throws Exception {
+    scheduler.deleteJobs(scheduler.getJobKeys(anyJobGroup()).stream().toList());
   }
 }

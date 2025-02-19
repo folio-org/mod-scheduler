@@ -87,6 +87,7 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
   @AfterAll
   static void afterAll(@Autowired Scheduler scheduler) throws Exception {
     removeTenant();
+    deleteAllQuartzJobs(scheduler);
     assertThat(scheduler.getJobKeys(anyJobGroup())).isEmpty();
   }
 

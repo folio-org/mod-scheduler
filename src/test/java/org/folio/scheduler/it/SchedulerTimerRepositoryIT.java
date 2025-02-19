@@ -12,6 +12,7 @@ import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TE
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 import org.folio.scheduler.domain.model.TimerType;
 import org.folio.scheduler.repository.SchedulerTimerRepository;
 import org.folio.scheduler.support.TestConstants;
@@ -23,6 +24,7 @@ import org.folio.test.types.IntegrationTest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.quartz.Scheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.jdbc.Sql;
 
@@ -43,8 +45,9 @@ class SchedulerTimerRepositoryIT extends BaseIntegrationTest {
   }
 
   @AfterAll
-  static void afterAll() {
+  static void afterAll(@Autowired Scheduler scheduler) throws Exception {
     removeTenant();
+    deleteAllQuartzJobs(scheduler);
   }
 
   @Test
@@ -54,9 +57,10 @@ class SchedulerTimerRepositoryIT extends BaseIntegrationTest {
     var enabled = true;
 
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders())) {
-      var count = repository.switchTimersByModuleNameAndType(module, type.name(), enabled);
+      var timers = repository.findByModuleNameAndTypeAndEnabledState(module, type.name(), enabled);
+      repository.switchTimersByIds(timers.stream().map(TimerDescriptorEntity::getId).toList(), enabled);
 
-      assertThat(count).isEqualTo(2);
+      assertThat(timers).hasSize(2);
       assertThat(repository.findAll())
         .hasSize(3)
         .allSatisfy(t -> assertThat(t.getTimerDescriptor().getEnabled()).isTrue());
@@ -70,9 +74,10 @@ class SchedulerTimerRepositoryIT extends BaseIntegrationTest {
     var enabled = false;
 
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders())) {
-      var count = repository.switchTimersByModuleNameAndType(module, type.name(), enabled);
+      var timers = repository.findByModuleNameAndTypeAndEnabledState(module, type.name(), enabled);
+      repository.switchTimersByIds(timers.stream().map(TimerDescriptorEntity::getId).toList(), enabled);
 
-      assertThat(count).isEqualTo(1);
+      assertThat(timers).hasSize(1);
       assertThat(repository.findAll())
         .hasSize(3)
         .allSatisfy(t -> {
