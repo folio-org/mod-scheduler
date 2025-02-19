@@ -1,6 +1,7 @@
 package org.folio.scheduler.repository;
 
 import jakarta.transaction.Transactional;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -9,6 +10,7 @@ import org.folio.scheduler.domain.model.TimerType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -18,12 +20,18 @@ public interface SchedulerTimerRepository extends JpaRepository<TimerDescriptorE
 
   Optional<TimerDescriptorEntity> findByNaturalKey(String naturalKey);
 
+  @Query(value = "SELECT * FROM timer "
+    + "WHERE module_name = :moduleName AND type = CAST(:timerType as timer_type) "
+    + "AND COALESCE((timer_descriptor ->> 'enabled')::boolean, false) != :enabled",
+    nativeQuery = true)
+  List<TimerDescriptorEntity> findByModuleNameAndTypeAndEnabledState(@Param("moduleName") String moduleName,
+    @Param("timerType") String timerType, @Param("enabled") boolean enabled);
+
   @Transactional
   @Modifying
   @Query(value = "UPDATE timer "
-    + "SET timer_descriptor = jsonb_set(timer_descriptor, '{enabled}', to_jsonb(:enable)) "
-    + "WHERE module_name = :moduleName AND type = CAST(:timerType as timer_type) "
-    + "AND COALESCE((timer_descriptor ->> 'enabled')::boolean, false) != :enable",
+    + "SET timer_descriptor = jsonb_set(timer_descriptor, '{enabled}', to_jsonb(:enabled)) "
+    + "WHERE id in (:ids)",
     nativeQuery = true)
-  int switchTimersByModuleNameAndType(String moduleName, String timerType, boolean enable);
+  void switchTimersByIds(@Param("ids") Collection<UUID> ids, @Param("enabled") boolean enabled);
 }
