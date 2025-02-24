@@ -42,7 +42,7 @@
     </mod-scheduler.yaml-file>
 
     <!-- Test dependencies versions -->
-    <awaitility.version>4.2.2</awaitility.version>
+    <awaitility.version>4.3.0</awaitility.version>
 
     <!-- Plugins versions -->
     <maven-clean-plugin.version>3.4.1</maven-clean-plugin.version>
