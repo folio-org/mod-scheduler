@@ -35,7 +35,7 @@
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>26.0.4</keycloak.admin.client.version>
     <applications-poc-tools.version>2.3.0-SNAPSHOT</applications-poc-tools.version>
-    <aws.version>2.30.24</aws.version>
+    <aws.version>2.30.26</aws.version>
     <vault.version>5.1.0</vault.version>
 
     <mod-scheduler.yaml-file>${project.basedir}/src/main/resources/swagger.api/mod-scheduler.yaml
@@ -46,10 +46,10 @@
 
     <!-- Plugins versions -->
     <maven-clean-plugin.version>3.4.1</maven-clean-plugin.version>
-    <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+    <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
     <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
     <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
-    <maven-checkstyle.version>10.21.2</maven-checkstyle.version>
+    <maven-checkstyle.version>10.21.3</maven-checkstyle.version>
     <copy-rename-maven-plugin.version>1.0.1</copy-rename-maven-plugin.version>
     <maven-surefire-plugin.version>3.5.2</maven-surefire-plugin.version>
     <maven-failsafe-plugin.version>3.5.2</maven-failsafe-plugin.version>
