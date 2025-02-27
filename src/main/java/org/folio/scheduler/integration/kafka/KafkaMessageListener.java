@@ -55,6 +55,8 @@ public class KafkaMessageListener {
     var resourceEvent = consumerRecord.value();
     var operationType = resourceEvent.getType();
 
+    log.info("Received job {} event for {} in {}", operationType, resourceEvent.getResourceName(), resourceEvent.getTenant());
+
     switch (operationType) {
       case CREATE -> createTimers(resourceEvent);
       case UPDATE -> updateTimers(resourceEvent);
@@ -77,6 +79,7 @@ public class KafkaMessageListener {
   public void handleEntitlementEvent(ConsumerRecord<String, EntitlementEvent> consumerRecord) {
     var event = consumerRecord.value();
     var operationType = event.getType();
+    log.info("Received entitlement {} event for {} in {}", operationType, event.getModuleId(), event.getTenantName());
     switch (operationType) {
       case REVOKE -> switchTimers(event.getModuleId(), event.getTenantName(), false);
       case ENTITLE, UPGRADE -> switchTimers(event.getModuleId(), event.getTenantName(), true);
