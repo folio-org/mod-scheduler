@@ -279,6 +279,7 @@ class SchedulerTimerServiceTest {
   TimerDescriptorEntity mockTimerDescriptorEntity(UUID id) {
     var result = new TimerDescriptorEntity();
     result.setId(id);
+    result.setTimerDescriptor(new TimerDescriptor());
     return result;
   }
 }
