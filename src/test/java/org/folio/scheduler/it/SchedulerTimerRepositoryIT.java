@@ -53,11 +53,10 @@ class SchedulerTimerRepositoryIT extends BaseIntegrationTest {
   @Test
   void switchTimersByModuleNameAndType_shouldSetEnabledTrue_forTimersWithEnabledFalseOrNull() {
     var module = "mod-foo";
-    var type = TimerType.USER;
     var enabled = true;
 
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders())) {
-      var timers = repository.findByModuleNameAndTypeAndEnabledState(module, type.name(), enabled);
+      var timers = repository.findByModuleNameAndEnabledState(module, enabled);
       repository.switchTimersByIds(timers.stream().map(TimerDescriptorEntity::getId).toList(), enabled);
 
       assertThat(timers).hasSize(2);
@@ -74,7 +73,7 @@ class SchedulerTimerRepositoryIT extends BaseIntegrationTest {
     var enabled = false;
 
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders())) {
-      var timers = repository.findByModuleNameAndTypeAndEnabledState(module, type.name(), enabled);
+      var timers = repository.findByModuleNameAndEnabledState(module, enabled);
       repository.switchTimersByIds(timers.stream().map(TimerDescriptorEntity::getId).toList(), enabled);
 
       assertThat(timers).hasSize(1);

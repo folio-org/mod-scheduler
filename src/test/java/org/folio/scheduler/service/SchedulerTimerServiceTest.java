@@ -23,7 +23,6 @@ import java.util.UUID;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 import org.folio.scheduler.domain.model.SearchResult;
-import org.folio.scheduler.domain.model.TimerType;
 import org.folio.scheduler.exception.RequestValidationException;
 import org.folio.scheduler.mapper.TimerDescriptorMapper;
 import org.folio.scheduler.repository.SchedulerTimerRepository;
@@ -258,7 +257,6 @@ class SchedulerTimerServiceTest {
   @Test
   void switchModuleTimers_callsRepo() {
     var module = "mod-foo";
-    var type = TimerType.USER;
     var enabled = true;
 
     var id1 = UUID.randomUUID();
@@ -267,9 +265,9 @@ class SchedulerTimerServiceTest {
 
     doReturn(
       List.of(mockTimerDescriptorEntity(id1), mockTimerDescriptorEntity(id2), mockTimerDescriptorEntity(id3))).when(
-      schedulerTimerRepository).findByModuleNameAndTypeAndEnabledState(module, type.name(), enabled);
+      schedulerTimerRepository).findByModuleNameAndEnabledState(module, enabled);
 
-    int result = schedulerTimerService.switchModuleTimers(module, type, enabled);
+    int result = schedulerTimerService.switchModuleTimers(module, enabled);
 
     assertThat(result).isEqualTo(3);
 

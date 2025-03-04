@@ -21,11 +21,11 @@ public interface SchedulerTimerRepository extends JpaRepository<TimerDescriptorE
   Optional<TimerDescriptorEntity> findByNaturalKey(String naturalKey);
 
   @Query(value = "SELECT * FROM timer "
-    + "WHERE module_name = :moduleName AND type = CAST(:timerType as timer_type) "
+    + "WHERE module_name = :moduleName "
     + "AND COALESCE((timer_descriptor ->> 'enabled')::boolean, false) != :enabled",
     nativeQuery = true)
-  List<TimerDescriptorEntity> findByModuleNameAndTypeAndEnabledState(@Param("moduleName") String moduleName,
-    @Param("timerType") String timerType, @Param("enabled") boolean enabled);
+  List<TimerDescriptorEntity> findByModuleNameAndEnabledState(@Param("moduleName") String moduleName,
+    @Param("enabled") boolean enabled);
 
   @Transactional
   @Modifying
