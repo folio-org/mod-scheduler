@@ -13,7 +13,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
-import org.folio.scheduler.domain.model.TimerType;
 import org.folio.scheduler.repository.SchedulerTimerRepository;
 import org.folio.scheduler.support.TestConstants;
 import org.folio.scheduler.support.base.BaseIntegrationTest;
