@@ -69,7 +69,6 @@ class SchedulerTimerRepositoryIT extends BaseIntegrationTest {
   @Test
   void switchTimersByModuleNameAndType_shouldSetEnabledFalse_forTimersWithEnabledTrue() {
     var module = "mod-foo";
-    var type = TimerType.USER;
     var enabled = false;
 
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders())) {
