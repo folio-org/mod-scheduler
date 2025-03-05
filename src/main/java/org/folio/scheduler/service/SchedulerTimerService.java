@@ -166,7 +166,7 @@ public class SchedulerTimerService {
     timers.forEach(
       timer -> log.info(enable ? "Scheduling timer {} {} for module {}" : "Removing timer {} {} for module {}",
         timer.getId(), timer.getType(), moduleName));
-    timers.forEach(timer -> timer.getTimerDescriptor().setEnabled(enable));
+    timers.forEach(timer -> timer.getTimerDescriptor().setEnabled(true));
     timers.stream().map(TimerDescriptorEntity::getTimerDescriptor).forEach(operation);
 
     return timers.size();

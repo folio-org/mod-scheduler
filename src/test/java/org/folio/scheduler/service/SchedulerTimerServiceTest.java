@@ -8,6 +8,7 @@ import static org.folio.scheduler.support.TestValues.randomUuid;
 import static org.folio.scheduler.support.TestValues.timerDescriptor;
 import static org.folio.scheduler.support.TestValues.timerDescriptorEntity;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
@@ -98,7 +99,7 @@ class SchedulerTimerServiceTest {
 
     when(timerDescriptorMapper.convert(descriptor)).thenReturn(entity);
     when(schedulerTimerRepository.save(entity)).thenReturn(entity);
-    doNothing().when(jobSchedulingService).schedule(descriptor);
+    doAnswer(inv -> true).when(jobSchedulingService).schedule(descriptor);
 
     var actual = schedulerTimerService.create(descriptor);
     assertThat(actual).isEqualTo(descriptor);
@@ -110,7 +111,7 @@ class SchedulerTimerServiceTest {
     when(timerDescriptorMapper.convert(timerDescriptorCaptor.capture()))
       .thenAnswer(inv -> timerDescriptorEntity(inv.getArgument(0)));
     when(schedulerTimerRepository.save(any(TimerDescriptorEntity.class))).thenAnswer(inv -> inv.getArgument(0));
-    doNothing().when(jobSchedulingService).schedule(any(TimerDescriptor.class));
+    doAnswer(inv -> true).when(jobSchedulingService).schedule(any(TimerDescriptor.class));
 
     var actual = schedulerTimerService.create(descriptor);
 
