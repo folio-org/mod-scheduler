@@ -64,7 +64,7 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
 
   @Test
   @KeycloakRealms("/json/keycloak/test-realm.json")
-  void handleEntitleRevokeEvents_positive() throws Exception {
+  void handleEntitleRevokeEvents_positive() {
     kafkaTemplate.send(ENTITLEMENT_EVENTS_TOPIC, asJsonString(entitlementEvent()));
 
     await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
@@ -85,7 +85,7 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
         checkTimerEnabled("123e4567-e89b-12d3-a456-426614174002", false);
       });
     await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
-      .untilAsserted(() -> assertThat(scheduler.getJobKeys(anyJobGroup())).hasSize(0));
+      .untilAsserted(() -> assertThat(scheduler.getJobKeys(anyJobGroup())).isEmpty());
   }
 
   private static void checkTimerEnabled(String id, boolean enabled) throws Exception {
