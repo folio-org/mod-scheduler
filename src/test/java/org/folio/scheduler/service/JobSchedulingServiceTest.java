@@ -15,6 +15,7 @@ import static org.folio.scheduler.support.TestValues.timerDescriptor;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -47,6 +48,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.quartz.CronTrigger;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
+import org.quartz.ObjectAlreadyExistsException;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.SimpleTrigger;
@@ -88,7 +90,7 @@ class JobSchedulingServiceTest {
     when(scheduler.scheduleJob(any(JobDetail.class), triggerArgumentCaptor.capture())).thenReturn(new Date());
     var timerDescriptor = timerDescriptor().routingEntry(new RoutingEntry().delay(delay).unit(unit));
 
-    service.schedule(timerDescriptor);
+    assertThat(service.schedule(timerDescriptor)).isTrue();
 
     var actualTrigger = (SimpleTrigger) triggerArgumentCaptor.getValue();
     assertThat(actualTrigger).isEqualTo(simpleTrigger(expectedRepeatInterval));
@@ -99,8 +101,18 @@ class JobSchedulingServiceTest {
   @Test
   void schedule_positive_timerDisabled() {
     var timerDescriptor = timerDescriptor().enabled(false);
-    service.schedule(timerDescriptor);
+    assertThat(service.schedule(timerDescriptor)).isFalse();
     verifyNoInteractions(scheduler);
+  }
+
+  @Test
+  void schedule_negative_duplicate() throws  Exception {
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
+    var timerDescriptor = timerDescriptor();
+    when(scheduler.scheduleJob(any(), any())).thenThrow(new ObjectAlreadyExistsException("test"));
+    assertThat(service.schedule(timerDescriptor)).isFalse();
+    verify(scheduler, times(1)).scheduleJob(any(), any());
   }
 
   @Test

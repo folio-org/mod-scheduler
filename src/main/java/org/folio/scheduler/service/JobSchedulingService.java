@@ -35,6 +35,7 @@ import org.folio.scheduler.service.jobs.OkapiHttpRequestExecutor;
 import org.folio.scheduler.utils.Validate;
 import org.folio.spring.FolioExecutionContext;
 import org.quartz.CronTrigger;
+import org.quartz.ObjectAlreadyExistsException;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
@@ -65,10 +66,10 @@ public class JobSchedulingService {
    * @param timerDescriptor - recurring job descriptor
    */
   @Transactional
-  public void schedule(TimerDescriptor timerDescriptor) {
+  public boolean schedule(TimerDescriptor timerDescriptor) {
     if (isTriggerDisabled(timerDescriptor)) {
       log.info("Recurring job is disabled, it will not be scheduled. [timerId: {}]", timerDescriptor.getId());
-      return;
+      return false;
     }
 
     var scheduledTask = newJob(OkapiHttpRequestExecutor.class)
@@ -79,9 +80,12 @@ public class JobSchedulingService {
 
     try {
       scheduler.scheduleJob(scheduledTask, getTrigger(timerDescriptor));
+    } catch (ObjectAlreadyExistsException alreadyExistsException) {
+      return false;
     } catch (SchedulerException exception) {
       throw new TimerSchedulingException("Failed to schedule job", exception);
     }
+    return true;
   }
 
   /**

@@ -6,7 +6,6 @@ import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.folio.common.utils.CollectionUtils.mapItems;
 import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
-import static org.folio.scheduler.domain.model.TimerType.USER;
 import static org.folio.scheduler.utils.OkapiRequestUtils.getStaticPath;
 import static org.folio.spring.integration.XOkapiHeaders.TENANT;
 import static org.folio.spring.integration.XOkapiHeaders.USER_ID;
@@ -144,7 +143,7 @@ public class KafkaMessageListener {
   private void switchTimers(String moduleId, String tenantName, boolean enable) {
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(tenantName))) {
       var moduleName = SemverUtils.getName(moduleId);
-      int switched = schedulerTimerService.switchModuleTimers(moduleName, USER, enable);
+      int switched = schedulerTimerService.switchModuleTimers(moduleName, enable);
       log.info("{} timers were switched to enabled={} state for module {} and tenant {}",
         switched, enable, moduleName, tenantName);
     }

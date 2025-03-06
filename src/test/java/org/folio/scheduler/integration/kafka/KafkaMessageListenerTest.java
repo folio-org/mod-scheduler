@@ -3,7 +3,6 @@ package org.folio.scheduler.integration.kafka;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.folio.scheduler.domain.dto.TimerUnit.MINUTE;
 import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
-import static org.folio.scheduler.domain.model.TimerType.USER;
 import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.ENTITLE;
 import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.REVOKE;
 import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.UPGRADE;
@@ -119,7 +118,7 @@ class KafkaMessageListenerTest {
 
     kafkaMessageListener.handleEntitlementEvent(consumerRec);
 
-    verify(schedulerTimerService).switchModuleTimers("mod-foo", USER, true);
+    verify(schedulerTimerService).switchModuleTimers("mod-foo", true);
   }
 
   @Test
@@ -130,7 +129,7 @@ class KafkaMessageListenerTest {
 
     kafkaMessageListener.handleEntitlementEvent(consumerRec);
 
-    verify(schedulerTimerService).switchModuleTimers("mod-foo", USER, true);
+    verify(schedulerTimerService).switchModuleTimers("mod-foo", true);
   }
 
   @Test
@@ -141,7 +140,7 @@ class KafkaMessageListenerTest {
 
     kafkaMessageListener.handleEntitlementEvent(consumerRec);
 
-    verify(schedulerTimerService).switchModuleTimers("mod-foo", USER, false);
+    verify(schedulerTimerService).switchModuleTimers("mod-foo", false);
   }
 
   private static ResourceEvent createResourceEvent() {

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 import static org.awaitility.Durations.TEN_SECONDS;
 import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.ENTITLE;
+import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.REVOKE;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.utils.TestUtils.asJsonString;
 import static org.folio.scheduler.utils.TestUtils.await;
@@ -20,6 +21,7 @@ import org.folio.scheduler.support.base.BaseIntegrationTest;
 import org.folio.spring.FolioModuleMetadata;
 import org.folio.test.extensions.EnableKeycloakTlsMode;
 import org.folio.test.extensions.KeycloakRealms;
+import org.folio.test.extensions.WireMockStub;
 import org.folio.test.types.IntegrationTest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -45,6 +47,8 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
   private SchedulerTimerRepository repository;
   @Autowired
   private FolioModuleMetadata folioModuleMetadata;
+  @Autowired
+  private Scheduler scheduler;
 
   @BeforeAll
   static void beforeAll(@Autowired KafkaAdmin kafkaAdmin) {
@@ -61,7 +65,8 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
 
   @Test
   @KeycloakRealms("/json/keycloak/test-realm.json")
-  void handleEntitlementEvent_positive() {
+  @WireMockStub("/wiremock/stubs/timer-call-targets.json")
+  void handleEntitleRevokeEvents_positive() {
     kafkaTemplate.send(ENTITLEMENT_EVENTS_TOPIC, asJsonString(entitlementEvent()));
 
     await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
@@ -70,6 +75,19 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
         checkTimerEnabled("123e4567-e89b-12d3-a456-426614174001", true);
         checkTimerEnabled("123e4567-e89b-12d3-a456-426614174002", true);
       });
+    // Two jobs must be added because one time was already enabled and thus didn't change
+    await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
+      .untilAsserted(() -> assertThat(scheduler.getJobKeys(anyJobGroup())).hasSize(2));
+
+    kafkaTemplate.send(ENTITLEMENT_EVENTS_TOPIC, asJsonString(entitlementEvent().setType(REVOKE)));
+    await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
+      .untilAsserted(() -> {
+        checkTimerEnabled("123e4567-e89b-12d3-a456-426614174000", false);
+        checkTimerEnabled("123e4567-e89b-12d3-a456-426614174001", false);
+        checkTimerEnabled("123e4567-e89b-12d3-a456-426614174002", false);
+      });
+    await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
+      .untilAsserted(() -> assertThat(scheduler.getJobKeys(anyJobGroup())).isEmpty());
   }
 
   private static void checkTimerEnabled(String id, boolean enabled) throws Exception {
