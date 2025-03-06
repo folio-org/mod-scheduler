@@ -65,7 +65,7 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
 
   @Test
   @KeycloakRealms("/json/keycloak/test-realm.json")
-  @WireMockStub("/wiremock/stubs/timer-endpoint.json")
+  @WireMockStub("/wiremock/stubs/timer-call-targets.json")
   void handleEntitleRevokeEvents_positive() {
     kafkaTemplate.send(ENTITLEMENT_EVENTS_TOPIC, asJsonString(entitlementEvent()));
 
