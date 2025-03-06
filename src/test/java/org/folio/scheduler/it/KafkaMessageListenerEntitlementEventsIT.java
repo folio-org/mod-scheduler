@@ -21,6 +21,7 @@ import org.folio.scheduler.support.base.BaseIntegrationTest;
 import org.folio.spring.FolioModuleMetadata;
 import org.folio.test.extensions.EnableKeycloakTlsMode;
 import org.folio.test.extensions.KeycloakRealms;
+import org.folio.test.extensions.WireMockStub;
 import org.folio.test.types.IntegrationTest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -64,6 +65,7 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
 
   @Test
   @KeycloakRealms("/json/keycloak/test-realm.json")
+  @WireMockStub("/wiremock/stubs/timer-endpoint.json")
   void handleEntitleRevokeEvents_positive() {
     kafkaTemplate.send(ENTITLEMENT_EVENTS_TOPIC, asJsonString(entitlementEvent()));
 
