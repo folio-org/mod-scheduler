@@ -1,5 +1,15 @@
-## Version `v2.1.0` (in progress)
+## Version `v4.0.0` (in progress)
 ### Changes:
+---
+
+## Version `v3.0.0` (12.03.2025)
+### Changes:
+* Disable timers after app disabling (KEYCLOAK-20)
+* Upgrade Java version to 21 (MODSCHED-32)
+* Disable/Enable user timers upon module entitlement events (MODSCHED-25)
+* Upgrade Spring Boot to 3.4.2 (MODSCHED-26)
+* Upgrade keycloak-admin-client to v26.0.4 (KEYCLOAK-25)
+* Integrate Internal Route Discovery into Sidecar with Dynamic Routing Switch, Replacing Kong (MODSCHED-24)
 ---
 
 ## Version `v2.0.0` (01.11.2024)

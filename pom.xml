@@ -12,7 +12,7 @@
   <name>mod-scheduler</name>
   <groupId>org.folio</groupId>
   <artifactId>mod-scheduler</artifactId>
-  <version>2.1.0-SNAPSHOT</version>
+  <version>3.1.0-SNAPSHOT</version>
   <description>mod-scheduler</description>
   <packaging>jar</packaging>
 
@@ -36,7 +36,7 @@
     <commons-lang3.version>3.17.0</commons-lang3.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>26.0.4</keycloak.admin.client.version>
-    <applications-poc-tools.version>2.3.0-SNAPSHOT</applications-poc-tools.version>
+    <applications-poc-tools.version>3.1.0-SNAPSHOT</applications-poc-tools.version>
     <aws.version>2.30.36</aws.version>
     <vault.version>5.1.0</vault.version>
 
@@ -58,7 +58,7 @@
     <maven-release-plugin.version>3.1.1</maven-release-plugin.version>
     <openapi-generator.version>7.12.0</openapi-generator.version>
     <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
-    <folio-java-checkstyle.version>1.0.1</folio-java-checkstyle.version>
+    <folio-java-checkstyle.version>1.1.0</folio-java-checkstyle.version>
     <folio-module-descriptor-validator.version>1.0.1</folio-module-descriptor-validator.version>
 
     <sonar.exclusions>
