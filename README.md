@@ -63,7 +63,7 @@ docker run \
   -e POSTGRES_USERNAME=postgres \
   -e POSTGRES_PASSWORD=mysecretpassword \
   -p 5432:5432 \
-  -d postgres:12.11
+  -d postgres:16-alpine
 ```
 
 Build the docker container with:
