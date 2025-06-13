@@ -7,7 +7,7 @@ import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
 import org.springframework.retry.RetryListener;
 import org.springframework.retry.annotation.EnableRetry;
-import org.springframework.retry.listener.RetryListenerSupport;
+import org.springframework.retry.listener.MethodInvocationRetryListenerSupport;
 
 @Log4j2
 @EnableRetry
@@ -16,7 +16,7 @@ public class RetryConfiguration {
 
   @Bean(name = "methodLoggingRetryListener")
   public RetryListener methodLoggingRetryListener() {
-    return new RetryListenerSupport() {
+    return new MethodInvocationRetryListenerSupport() {
 
       @Override
       public <T, E extends Throwable> void onError(RetryContext ctx, RetryCallback<T, E> callback, Throwable t) {
