@@ -176,3 +176,17 @@ in [application.yml](./src/main/resources/application.yml) under `spring.quartz`
 
 In addition, Quartz can be tuned
 using [Quart configuration properties](http://www.quartz-scheduler.org/documentation/2.4.0-SNAPSHOT/configuration.html)
+
+
+### Cron format for timers
+`mod-scheduler` supports both Unix and Quartz cron formats for timers. The Unix format is automatically converted to Quartz, so you can use either format for cron-based timers. The formats are as follows:
+
+**Unix cron format:**
+
+```
+<minute> <hour> <day-of-month> <month> <day-of-week>
+```
+**Quartz cron format:**
+```
+<second> <minute> <hour> <day-of-month> <month> <day-of-week> [year]
+```

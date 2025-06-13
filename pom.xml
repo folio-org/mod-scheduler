@@ -39,6 +39,7 @@
     <applications-poc-tools.version>3.1.0-SNAPSHOT</applications-poc-tools.version>
     <aws.version>2.31.59</aws.version>
     <vault.version>5.1.0</vault.version>
+    <cron-utils.version>9.1.7</cron-utils.version>
 
     <mod-scheduler.yaml-file>${project.basedir}/src/main/resources/swagger.api/mod-scheduler.yaml
     </mod-scheduler.yaml-file>
@@ -225,6 +226,12 @@
       <groupId>io.swagger.core.v3</groupId>
       <artifactId>swagger-annotations</artifactId>
       <version>${swagger-annotations.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.cronutils</groupId>
+      <artifactId>cron-utils</artifactId>
+      <version>${cron-utils.version}</version>
     </dependency>
 
     <!-- Test dependencies -->

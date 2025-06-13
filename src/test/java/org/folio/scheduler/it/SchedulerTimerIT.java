@@ -112,7 +112,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   @Test
   @WireMockStub("/wiremock/stubs/user-timer-endpoint.json")
   @KeycloakRealms("/json/keycloak/test-realm.json")
-  void create_positive_cronTrigger() throws Exception {
+  void create_positive_cronTriggerEverySecond() throws Exception {
     var timerId = UUID.randomUUID().toString();
     var timerDescriptor = new TimerDescriptor()
       .id(UUID.fromString(timerId))
@@ -121,7 +121,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
       .routingEntry(new RoutingEntry()
         .methods(List.of("POST"))
         .pathPattern("/test")
-        .schedule(new RoutingEntrySchedule().cron("*/1 * * * *")));
+        .schedule(new RoutingEntrySchedule().cron("* * * * * ?")));
 
     var timestampBeforeSavingDesc = Instant.now();
     doPost("/scheduler/timers", timerDescriptor)
