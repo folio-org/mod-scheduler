@@ -27,7 +27,9 @@ public class CronUtils {
     if (parts.length == 5) {
       var unixCron = UNIX_PARSER.parse(cronExpression);
       var quartzCron = UNIX_TO_QUARTZ_MAPPER.map(unixCron);
-      return quartzCron.asString();
+      var cron = quartzCron.asString();
+      log.info("Converted Unix cron expression '{}' to Quartz format '{}'", cronExpression, cron);
+      return cron;
     } else if (parts.length == 6 || parts.length == 7) {
       return cronExpression;
     } else {
