@@ -15,6 +15,7 @@ import static org.folio.scheduler.domain.dto.TimerUnit.HOUR;
 import static org.folio.scheduler.domain.dto.TimerUnit.MILLISECOND;
 import static org.folio.scheduler.domain.dto.TimerUnit.MINUTE;
 import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
+import static org.folio.scheduler.utils.CronUtils.convertToQuartz;
 import static org.folio.spring.integration.XOkapiHeaders.TENANT;
 import static org.folio.spring.integration.XOkapiHeaders.USER_ID;
 import static org.quartz.CronScheduleBuilder.cronSchedule;
@@ -182,7 +183,7 @@ public class JobSchedulingService {
     var schedule = timerDescriptor.getRoutingEntry().getSchedule();
     var timeZone = defaultIfNull(schedule.getZone(), "UTC");
     var cron = schedule.getCron();
-    var cronExpression = cron.split("\\s+").length == 5 ? cron + " ?" : cron;
+    var cronExpression = convertToQuartz(cron);
     return newTrigger()
       .withIdentity(triggerKey(timerId))
       .withSchedule(cronSchedule(cronExpression).inTimeZone(getTimeZone(timeZone)))
