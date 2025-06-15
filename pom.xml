@@ -29,17 +29,17 @@
     <maven.compiler.target>21</maven.compiler.target>
     <lombok.version>1.18.38</lombok.version>
     <mapstruct.version>1.6.3</mapstruct.version>
-    <hypersistence-utils-hibernate-63.version>3.9.11</hypersistence-utils-hibernate-63.version>
-    <swagger-annotations.version>2.2.32</swagger-annotations.version>
+    <hypersistence-utils-hibernate-63.version>3.10.1</hypersistence-utils-hibernate-63.version>
+    <swagger-annotations.version>2.2.33</swagger-annotations.version>
     <openapi-tools.jackson-databind-nullable.version>0.2.6</openapi-tools.jackson-databind-nullable.version>
     <folio-spring-support.version>10.0.0-SNAPSHOT</folio-spring-support.version>
     <commons-lang3.version>3.17.0</commons-lang3.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>26.0.4</keycloak.admin.client.version>
     <applications-poc-tools.version>3.1.0-SNAPSHOT</applications-poc-tools.version>
-    <aws.version>2.31.59</aws.version>
+    <aws.version>2.31.63</aws.version>
     <vault.version>5.1.0</vault.version>
-    <cron-utils.version>9.1.7</cron-utils.version>
+    <cron-utils.version>9.2.1</cron-utils.version>
 
     <mod-scheduler.yaml-file>${project.basedir}/src/main/resources/swagger.api/mod-scheduler.yaml
     </mod-scheduler.yaml-file>
