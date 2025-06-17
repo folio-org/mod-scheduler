@@ -11,8 +11,15 @@ Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 * [Compiling](#compiling)
 * [Running It](#running-it)
 * [Docker](#docker)
-* [Environment Variables](#environment-variables)
+* [Environment variables](#environment-variables)
+  * [Kafka environment variables](#kafka-environment-variables)
+  * [Retry environment variables](#retry-environment-variables)
+  * [Secure storage environment variables](#secure-storage-environment-variables)
+    * [AWS-SSM](#aws-ssm)
+    * [VAULT](#vault)
+    * [Folio Secure Store Proxy (FSSP)](#folio-secure-store-proxy-fssp)
   * [Quartz configuration properties](#quartz-configuration-properties)
+  * [Cron format for timers](#cron-format-for-timers)
 
 ## Introduction
 
@@ -105,7 +112,7 @@ docker run \
 | QUARTZ_POOL_THREAD_COUNT          | 5                       | The number of threads that are available for concurrent execution of jobs.                                                                                            |
 | okapi.url                         | -                       | Okapi URL used to perform HTTP requests for recurring jobs, required.                                                                                                 |
 | OKAPI_URL                         | -                       | Alias for `okapi.url`.                                                                                                                                                |
-| SECRET_STORE_TYPE                 | VAULT                   | Secure storage type. Supported values: `EPHEMERAL`, `AWS_SSM`, `VAULT`, required.                                                                                     |
+| SECRET_STORE_TYPE                 | VAULT                   | Secure storage type. Supported values: `EPHEMERAL`, `AWS_SSM`, `VAULT`, `FSSP`, required.                                                                             |
 | KC_INTEGRATION_ENABLED            | true                    | Defines if Keycloak integration is enabled or disabled.<br/>If it set to `false` - it will exclude all keycloak-related beans from spring context.                    |
 | KC_URL                            | http://keycloak:8080    | Keycloak URL used to perform HTTP requests.                                                                                                                           |
 | KC_IMPERSONATION_CLIENT           | impersonation-client    | Defined client in Keycloak, that has permissions to impersonate users.                                                                                                |
@@ -168,6 +175,19 @@ Required when `SECRET_STORE_TYPE=VAULT`
 | SECRET_STORE_VAULT_KEYSTORE_PASSWORD    | -             | the password used to access the JKS keystore (optional)                             |
 | SECRET_STORE_VAULT_KEYSTORE_FILE_PATH   | -             | the path to a JKS keystore file containing a client cert and private key            |
 | SECRET_STORE_VAULT_TRUSTSTORE_FILE_PATH | -             | the path to a JKS truststore file containing Vault server certs that can be trusted |
+
+#### Folio Secure Store Proxy (FSSP)
+
+Required when `SECRET_STORE_TYPE=FSSP`
+
+| Name                                   | Default value         | Description                                          |
+|:---------------------------------------|:----------------------|:-----------------------------------------------------|
+| SECRET_STORE_FSSP_ADDRESS              | -                     | The address (URL) of the FSSP service.               |
+| SECRET_STORE_FSSP_SECRET_PATH          | secure-store/entries  | The path in FSSP where secrets are stored/retrieved. |
+| SECRET_STORE_FSSP_ENABLE_SSL           | false                 | Whether to use SSL when connecting to FSSP.          |
+| SECRET_STORE_FSSP_TRUSTSTORE_PATH      | -                     | Path to the truststore file for SSL connections.     |
+| SECRET_STORE_FSSP_TRUSTSTORE_FILE_TYPE | -                     | The type of the truststore file (e.g., JKS, PKCS12). |
+| SECRET_STORE_FSSP_TRUSTSTORE_PASSWORD  | -                     | The password for the truststore file.                |
 
 ### Quartz configuration properties
 
