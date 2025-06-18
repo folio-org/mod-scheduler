@@ -1,6 +1,7 @@
-## Version `v4.0.0` (in progress)
+## Version `v3.0.1` (18.06.2025)
 ### Changes:
 * Normalize cron notation to the Quartz format (MODSCHED-33)
+* Add migration for cron-based timers (MODSCHED-37)
 ---
 
 ## Version `v3.0.0` (12.03.2025)
