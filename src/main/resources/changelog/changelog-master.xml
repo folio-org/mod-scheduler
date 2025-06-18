@@ -12,4 +12,5 @@
   <include file="changes/05_populate_natural_key_and_deduplicate.xml" relativeToChangelogFile="true"/>
   <include file="changes/06_add_module_id_column_to_timer.xml" relativeToChangelogFile="true"/>
   <include file="changes/07_add_type_column_to_timer.xml" relativeToChangelogFile="true"/>
+  <include file="changes/08_mark_cron_based_timers_as_outdated.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
