@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.5.4</version>
+    <version>3.5.5</version>
     <relativePath />
   </parent>
 
@@ -30,14 +30,14 @@
     <lombok.version>1.18.38</lombok.version>
     <mapstruct.version>1.6.3</mapstruct.version>
     <hypersistence-utils-hibernate-63.version>3.10.3</hypersistence-utils-hibernate-63.version>
-    <swagger-annotations.version>2.2.35</swagger-annotations.version>
-    <openapi-tools.jackson-databind-nullable.version>0.2.6</openapi-tools.jackson-databind-nullable.version>
+    <swagger-annotations.version>2.2.36</swagger-annotations.version>
+    <openapi-tools.jackson-databind-nullable.version>0.2.7</openapi-tools.jackson-databind-nullable.version>
     <folio-spring-support.version>10.0.0-SNAPSHOT</folio-spring-support.version>
     <commons-lang3.version>3.17.0</commons-lang3.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>26.0.6</keycloak.admin.client.version>
     <applications-poc-tools.version>3.1.0-SNAPSHOT</applications-poc-tools.version>
-    <aws.version>2.32.24</aws.version>
+    <aws.version>2.32.29</aws.version>
     <vault.version>5.1.0</vault.version>
     <cron-utils.version>9.2.1</cron-utils.version>
 
@@ -57,7 +57,7 @@
     <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
     <maven-failsafe-plugin.version>3.5.3</maven-failsafe-plugin.version>
     <maven-release-plugin.version>3.1.1</maven-release-plugin.version>
-    <openapi-generator.version>7.14.0</openapi-generator.version>
+    <openapi-generator.version>7.15.0</openapi-generator.version>
     <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
     <folio-java-checkstyle.version>1.2.0-SNAPSHOT</folio-java-checkstyle.version>
     <folio-module-descriptor-validator.version>1.0.1</folio-module-descriptor-validator.version>
