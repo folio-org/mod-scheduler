@@ -1,3 +1,8 @@
+## Version `v3.0.2` (09.09.2025)
+### Changes:
+* Upgrade to Keycloak 26.3.3 (KEYCLOAK-56)
+---
+
 ## Version `v3.0.1` (18.06.2025)
 ### Changes:
 * Normalize cron notation to the Quartz format (MODSCHED-33)
