@@ -8,11 +8,12 @@ import static org.mockito.Mockito.when;
 import java.util.Optional;
 import org.folio.common.configuration.properties.TlsProperties;
 import org.folio.common.utils.exception.SslInitializationException;
+import org.folio.scheduler.integration.keycloak.configuration.exception.NotFoundException;
 import org.folio.scheduler.integration.keycloak.configuration.properties.KeycloakAdminProperties;
 import org.folio.scheduler.integration.keycloak.configuration.properties.KeycloakProperties;
-import org.folio.scheduler.integration.securestore.SecureStore;
-import org.folio.scheduler.integration.securestore.exception.NotFoundException;
+import org.folio.security.integration.keycloak.service.KeycloakStoreKeyProvider;
 import org.folio.test.types.UnitTest;
+import org.folio.tools.store.SecureStore;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -29,14 +30,16 @@ class KeycloakConfigurationTest {
   @Mock private TlsProperties tlsProperties;
   @Mock private KeycloakAdminProperties keycloakAdminProperties;
   @Mock private SecureStore secureStore;
+  @Mock private KeycloakStoreKeyProvider keycloakStoreKeyProvider;
 
   @Test
   void keycloak_negative_secretNotFound_throwsIllegalStateException() {
     when(secureStore.lookup(anyString())).thenReturn(Optional.empty());
     when(keycloakProperties.getAdmin()).thenReturn(keycloakAdminProperties);
     when(keycloakAdminProperties.getClientId()).thenReturn("clientId");
+    when(keycloakStoreKeyProvider.globalStoreKey("clientId")).thenReturn("anyKey");
 
-    assertThrows(NotFoundException.class, () -> keycloakConfiguration.keycloak());
+    assertThrows(NotFoundException.class, () -> keycloakConfiguration.keycloak(keycloakStoreKeyProvider));
   }
 
   @Test
@@ -44,7 +47,7 @@ class KeycloakConfigurationTest {
     mockProperties();
     when(keycloakProperties.getTls()).thenReturn(tlsProperties);
     when(tlsProperties.isEnabled()).thenReturn(false);
-    var keycloakAdminClient = keycloakConfiguration.keycloak();
+    var keycloakAdminClient = keycloakConfiguration.keycloak(keycloakStoreKeyProvider);
 
     assertThat(keycloakAdminClient).isNotNull();
   }
@@ -54,7 +57,7 @@ class KeycloakConfigurationTest {
     mockProperties();
     when(keycloakProperties.getTls()).thenReturn(tlsProperties);
     mockKeycloakTlsProperties();
-    var keycloakAdminClient = keycloakConfiguration.keycloak();
+    var keycloakAdminClient = keycloakConfiguration.keycloak(keycloakStoreKeyProvider);
 
     assertThat(keycloakAdminClient).isNotNull();
   }
@@ -63,7 +66,7 @@ class KeycloakConfigurationTest {
   void keycloak_positive_tlsPropertiesIsNull() {
     mockProperties();
     when(keycloakProperties.getTls()).thenReturn(null);
-    var keycloakAdminClient = keycloakConfiguration.keycloak();
+    var keycloakAdminClient = keycloakConfiguration.keycloak(keycloakStoreKeyProvider);
 
     assertThat(keycloakAdminClient).isNotNull();
   }
@@ -74,7 +77,7 @@ class KeycloakConfigurationTest {
     when(keycloakProperties.getTls()).thenReturn(tlsProperties);
     mockWrongTrustStoreKeycloakTlsProperties();
 
-    assertThrows(SslInitializationException.class, () -> keycloakConfiguration.keycloak());
+    assertThrows(SslInitializationException.class, () -> keycloakConfiguration.keycloak(keycloakStoreKeyProvider));
   }
 
   private void mockKeycloakTlsProperties() {
@@ -92,6 +95,7 @@ class KeycloakConfigurationTest {
     when(secureStore.lookup(anyString())).thenReturn(Optional.of("password"));
     when(keycloakProperties.getAdmin()).thenReturn(keycloakAdminProperties);
     when(keycloakAdminProperties.getClientId()).thenReturn("clientId");
+    when(keycloakStoreKeyProvider.globalStoreKey("clientId")).thenReturn("anyKey");
     when(keycloakProperties.getBaseUrl()).thenReturn("http://localhost:8080");
   }
 }

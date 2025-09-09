@@ -9,6 +9,7 @@ import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerDescriptorList;
 import org.folio.scheduler.rest.resource.SchedulerApi;
 import org.folio.scheduler.service.SchedulerTimerService;
+import org.springframework.context.ApplicationContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SchedulerTimerController implements SchedulerApi {
 
   private final SchedulerTimerService schedulerTimerService;
+  private final ApplicationContext applicationContext;
 
   @Override
   public ResponseEntity<TimerDescriptor> createSchedulerTimers(TimerDescriptor timerDescriptor) {

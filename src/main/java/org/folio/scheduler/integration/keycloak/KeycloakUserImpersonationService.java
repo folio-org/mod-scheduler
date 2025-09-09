@@ -2,15 +2,15 @@ package org.folio.scheduler.integration.keycloak;
 
 import static java.net.URI.create;
 import static java.util.Collections.singletonList;
-import static org.folio.scheduler.integration.keycloak.utils.KeycloakSecretUtils.tenantStoreKey;
 import static org.keycloak.OAuth2Constants.TOKEN_EXCHANGE_GRANT_TYPE;
 
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.MultivaluedMap;
 import lombok.RequiredArgsConstructor;
 import org.folio.scheduler.integration.keycloak.configuration.properties.KeycloakProperties;
-import org.folio.scheduler.integration.securestore.SecureStore;
 import org.folio.scheduler.service.UserImpersonationService;
+import org.folio.security.integration.keycloak.service.KeycloakStoreKeyProvider;
+import org.folio.tools.store.SecureStore;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.token.TokenService;
 
@@ -21,6 +21,7 @@ public class KeycloakUserImpersonationService implements UserImpersonationServic
   private final KeycloakUserService userService;
   private final KeycloakProperties properties;
   private final SecureStore secureStore;
+  private final KeycloakStoreKeyProvider keycloakStoreKeyProvider;
 
   @Override
   public String impersonate(String tenant, String userId) {
@@ -41,7 +42,7 @@ public class KeycloakUserImpersonationService implements UserImpersonationServic
   }
 
   private String retrieveSecretFromSecretStore(String tenant, String clientId) {
-    var key = tenantStoreKey(tenant, clientId);
+    var key = keycloakStoreKeyProvider.tenantStoreKey(tenant, clientId);
     return secureStore.get(key);
   }
 }

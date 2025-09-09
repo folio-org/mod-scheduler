@@ -10,8 +10,9 @@ import static org.mockito.Mockito.when;
 
 import java.net.URI;
 import org.folio.scheduler.integration.keycloak.configuration.properties.KeycloakProperties;
-import org.folio.scheduler.integration.securestore.SecureStore;
+import org.folio.security.integration.keycloak.service.KeycloakStoreKeyProvider;
 import org.folio.test.types.UnitTest;
+import org.folio.tools.store.SecureStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,7 @@ class KeycloakUserImpersonationServiceTest {
   @Mock(answer = Answers.RETURNS_DEEP_STUBS) private KeycloakProperties properties;
   @Mock private SecureStore secureStore;
   @Mock private TokenService tokenService;
+  @Mock private KeycloakStoreKeyProvider keycloakStoreKeyProvider;
 
   @AfterEach
   void afterAll() {
@@ -56,6 +58,7 @@ class KeycloakUserImpersonationServiceTest {
 
       when(properties.getBaseUrl()).thenReturn(BASE_URL);
       when(properties.getImpersonationClient()).thenReturn(IMPERSONATION_CLIENT);
+      when(keycloakStoreKeyProvider.tenantStoreKey(TENANT_ID, IMPERSONATION_CLIENT)).thenReturn(KEY);
       when(secureStore.get(KEY)).thenReturn("clientSecret");
       when(keycloak.proxy(TokenService.class, URI.create(properties.getBaseUrl()))).thenReturn(tokenService);
       when(tokenService.grantToken(eq(TENANT_ID), any())).thenReturn(accessTokenResponse);
