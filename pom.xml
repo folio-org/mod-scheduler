@@ -36,7 +36,7 @@
     <commons-lang3.version>3.17.0</commons-lang3.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>26.0.6</keycloak.admin.client.version>
-    <applications-poc-tools.version>3.1.0-SNAPSHOT</applications-poc-tools.version>
+    <applications-poc-tools.version>3.0.4</applications-poc-tools.version>
     <aws.version>2.32.29</aws.version>
     <vault.version>5.1.0</vault.version>
     <cron-utils.version>9.1.7</cron-utils.version>
