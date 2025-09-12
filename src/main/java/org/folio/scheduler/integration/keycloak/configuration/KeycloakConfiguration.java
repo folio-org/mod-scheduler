@@ -15,7 +15,7 @@ import org.folio.scheduler.integration.keycloak.KeycloakUserImpersonationService
 import org.folio.scheduler.integration.keycloak.KeycloakUserService;
 import org.folio.scheduler.integration.keycloak.configuration.exception.NotFoundException;
 import org.folio.scheduler.integration.keycloak.configuration.properties.KeycloakProperties;
-import org.folio.security.integration.keycloak.service.KeycloakStoreKeyProvider;
+import org.folio.security.integration.keycloak.service.SecureStoreKeyProvider;
 import org.folio.tools.store.SecureStore;
 import org.folio.tools.store.configuration.SecureStoreAutoconfiguration;
 import org.folio.tools.store.properties.SecureStoreProperties;
@@ -45,15 +45,15 @@ public class KeycloakConfiguration {
   private final SecureStore secureStore;
 
   @Bean
-  public KeycloakStoreKeyProvider storeKeyProvider(SecureStoreProperties secureStoreProperties) {
-    return new KeycloakStoreKeyProvider(secureStoreProperties);
+  public SecureStoreKeyProvider secureStoreKeyProvider(SecureStoreProperties secureStoreProperties) {
+    return new SecureStoreKeyProvider(secureStoreProperties);
   }
 
   @Bean
-  public Keycloak keycloak(KeycloakStoreKeyProvider storeKeyProvider) {
+  public Keycloak keycloak(SecureStoreKeyProvider secureStoreKeyProvider) {
     var admin = properties.getAdmin();
     var clientId = admin.getClientId();
-    var globalStoreKey = storeKeyProvider.globalStoreKey(clientId);
+    var globalStoreKey = secureStoreKeyProvider.globalStoreKey(clientId);
     var secret = findSecret(globalStoreKey, clientId);
     var builder = KeycloakBuilder.builder()
       .realm(ADMIN_REALM)
@@ -76,8 +76,8 @@ public class KeycloakConfiguration {
 
   @Bean
   public KeycloakUserImpersonationService keycloakUserImpersonationService(Keycloak keycloak,
-    KeycloakUserService userService, KeycloakStoreKeyProvider storeKeyProvider) {
-    return new KeycloakUserImpersonationService(keycloak, userService, properties, secureStore, storeKeyProvider);
+    KeycloakUserService userService, SecureStoreKeyProvider secureStoreKeyProvider) {
+    return new KeycloakUserImpersonationService(keycloak, userService, properties, secureStore, secureStoreKeyProvider);
   }
 
   private String findSecret(String globalStoreKey, String clientId) {

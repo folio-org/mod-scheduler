@@ -9,7 +9,7 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import lombok.RequiredArgsConstructor;
 import org.folio.scheduler.integration.keycloak.configuration.properties.KeycloakProperties;
 import org.folio.scheduler.service.UserImpersonationService;
-import org.folio.security.integration.keycloak.service.KeycloakStoreKeyProvider;
+import org.folio.security.integration.keycloak.service.SecureStoreKeyProvider;
 import org.folio.tools.store.SecureStore;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.token.TokenService;
@@ -21,7 +21,7 @@ public class KeycloakUserImpersonationService implements UserImpersonationServic
   private final KeycloakUserService userService;
   private final KeycloakProperties properties;
   private final SecureStore secureStore;
-  private final KeycloakStoreKeyProvider keycloakStoreKeyProvider;
+  private final SecureStoreKeyProvider secureStoreKeyProvider;
 
   @Override
   public String impersonate(String tenant, String userId) {
@@ -42,7 +42,7 @@ public class KeycloakUserImpersonationService implements UserImpersonationServic
   }
 
   private String retrieveSecretFromSecretStore(String tenant, String clientId) {
-    var key = keycloakStoreKeyProvider.tenantStoreKey(tenant, clientId);
+    var key = secureStoreKeyProvider.tenantStoreKey(tenant, clientId);
     return secureStore.get(key);
   }
 }
