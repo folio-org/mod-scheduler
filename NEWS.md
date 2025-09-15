@@ -7,6 +7,7 @@
 ### Changes:
 * Normalize cron notation to the Quartz format (MODSCHED-33)
 * Add migration for cron-based timers (MODSCHED-37)
+* Use SECURE_STORE_ENV, not ENV, for secure store key (MODSCHED-45)
 ---
 
 ## Version `v3.0.0` (12.03.2025)

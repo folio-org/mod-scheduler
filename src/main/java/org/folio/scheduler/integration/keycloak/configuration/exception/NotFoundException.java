@@ -1,4 +1,4 @@
-package org.folio.scheduler.integration.securestore.exception;
+package org.folio.scheduler.integration.keycloak.configuration.exception;
 
 import java.io.Serial;
 
