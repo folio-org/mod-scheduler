@@ -17,8 +17,6 @@ import org.folio.scheduler.integration.keycloak.configuration.exception.NotFound
 import org.folio.scheduler.integration.keycloak.configuration.properties.KeycloakProperties;
 import org.folio.security.integration.keycloak.service.SecureStoreKeyProvider;
 import org.folio.tools.store.SecureStore;
-import org.folio.tools.store.configuration.SecureStoreAutoconfiguration;
-import org.folio.tools.store.properties.SecureStoreProperties;
 import org.jboss.resteasy.client.jaxrs.ResteasyClient;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
@@ -26,14 +24,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 
 @Log4j2
 @Configuration
 @ConditionalOnProperty(name = "application.keycloak.enabled", havingValue = "true")
 @EnableConfigurationProperties(KeycloakProperties.class)
 @RequiredArgsConstructor
-@Import(SecureStoreAutoconfiguration.class)
 public class KeycloakConfiguration {
 
   private static final DefaultHostnameVerifier DEFAULT_HOSTNAME_VERIFIER = new DefaultHostnameVerifier();
@@ -43,11 +39,6 @@ public class KeycloakConfiguration {
 
   private final KeycloakProperties properties;
   private final SecureStore secureStore;
-
-  @Bean
-  public SecureStoreKeyProvider secureStoreKeyProvider(SecureStoreProperties secureStoreProperties) {
-    return new SecureStoreKeyProvider(secureStoreProperties);
-  }
 
   @Bean
   public Keycloak keycloak(SecureStoreKeyProvider secureStoreKeyProvider) {
