@@ -122,6 +122,7 @@ public class JobSchedulingService {
     try {
       scheduler.deleteJob(jobKey(timerDescriptor.getId().toString()));
     } catch (SchedulerException exception) {
+      log.error("Failed to delete job [jobId: {}] : {}", timerDescriptor.getId(), exception.getMessage());
       throw new TimerSchedulingException("Failed to delete job", exception);
     }
   }
