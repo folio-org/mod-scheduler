@@ -84,6 +84,7 @@ public class JobSchedulingService {
     } catch (ObjectAlreadyExistsException alreadyExistsException) {
       return false;
     } catch (SchedulerException exception) {
+      log.error("Failed to schedule job [jobId: {}] : {}", timerDescriptor.getId(), exception.getMessage());
       throw new TimerSchedulingException("Failed to schedule job", exception);
     }
     return true;
@@ -103,6 +104,7 @@ public class JobSchedulingService {
     try {
       rescheduleJob(oldTimerDescriptor, timerDescriptor);
     } catch (SchedulerException exception) {
+      log.error("Failed to reschedule job [jobId: {}] : {}", timerDescriptor.getId(), exception.getMessage());
       throw new TimerSchedulingException("Failed to reschedule job", exception);
     }
   }
@@ -122,6 +124,7 @@ public class JobSchedulingService {
     try {
       scheduler.deleteJob(jobKey(timerDescriptor.getId().toString()));
     } catch (SchedulerException exception) {
+      log.error("Failed to delete job [jobId: {}] : {}", timerDescriptor.getId(), exception.getMessage());
       throw new TimerSchedulingException("Failed to delete job", exception);
     }
   }

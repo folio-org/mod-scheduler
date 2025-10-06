@@ -4,6 +4,7 @@
 * Introduce configuration for FSSP (APPPOCTOOL-59)
 * Add migration for cron-based timers (MODSCHED-37)
 * Use SECURE_STORE_ENV, not ENV, for secure store key (MODSCHED-45)
+* Deleted tenants don`t disaper from mod-schedulers jobs (MODSCHED-43)
 ---
 
 ## Version `v3.0.0` (12.03.2025)
