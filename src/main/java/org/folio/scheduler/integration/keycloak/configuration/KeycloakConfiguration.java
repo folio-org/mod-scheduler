@@ -11,6 +11,7 @@ import lombok.extern.log4j.Log4j2;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.folio.common.configuration.properties.TlsProperties;
+import org.folio.scheduler.integration.keycloak.ClientSecretService;
 import org.folio.scheduler.integration.keycloak.KeycloakUserImpersonationService;
 import org.folio.scheduler.integration.keycloak.KeycloakUserService;
 import org.folio.scheduler.integration.keycloak.configuration.exception.NotFoundException;
@@ -66,9 +67,14 @@ public class KeycloakConfiguration {
   }
 
   @Bean
+  public ClientSecretService clientSecretService(SecureStoreKeyProvider secureStoreKeyProvider) {
+    return new ClientSecretService(secureStore, secureStoreKeyProvider);
+  }
+
+  @Bean
   public KeycloakUserImpersonationService keycloakUserImpersonationService(Keycloak keycloak,
-    KeycloakUserService userService, SecureStoreKeyProvider secureStoreKeyProvider) {
-    return new KeycloakUserImpersonationService(keycloak, userService, properties, secureStore, secureStoreKeyProvider);
+    KeycloakUserService userService, ClientSecretService clientSecretService) {
+    return new KeycloakUserImpersonationService(keycloak, userService, properties, clientSecretService);
   }
 
   private String findSecret(String globalStoreKey, String clientId) {

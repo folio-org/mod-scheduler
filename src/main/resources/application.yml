@@ -112,6 +112,7 @@ coffee-boots:
     spec:
       keycloak-user-id: maximumSize=200,expireAfterWrite=6000s
       system-user-id: maximumSize=200,expireAfterWrite=6000s
+      client-secret-key: maximumSize=${CLIENT_SECRET_KEY_CACHE_MAX_SIZE:200},expireAfterWrite=${CLIENT_SECRET_KEY_CACHE_TTL:6000s}
 
 okapi.url: ${OKAPI_URL:http://localhost:9130}
 server.port: 8081
