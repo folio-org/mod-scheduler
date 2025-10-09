@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.ONE_SECOND;
 import static org.awaitility.Durations.TEN_SECONDS;
+import static org.folio.scheduler.domain.dto.TimerUnit.HOUR;
 import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
@@ -168,7 +169,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
         .methods(List.of("POST"))
         .pathPattern("/test/sometimer")
         .delay("1")
-        .unit(SECOND));
+        .unit(HOUR));
 
     var initialTimersCount =
       objectMapper.readValue(doGet("/scheduler/timers").andReturn().getResponse().getContentAsString(),
