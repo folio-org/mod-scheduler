@@ -106,6 +106,11 @@ application:
       entitlement-event:
         retry-delay: ${ENTITLEMENT_EVENT_RETRY_DELAY:1s}
         retry-attempts: ${ENTITLEMENT_EVENT_ATTEMPTS:2147483647}
+  token-cache:
+    capacity:
+      initial: ${TOKEN_CACHE_INITIAL_CAPACITY:10}
+      max: ${TOKEN_CACHE_MAX_CAPACITY:50}
+    refresh-before-expiry-sec: ${TOKEN_CACHE_REFRESH_PRIOR_EXPIRATION:25}
 
 coffee-boots:
   cache:

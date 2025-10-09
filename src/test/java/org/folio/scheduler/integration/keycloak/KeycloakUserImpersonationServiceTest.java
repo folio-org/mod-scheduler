@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import java.net.URI;
 import org.folio.scheduler.integration.keycloak.configuration.properties.KeycloakProperties;
 import org.folio.test.types.UnitTest;
@@ -39,6 +40,7 @@ class KeycloakUserImpersonationServiceTest {
   @Mock(answer = Answers.RETURNS_DEEP_STUBS) private KeycloakProperties properties;
   @Mock private TokenService tokenService;
   @Mock private ClientSecretService clientSecretService;
+  @Mock private Cache<String, AccessTokenResponse> tokenCache;
 
   @AfterEach
   void afterAll() {
