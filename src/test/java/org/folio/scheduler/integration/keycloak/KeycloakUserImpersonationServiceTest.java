@@ -5,6 +5,8 @@ import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.support.TestConstants.USER_ID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
@@ -32,7 +34,6 @@ class KeycloakUserImpersonationServiceTest {
   private static final String BASE_URL = "http://test-url";
   private static final String TOKEN = "token";
   private static final String IMPERSONATION_CLIENT = "impersonation-client";
-  private static final String KEY = "folio_" + TENANT_ID + "_" + IMPERSONATION_CLIENT;
 
   @InjectMocks private KeycloakUserImpersonationService service;
   @Mock private Keycloak keycloak;
@@ -65,6 +66,9 @@ class KeycloakUserImpersonationServiceTest {
 
       var token = service.impersonate(TENANT_ID, USER_ID);
       assertThat(token).isEqualTo(TOKEN);
+      var cacheKey = TENANT_ID + ":" + USER_ID;
+      verify(tokenCache).getIfPresent(eq(cacheKey));
+      verify(tokenCache).put(eq(cacheKey), isA(AccessTokenResponse.class));
     }
   }
 }
