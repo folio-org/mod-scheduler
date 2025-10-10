@@ -18,9 +18,10 @@ class TokenUtilsTest {
 
     var result = tokenResponseAsString(tokenResponse);
 
-    assertThat(result).contains("accessToken=" + DigestUtils.sha256Hex("validAccessToken"));
-    assertThat(result).contains("refreshToken=" + DigestUtils.sha256Hex("validRefreshToken"));
-    assertThat(result).contains("expiresIn=100");
+    assertThat(result)
+      .contains("accessToken=" + DigestUtils.sha256Hex("validAccessToken"))
+      .contains("refreshToken=" + DigestUtils.sha256Hex("validRefreshToken"))
+      .contains("expiresIn=100");
   }
 
   @Test
@@ -32,8 +33,8 @@ class TokenUtilsTest {
 
     var result = tokenResponseAsString(tokenResponse);
 
-    assertThat(result).contains("accessToken=<null>");
-    assertThat(result).contains("refreshToken=<null>");
-    assertThat(result).contains("expiresIn=100");
+    assertThat(result).contains("accessToken=<null>")
+      .contains("refreshToken=<null>")
+      .contains("expiresIn=100");
   }
 }
