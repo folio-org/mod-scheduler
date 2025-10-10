@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.folio.scheduler.utils.TokenUtils.tokenResponseAsString;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.folio.test.types.UnitTest;
 import org.junit.jupiter.api.Test;
 import org.keycloak.representations.AccessTokenResponse;
 
+@UnitTest
 class TokenUtilsTest {
 
   @Test
@@ -26,7 +28,7 @@ class TokenUtilsTest {
 
   @Test
   void tokenResponseAsString_positive_tokenAndRefreshTokenAreNull() {
-    AccessTokenResponse tokenResponse = new AccessTokenResponse();
+    var tokenResponse = new AccessTokenResponse();
     tokenResponse.setToken(null);
     tokenResponse.setRefreshToken(null);
     tokenResponse.setExpiresIn(100L);
