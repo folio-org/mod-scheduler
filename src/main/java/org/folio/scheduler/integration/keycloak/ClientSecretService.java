@@ -7,6 +7,7 @@ import org.springframework.cache.annotation.Cacheable;
 
 @RequiredArgsConstructor
 public class ClientSecretService {
+
   private final SecureStore secureStore;
   private final SecureStoreKeyProvider secureStoreKeyProvider;
 
