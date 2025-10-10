@@ -10,15 +10,15 @@ import org.keycloak.representations.AccessTokenResponse;
 @UtilityClass
 public class TokenUtils {
 
-  public static String tokenHash(String token) {
-    return isNotEmpty(token) ? DigestUtils.sha256Hex(token) : null;
-  }
-
   public static String tokenResponseAsString(AccessTokenResponse tokenResponse) {
     return new ToStringBuilder(tokenResponse)
       .append("accessToken", tokenHash(tokenResponse.getToken()))
       .append("refreshToken", tokenHash(tokenResponse.getRefreshToken()))
       .append("expiresIn", tokenResponse.getExpiresIn())
       .toString();
+  }
+
+  private static String tokenHash(String token) {
+    return isNotEmpty(token) ? DigestUtils.sha256Hex(token) : null;
   }
 }

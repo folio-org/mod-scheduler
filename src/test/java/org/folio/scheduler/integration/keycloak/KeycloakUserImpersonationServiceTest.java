@@ -67,7 +67,7 @@ class KeycloakUserImpersonationServiceTest {
       var token = service.impersonate(TENANT_ID, USER_ID);
       assertThat(token).isEqualTo(TOKEN);
       var cacheKey = TENANT_ID + ":" + USER_ID;
-      verify(tokenCache).getIfPresent(eq(cacheKey));
+      verify(tokenCache).getIfPresent(cacheKey);
       verify(tokenCache).put(eq(cacheKey), isA(AccessTokenResponse.class));
     }
   }
