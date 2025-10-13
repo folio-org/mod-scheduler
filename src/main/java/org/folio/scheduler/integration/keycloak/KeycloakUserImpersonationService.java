@@ -32,7 +32,7 @@ public class KeycloakUserImpersonationService implements UserImpersonationServic
     if (accessTokenResponse == null) {
       accessTokenResponse = getUserToken(tenant, userId);
       tokenCache.put(key, accessTokenResponse);
-      log.debug("Update cache with user token : tenant = {}, userId = {}", tenant, userId);
+      log.debug("Update cache with user token: tenant = {}, userId = {}", tenant, userId);
     }
     return accessTokenResponse.getToken();
   }
