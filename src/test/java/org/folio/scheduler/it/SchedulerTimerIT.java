@@ -160,6 +160,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   }
 
   @Test
+  @WireMockStub("/wiremock/stubs/test-sometimer-endpoint.json")
   void create_duplicate() throws Exception {
     var timerDescriptor = new TimerDescriptor()
       .enabled(true)
