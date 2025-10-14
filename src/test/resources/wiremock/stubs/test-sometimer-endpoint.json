@@ -1,7 +1,7 @@
 {
   "request": {
     "method": "POST",
-    "urlPattern": "/test.*",
+    "urlPattern": "/test/sometimer",
     "headers": {
       "Content-Type": {
         "equalTo": "application/json"
