@@ -1,3 +1,8 @@
+## Version `v3.0.4` (15.10.2025)
+### Changes:
+* Cache client secret to reduce the number of requests to secret storage (MODSCHED-44)
+---
+
 ## Version `v3.0.3` (30.09.2025)
 ### Changes:
 * Use SECURE_STORE_ENV, not ENV, for secure store key (MODSCHED-45)
