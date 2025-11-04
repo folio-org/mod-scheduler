@@ -55,6 +55,10 @@ spring:
     openfeign:
       okhttp:
         enabled: true
+  cache:
+    cache-names: keycloak-user-id, system-user-id, client-secret-key
+    caffeine:
+      spec: maximumSize=200,expireAfterWrite=1800s
 
 application:
   keycloak:
@@ -111,13 +115,6 @@ application:
       initial: ${TOKEN_CACHE_INITIAL_CAPACITY:10}
       max: ${TOKEN_CACHE_MAX_CAPACITY:50}
     refresh-before-expiry-sec: ${TOKEN_CACHE_REFRESH_PRIOR_EXPIRATION:25}
-
-coffee-boots:
-  cache:
-    spec:
-      keycloak-user-id: maximumSize=200,expireAfterWrite=6000s
-      system-user-id: maximumSize=200,expireAfterWrite=6000s
-      client-secret-key: maximumSize=${CLIENT_SECRET_KEY_CACHE_MAX_SIZE:200},expireAfterWrite=${CLIENT_SECRET_KEY_CACHE_TTL:6000s}
 
 okapi.url: ${OKAPI_URL:http://localhost:9130}
 server.port: 8081
