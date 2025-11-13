@@ -25,6 +25,7 @@ import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.integration.OkapiClient;
+import org.folio.scheduler.integration.keycloak.SystemUserService;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.scheduler.service.UserImpersonationService;
 import org.folio.scheduler.support.TestConstants;
@@ -59,6 +60,7 @@ class OkapiHttpRequestExecutorTest {
   @Mock private SchedulerTimerService schedulerTimerService;
   @Mock private OkapiConfigurationProperties okapiConfigurationProperties;
   @Mock private UserImpersonationService userImpersonationService;
+  @Mock private SystemUserService systemUserService;
 
   @BeforeEach
   void setUp() {
@@ -170,11 +172,56 @@ class OkapiHttpRequestExecutorTest {
     verifyNoInteractions(okapiClient);
   }
 
+  @Test
+  void execute_positive_userIdNotInJobDataMap() {
+    var re = new RoutingEntry().methods(List.of("GET")).pathPattern("/test-endpoint");
+    when(folioModuleMetadata.getModuleName()).thenReturn(MODULE_NAME);
+    when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetailWithoutUserId());
+    when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(of(timerDescriptor(re)));
+    when(systemUserService.findSystemUserId(TENANT_ID)).thenReturn(TestConstants.USER_ID);
+
+    job.execute(jobExecutionContext);
+
+    verify(okapiClient).doGet(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_ID);
+    verify(systemUserService).findSystemUserId(TENANT_ID);
+  }
+
+  @Test
+  void execute_positive_userIdEmptyInJobDataMap() {
+    var re = new RoutingEntry().methods(List.of("POST")).pathPattern("/test-endpoint");
+    when(folioModuleMetadata.getModuleName()).thenReturn(MODULE_NAME);
+    when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetailWithEmptyUserId());
+    when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(of(timerDescriptor(re)));
+    when(systemUserService.findSystemUserId(TENANT_ID)).thenReturn(TestConstants.USER_ID);
+
+    job.execute(jobExecutionContext);
+
+    verify(okapiClient).doPost(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_ID);
+    verify(systemUserService).findSystemUserId(TENANT_ID);
+  }
+
   private static JobDetailImpl jobDetail() {
     var jobDetail = new JobDetailImpl();
     jobDetail.setName(TIMER_ID);
     jobDetail.getJobDataMap().put(TENANT, TENANT_ID);
     jobDetail.getJobDataMap().put(XOkapiHeaders.USER_ID, TestConstants.USER_ID);
+    return jobDetail;
+  }
+
+  private static JobDetailImpl jobDetailWithoutUserId() {
+    var jobDetail = new JobDetailImpl();
+    jobDetail.setName(TIMER_ID);
+    jobDetail.getJobDataMap().put(TENANT, TENANT_ID);
+    return jobDetail;
+  }
+
+  private static JobDetailImpl jobDetailWithEmptyUserId() {
+    var jobDetail = new JobDetailImpl();
+    jobDetail.setName(TIMER_ID);
+    jobDetail.getJobDataMap().put(TENANT, TENANT_ID);
+    jobDetail.getJobDataMap().put(XOkapiHeaders.USER_ID, "");
     return jobDetail;
   }
 
