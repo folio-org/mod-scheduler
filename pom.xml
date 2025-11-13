@@ -29,7 +29,7 @@
     <maven.compiler.target>21</maven.compiler.target>
     <lombok.version>1.18.42</lombok.version>
     <mapstruct.version>1.6.3</mapstruct.version>
-    <hypersistence-utils-hibernate-63.version>3.11.0</hypersistence-utils-hibernate-63.version>
+    <hypersistence-utils-hibernate-63.version>3.12.0</hypersistence-utils-hibernate-63.version>
     <swagger-annotations.version>2.2.40</swagger-annotations.version>
     <openapi-tools.jackson-databind-nullable.version>0.2.8</openapi-tools.jackson-databind-nullable.version>
     <folio-spring-support.version>10.0.0-SNAPSHOT</folio-spring-support.version>
@@ -37,7 +37,7 @@
     <commons-collections4.version>4.4</commons-collections4.version>
     <keycloak.admin.client.version>26.0.6</keycloak.admin.client.version>
     <applications-poc-tools.version>3.1.0-SNAPSHOT</applications-poc-tools.version>
-    <aws.version>2.37.3</aws.version>
+    <aws.version>2.38.2</aws.version>
     <vault.version>5.1.0</vault.version>
     <cron-utils.version>9.2.1</cron-utils.version>
 
@@ -57,7 +57,7 @@
     <copy-rename-maven-plugin.version>1.0.1</copy-rename-maven-plugin.version>
     <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
     <maven-failsafe-plugin.version>3.5.4</maven-failsafe-plugin.version>
-    <maven-release-plugin.version>3.1.1</maven-release-plugin.version>
+    <maven-release-plugin.version>3.2.0</maven-release-plugin.version>
     <openapi-generator.version>7.17.0</openapi-generator.version>
     <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
     <folio-java-checkstyle.version>1.2.0</folio-java-checkstyle.version>
