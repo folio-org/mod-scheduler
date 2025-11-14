@@ -106,6 +106,18 @@ class JobSchedulingServiceTest {
   }
 
   @Test
+  void schedule_positive_withNullUserId() throws SchedulerException {
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    when(folioExecutionContext.getUserId()).thenReturn(null);
+    when(scheduler.scheduleJob(any(JobDetail.class), triggerArgumentCaptor.capture())).thenReturn(new Date());
+    var timerDescriptor = timerDescriptor().routingEntry(new RoutingEntry().delay("10").unit(SECOND));
+
+    assertThat(service.schedule(timerDescriptor)).isTrue();
+
+    verify(scheduler).scheduleJob(any(JobDetail.class), any(Trigger.class));
+  }
+
+  @Test
   void schedule_negative_duplicate() throws  Exception {
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
     when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
@@ -180,16 +192,6 @@ class JobSchedulingServiceTest {
     assertThatThrownBy(() -> service.schedule(timerDescriptor))
       .isInstanceOf(TimerSchedulingException.class)
       .hasMessage("Failed to schedule job");
-  }
-
-  @Test
-  void reschedule_positive_routingEntryIsNull() throws SchedulerException {
-    var oldTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().unit(SECOND).delay("10"));
-    var newTimerDesc = timerDescriptor().routingEntry(null);
-
-    service.reschedule(oldTimerDesc, newTimerDesc);
-
-    verify(scheduler).deleteJob(jobKey(TIMER_ID));
   }
 
   @MethodSource("updatedSimpleRoutingEntries")

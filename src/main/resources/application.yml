@@ -19,6 +19,8 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   mustache:
     check-template-location: false
+  cache:
+    type: caffeine
   kafka:
     bootstrap-servers: ${KAFKA_HOST:kafka}:${KAFKA_PORT:9092}
     consumer:
@@ -108,8 +110,8 @@ application:
 coffee-boots:
   cache:
     spec:
-      keycloak-user-id: maximumSize=200,expireAfterWrite=6000s
-      system-user-id: maximumSize=200,expireAfterWrite=6000s
+      keycloak-user-id: maximumSize=200,expireAfterWrite=1800s
+      system-user-id: maximumSize=200,expireAfterWrite=1800s
       client-secret-key: maximumSize=${CLIENT_SECRET_KEY_CACHE_MAX_SIZE:200},expireAfterWrite=${CLIENT_SECRET_KEY_CACHE_TTL:6000s}
 
 okapi.url: ${OKAPI_URL:http://localhost:9130}
