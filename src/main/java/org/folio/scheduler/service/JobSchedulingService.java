@@ -36,6 +36,7 @@ import org.folio.scheduler.service.jobs.OkapiHttpRequestExecutor;
 import org.folio.scheduler.utils.Validate;
 import org.folio.spring.FolioExecutionContext;
 import org.quartz.CronTrigger;
+import org.quartz.JobDetail;
 import org.quartz.ObjectAlreadyExistsException;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -73,11 +74,7 @@ public class JobSchedulingService {
       return false;
     }
 
-    var scheduledTask = newJob(OkapiHttpRequestExecutor.class)
-      .withIdentity(timerDescriptor.getId().toString())
-      .usingJobData(TENANT, folioExecutionContext.getTenantId())
-      .usingJobData(USER_ID, folioExecutionContext.getUserId().toString())
-      .build();
+    var scheduledTask = getJobDetail(timerDescriptor);
 
     try {
       scheduler.scheduleJob(scheduledTask, getTrigger(timerDescriptor));
@@ -153,6 +150,16 @@ public class JobSchedulingService {
 
     scheduler.deleteJob(jobKey(timerId.toString()));
     log.info("Recurring job be deleted, timer is disabled [timerId: {}]", timerId);
+  }
+
+  private JobDetail getJobDetail(TimerDescriptor timerDescriptor) {
+    var task = newJob(OkapiHttpRequestExecutor.class)
+      .withIdentity(timerDescriptor.getId().toString())
+      .usingJobData(TENANT, folioExecutionContext.getTenantId());
+    if (folioExecutionContext.getUserId() != null) {
+      task.usingJobData(USER_ID, folioExecutionContext.getUserId().toString());
+    }
+    return task.build();
   }
 
   private Trigger getTrigger(TimerDescriptor timerDescriptor) {

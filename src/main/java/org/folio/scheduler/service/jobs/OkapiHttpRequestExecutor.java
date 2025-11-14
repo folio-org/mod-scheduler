@@ -8,11 +8,12 @@ import static java.util.Collections.singletonList;
 import static java.util.Map.entry;
 import static java.util.concurrent.ThreadLocalRandom.current;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.common.utils.OkapiHeaders.USER_ID;
 import static org.folio.spring.integration.XOkapiHeaders.REQUEST_ID;
 import static org.folio.spring.integration.XOkapiHeaders.TENANT;
 import static org.folio.spring.integration.XOkapiHeaders.TOKEN;
 import static org.folio.spring.integration.XOkapiHeaders.URL;
-import static org.folio.spring.integration.XOkapiHeaders.USER_ID;
 import static org.springframework.web.util.UriComponentsBuilder.fromUriString;
 
 import feign.FeignException;
@@ -30,6 +31,7 @@ import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.integration.OkapiClient;
+import org.folio.scheduler.integration.keycloak.SystemUserService;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.scheduler.service.UserImpersonationService;
 import org.folio.spring.FolioModuleMetadata;
@@ -48,6 +50,7 @@ public class OkapiHttpRequestExecutor implements Job {
   private final OkapiConfigurationProperties okapiConfigurationProperties;
   private final Map<HttpMethod, BiConsumer<URI, String>> okapiCallMap;
   private final UserImpersonationService userImpersonationService;
+  private final SystemUserService systemUserService;
 
   /**
    * Injects required spring components into {@link OkapiHttpRequestExecutor} bean.
@@ -58,13 +61,13 @@ public class OkapiHttpRequestExecutor implements Job {
    * @param okapiConfigurationProperties - {@link OkapiConfigurationProperties} component
    */
   public OkapiHttpRequestExecutor(OkapiClient okapiClient, FolioModuleMetadata folioModuleMetadata,
-    SchedulerTimerService schedulerTimerService,
-    OkapiConfigurationProperties okapiConfigurationProperties,
-    UserImpersonationService userImpersonationService) {
+    SchedulerTimerService schedulerTimerService, OkapiConfigurationProperties okapiConfigurationProperties,
+    UserImpersonationService userImpersonationService, SystemUserService systemUserService) {
     this.folioModuleMetadata = folioModuleMetadata;
     this.schedulerTimerService = schedulerTimerService;
     this.okapiConfigurationProperties = okapiConfigurationProperties;
     this.userImpersonationService = userImpersonationService;
+    this.systemUserService = systemUserService;
 
     this.okapiCallMap = Map.ofEntries(
       entry(GET, okapiClient::doGet),
@@ -124,18 +127,26 @@ public class OkapiHttpRequestExecutor implements Job {
   }
 
   private static String getStaticPath(RoutingEntry re) {
-    var resolvedPath = StringUtils.isEmpty(re.getPath()) ? re.getPathPattern() : re.getPath();
+    var resolvedPath = isEmpty(re.getPath()) ? re.getPathPattern() : re.getPath();
     return resolvedPath.startsWith("/") ? resolvedPath : "/" + resolvedPath;
   }
 
+  @SuppressWarnings("java:S2245")
   private Map<String, Collection<String>> prepareAllHeadersMap(JobDataMap jobDataMap) {
     var headers = new HashMap<String, Collection<String>>();
     var tenant = (String) jobDataMap.get(TENANT);
-    var userId = (String) jobDataMap.get(USER_ID);
+    var userId = getUserId(jobDataMap, tenant);
+
     headers.put(URL, singletonList(okapiConfigurationProperties.getUrl()));
     headers.put(TOKEN, singletonList(userImpersonationService.impersonate(tenant, userId)));
     headers.put(REQUEST_ID, singletonList(String.format("%06d", current().nextInt(1000000))));
     headers.put(TENANT, singletonList(tenant));
     return headers;
+  }
+
+  private String getUserId(JobDataMap jobDataMap, String tenant) {
+    return jobDataMap.get(USER_ID) == null || isEmpty((String) jobDataMap.get(USER_ID))
+      ? systemUserService.findSystemUserId(tenant)
+      : (String) jobDataMap.get(USER_ID);
   }
 }

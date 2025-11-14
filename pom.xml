@@ -53,6 +53,7 @@
     <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
     <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
     <maven-checkstyle.version>12.1.1</maven-checkstyle.version>
+    <coffee-boots.version>4.0.0</coffee-boots.version>
     <copy-rename-maven-plugin.version>1.0.1</copy-rename-maven-plugin.version>
     <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
     <maven-failsafe-plugin.version>3.5.4</maven-failsafe-plugin.version>
@@ -94,6 +95,12 @@
       <groupId>org.folio</groupId>
       <artifactId>folio-spring-cql</artifactId>
       <version>${folio-spring-support.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.github.stepio.coffee-boots</groupId>
+      <artifactId>coffee-boots</artifactId>
+      <version>${coffee-boots.version}</version>
     </dependency>
 
     <dependency>
