@@ -166,12 +166,12 @@ public class KafkaMessageListener {
   }
 
   private static void logCreatingTimers(List<RoutingEntry> entries) {
-    log.info("Processing scheduled job event from kafka: timers = {}",
+    log.debug("Processing scheduled job event from kafka: timers = {}",
       () -> mapItems(entries, KafkaMessageListener::getRoutingEntryKey));
   }
 
   private static void logDeletingTimers(List<TimerDescriptor> timers) {
-    log.info("Deleting timers: timers = {}",
+    log.debug("Deleting timers: timers = {}",
       () -> mapItems(timers, t -> getRoutingEntryKey(t.getRoutingEntry())));
   }
 
