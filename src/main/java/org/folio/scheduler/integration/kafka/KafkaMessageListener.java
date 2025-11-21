@@ -8,7 +8,6 @@ import static org.folio.common.utils.CollectionUtils.mapItems;
 import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
 import static org.folio.scheduler.utils.OkapiRequestUtils.getStaticPath;
 import static org.folio.spring.integration.XOkapiHeaders.TENANT;
-import static org.folio.spring.integration.XOkapiHeaders.USER_ID;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -23,7 +22,6 @@ import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
-import org.folio.scheduler.integration.keycloak.SystemUserService;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.spring.FolioModuleMetadata;
 import org.folio.spring.scope.FolioExecutionContextSetter;
@@ -35,7 +33,6 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class KafkaMessageListener {
 
-  private final SystemUserService systemUserService;
   private final FolioModuleMetadata folioModuleMetadata;
   private final SchedulerTimerService schedulerTimerService;
 
@@ -152,7 +149,6 @@ public class KafkaMessageListener {
   private Map<String, Collection<String>> prepareContextHeaders(String tenant) {
     var headers = new HashMap<String, Collection<String>>();
     headers.put(TENANT, singletonList(tenant));
-    headers.put(USER_ID, singletonList(systemUserService.findSystemUserId(tenant)));
     return headers;
   }
 
@@ -170,12 +166,12 @@ public class KafkaMessageListener {
   }
 
   private static void logCreatingTimers(List<RoutingEntry> entries) {
-    log.info("Processing scheduled job event from kafka: timers = {}",
+    log.debug("Processing scheduled job event from kafka: timers = {}",
       () -> mapItems(entries, KafkaMessageListener::getRoutingEntryKey));
   }
 
   private static void logDeletingTimers(List<TimerDescriptor> timers) {
-    log.info("Deleting timers: timers = {}",
+    log.debug("Deleting timers: timers = {}",
       () -> mapItems(timers, t -> getRoutingEntryKey(t.getRoutingEntry())));
   }
 

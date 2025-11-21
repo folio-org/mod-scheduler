@@ -36,6 +36,7 @@ import org.folio.scheduler.service.jobs.OkapiHttpRequestExecutor;
 import org.folio.scheduler.utils.Validate;
 import org.folio.spring.FolioExecutionContext;
 import org.quartz.CronTrigger;
+import org.quartz.JobDetail;
 import org.quartz.ObjectAlreadyExistsException;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -73,17 +74,14 @@ public class JobSchedulingService {
       return false;
     }
 
-    var scheduledTask = newJob(OkapiHttpRequestExecutor.class)
-      .withIdentity(timerDescriptor.getId().toString())
-      .usingJobData(TENANT, folioExecutionContext.getTenantId())
-      .usingJobData(USER_ID, folioExecutionContext.getUserId().toString())
-      .build();
+    var scheduledTask = getJobDetail(timerDescriptor);
 
     try {
       scheduler.scheduleJob(scheduledTask, getTrigger(timerDescriptor));
     } catch (ObjectAlreadyExistsException alreadyExistsException) {
       return false;
     } catch (SchedulerException exception) {
+      log.error("Failed to schedule job [jobId: {}] : {}", timerDescriptor.getId(), exception.getMessage());
       throw new TimerSchedulingException("Failed to schedule job", exception);
     }
     return true;
@@ -103,6 +101,7 @@ public class JobSchedulingService {
     try {
       rescheduleJob(oldTimerDescriptor, timerDescriptor);
     } catch (SchedulerException exception) {
+      log.error("Failed to reschedule job [jobId: {}] : {}", timerDescriptor.getId(), exception.getMessage());
       throw new TimerSchedulingException("Failed to reschedule job", exception);
     }
   }
@@ -122,6 +121,7 @@ public class JobSchedulingService {
     try {
       scheduler.deleteJob(jobKey(timerDescriptor.getId().toString()));
     } catch (SchedulerException exception) {
+      log.error("Failed to delete job [jobId: {}] : {}", timerDescriptor.getId(), exception.getMessage());
       throw new TimerSchedulingException("Failed to delete job", exception);
     }
   }
@@ -150,6 +150,16 @@ public class JobSchedulingService {
 
     scheduler.deleteJob(jobKey(timerId.toString()));
     log.info("Recurring job be deleted, timer is disabled [timerId: {}]", timerId);
+  }
+
+  private JobDetail getJobDetail(TimerDescriptor timerDescriptor) {
+    var task = newJob(OkapiHttpRequestExecutor.class)
+      .withIdentity(timerDescriptor.getId().toString())
+      .usingJobData(TENANT, folioExecutionContext.getTenantId());
+    if (folioExecutionContext.getUserId() != null) {
+      task.usingJobData(USER_ID, folioExecutionContext.getUserId().toString());
+    }
+    return task.build();
   }
 
   private Trigger getTrigger(TimerDescriptor timerDescriptor) {

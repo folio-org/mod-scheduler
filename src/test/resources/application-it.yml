@@ -2,12 +2,21 @@ spring:
   datasource:
     username: folio_admin
     password: qwerty123
+  cache:
+    type: caffeine
   hikari:
     data-source-properties:
       preparedStatementCacheQueries: 0
 
 folio:
   environment: it
+
+coffee-boots:
+  cache:
+    spec:
+      keycloak-user-id: maximumSize=200,expireAfterWrite=1800s
+      system-user-id: maximumSize=200,expireAfterWrite=1800s
+      client-secret-key: maximumSize=${CLIENT_SECRET_KEY_CACHE_MAX_SIZE:200},expireAfterWrite=${CLIENT_SECRET_KEY_CACHE_TTL:6000s}
 
 okapi:
   url: http://localhost:9130

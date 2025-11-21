@@ -5,18 +5,21 @@ import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.stripToNull;
 import static org.folio.common.utils.tls.FeignClientTlsUtils.buildSslContext;
 import static org.folio.common.utils.tls.Utils.IS_HOSTNAME_VERIFICATION_DISABLED;
-import static org.folio.scheduler.integration.keycloak.utils.KeycloakSecretUtils.globalStoreKey;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.folio.common.configuration.properties.TlsProperties;
+import org.folio.scheduler.integration.keycloak.ClientSecretService;
 import org.folio.scheduler.integration.keycloak.KeycloakUserImpersonationService;
 import org.folio.scheduler.integration.keycloak.KeycloakUserService;
+import org.folio.scheduler.integration.keycloak.TokenCacheFactory;
+import org.folio.scheduler.integration.keycloak.configuration.exception.NotFoundException;
 import org.folio.scheduler.integration.keycloak.configuration.properties.KeycloakProperties;
-import org.folio.scheduler.integration.securestore.SecureStore;
-import org.folio.scheduler.integration.securestore.exception.NotFoundException;
+import org.folio.scheduler.integration.keycloak.configuration.properties.TokenCacheProperties;
+import org.folio.security.integration.keycloak.service.SecureStoreKeyProvider;
+import org.folio.tools.store.SecureStore;
 import org.jboss.resteasy.client.jaxrs.ResteasyClient;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
@@ -28,7 +31,7 @@ import org.springframework.context.annotation.Configuration;
 @Log4j2
 @Configuration
 @ConditionalOnProperty(name = "application.keycloak.enabled", havingValue = "true")
-@EnableConfigurationProperties(KeycloakProperties.class)
+@EnableConfigurationProperties({KeycloakProperties.class, TokenCacheProperties.class})
 @RequiredArgsConstructor
 public class KeycloakConfiguration {
 
@@ -41,10 +44,11 @@ public class KeycloakConfiguration {
   private final SecureStore secureStore;
 
   @Bean
-  public Keycloak keycloak() {
+  public Keycloak keycloak(SecureStoreKeyProvider secureStoreKeyProvider) {
     var admin = properties.getAdmin();
     var clientId = admin.getClientId();
-    var secret = findSecret(clientId);
+    var globalStoreKey = secureStoreKeyProvider.globalStoreKey(clientId);
+    var secret = findSecret(globalStoreKey, clientId);
     var builder = KeycloakBuilder.builder()
       .realm(ADMIN_REALM)
       .serverUrl(properties.getBaseUrl())
@@ -65,13 +69,21 @@ public class KeycloakConfiguration {
   }
 
   @Bean
-  public KeycloakUserImpersonationService keycloakUserImpersonationService(Keycloak keycloak,
-    KeycloakUserService userService) {
-    return new KeycloakUserImpersonationService(keycloak, userService, properties, secureStore);
+  public ClientSecretService clientSecretService(SecureStoreKeyProvider secureStoreKeyProvider) {
+    return new ClientSecretService(secureStore, secureStoreKeyProvider);
   }
 
-  private String findSecret(String clientId) {
-    return secureStore.lookup(globalStoreKey(clientId)).orElseThrow(() -> {
+  @Bean
+  public KeycloakUserImpersonationService keycloakUserImpersonationService(Keycloak keycloak,
+    KeycloakUserService userService, ClientSecretService clientSecretService,
+    TokenCacheProperties tokenCacheProperties) {
+    var tokenCacheFactory = new TokenCacheFactory(tokenCacheProperties);
+    return new KeycloakUserImpersonationService(keycloak, userService, properties, clientSecretService,
+      tokenCacheFactory.createCache());
+  }
+
+  private String findSecret(String globalStoreKey, String clientId) {
+    return secureStore.lookup(globalStoreKey).orElseThrow(() -> {
       log.debug("Secret for 'admin' client is not defined in the secret store: clientId = {}", clientId);
       return new NotFoundException(
         format("Secret for 'admin' client is not defined in the secret store: clientId = %s, secretStore = %s",

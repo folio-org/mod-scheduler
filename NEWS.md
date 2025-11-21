@@ -3,6 +3,10 @@
 * Normalize cron notation to the Quartz format (MODSCHED-33)
 * Introduce configuration for FSSP (APPPOCTOOL-59)
 * Add migration for cron-based timers (MODSCHED-37)
+* Use SECURE_STORE_ENV, not ENV, for secure store key (MODSCHED-45)
+* Deleted tenants don`t disaper from mod-schedulers jobs (MODSCHED-43)
+* Cache client secret to reduce the number of requests to secret storage (MODSCHED-44)
+* Review and clean up logs in mod-scheduler (MODSCHED-51)
 * Remove keycloak-admin-client version and add applications-poc-tools version management (KEYCLOAK-73)
 ---
 
