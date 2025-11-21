@@ -7,6 +7,7 @@
 * Deleted tenants don`t disaper from mod-schedulers jobs (MODSCHED-43)
 * Cache client secret to reduce the number of requests to secret storage (MODSCHED-44)
 * Review and clean up logs in mod-scheduler (MODSCHED-51)
+* Remove keycloak-admin-client version and add applications-poc-tools version management (KEYCLOAK-73)
 ---
 
 ## Version `v3.0.0` (12.03.2025)
