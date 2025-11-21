@@ -35,7 +35,6 @@
     <folio-spring-support.version>10.0.0-SNAPSHOT</folio-spring-support.version>
     <commons-lang3.version>3.17.0</commons-lang3.version>
     <commons-collections4.version>4.4</commons-collections4.version>
-    <keycloak.admin.client.version>26.0.6</keycloak.admin.client.version>
     <applications-poc-tools.version>3.1.0-SNAPSHOT</applications-poc-tools.version>
     <aws.version>2.32.29</aws.version>
     <vault.version>5.1.0</vault.version>
@@ -81,6 +80,18 @@
       target/site/jacoco-aggregate/jacoco.xml
     </sonar.coverage.jacoco.xmlReportPaths>
   </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.folio</groupId>
+        <artifactId>applications-poc-tools</artifactId>
+        <version>${applications-poc-tools.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <dependencies>
 
@@ -200,7 +211,6 @@
     <dependency>
       <groupId>org.keycloak</groupId>
       <artifactId>keycloak-admin-client</artifactId>
-      <version>${keycloak.admin.client.version}</version>
     </dependency>
 
     <dependency>
