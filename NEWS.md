@@ -3,6 +3,7 @@
 * Normalize cron notation to the Quartz format (MODSCHED-33)
 * Introduce configuration for FSSP (APPPOCTOOL-59)
 * Add migration for cron-based timers (MODSCHED-37)
+* Remove keycloak-admin-client version and add applications-poc-tools version management (KEYCLOAK-73)
 ---
 
 ## Version `v3.0.0` (12.03.2025)
