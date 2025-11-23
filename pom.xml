@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.5.7</version>
+    <version>4.0.0</version>
     <relativePath />
   </parent>
 
@@ -36,7 +36,7 @@
     <commons-lang3.version>3.17.0</commons-lang3.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <applications-poc-tools.version>3.1.0-SNAPSHOT</applications-poc-tools.version>
-    <aws.version>2.38.2</aws.version>
+    <aws.version>2.39.2</aws.version>
     <vault.version>5.1.0</vault.version>
     <cron-utils.version>9.2.1</cron-utils.version>
 
@@ -51,7 +51,7 @@
     <maven-compiler-plugin.version>3.14.1</maven-compiler-plugin.version>
     <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
     <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
-    <maven-checkstyle.version>12.1.1</maven-checkstyle.version>
+    <maven-checkstyle.version>12.1.2</maven-checkstyle.version>
     <coffee-boots.version>4.0.0</coffee-boots.version>
     <copy-rename-maven-plugin.version>1.0.1</copy-rename-maven-plugin.version>
     <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
