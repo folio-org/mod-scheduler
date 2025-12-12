@@ -1,3 +1,11 @@
+## Version `v3.0.5` (12.12.2025)
+### Changes:
+* Remove keycloak-admin-client version and add applications-poc-tools version management (KEYCLOAK-73)
+* Timers creation fails on rancher environments (MODSCHED-50)
+* Register JacksonProvider in Keycloak Resteasy client builder (KEYCLOAK-90)
+* update applications-poc-tools to v3.0.9
+---
+
 ## Version `v3.0.4` (15.10.2025)
 ### Changes:
 * Cache client secret to reduce the number of requests to secret storage (MODSCHED-44)
