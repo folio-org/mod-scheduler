@@ -21,6 +21,7 @@ import org.folio.scheduler.integration.keycloak.configuration.properties.TokenCa
 import org.folio.security.integration.keycloak.service.SecureStoreKeyProvider;
 import org.folio.tools.store.SecureStore;
 import org.jboss.resteasy.client.jaxrs.ResteasyClient;
+import org.keycloak.admin.client.JacksonProvider;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -95,6 +96,7 @@ public class KeycloakConfiguration {
     return (ResteasyClient) newBuilder()
       .sslContext(buildSslContext(tls))
       .hostnameVerifier(IS_HOSTNAME_VERIFICATION_DISABLED ? NoopHostnameVerifier.INSTANCE : DEFAULT_HOSTNAME_VERIFIER)
+      .register(JacksonProvider.class)
       .build();
   }
 }
