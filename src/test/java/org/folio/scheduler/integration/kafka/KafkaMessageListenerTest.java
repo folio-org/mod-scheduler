@@ -1,8 +1,6 @@
 package org.folio.scheduler.integration.kafka;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
-import static org.folio.scheduler.domain.dto.TimerUnit.MINUTE;
-import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.ENTITLE;
 import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.REVOKE;
 import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.UPGRADE;
@@ -10,21 +8,22 @@ import static org.folio.scheduler.integration.kafka.model.ResourceEventType.CREA
 import static org.folio.scheduler.integration.kafka.model.ResourceEventType.DELETE;
 import static org.folio.scheduler.integration.kafka.model.ResourceEventType.UPDATE;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.util.List;
-import java.util.UUID;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.folio.scheduler.domain.dto.RoutingEntry;
-import org.folio.scheduler.domain.dto.TimerDescriptor;
-import org.folio.scheduler.domain.dto.TimerType;
+import org.folio.scheduler.domain.dto.TimerUnit;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
+import org.folio.scheduler.integration.kafka.model.EntitlementEventType;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
+import org.folio.scheduler.integration.kafka.model.ResourceEventType;
 import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
-import org.folio.scheduler.service.SchedulerTimerService;
-import org.folio.spring.FolioModuleMetadata;
 import org.folio.test.types.UnitTest;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -36,147 +35,44 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class KafkaMessageListenerTest {
 
   private static final String TOPIC_NAME = "test.test.mgr-tenant-entitlement.scheduled-job";
-  private static final UUID TIMER_ID = UUID.randomUUID();
-  private static final String MODULE_NAME = "mod-foo";
   private static final String MODULE_ID1 = "mod-foo-1.0.0";
   private static final String MODULE_ID2 = "mod-foo-1.0.1";
 
-  @InjectMocks private KafkaMessageListener kafkaMessageListener;
-  @Mock private FolioModuleMetadata folioModuleMetadata;
-  @Mock private SchedulerTimerService schedulerTimerService;
+  @InjectMocks
+  private KafkaMessageListener kafkaMessageListener;
 
-  @Test
-  void handleScheduledJobEvent_positive_create() {
+  @Mock
+  private KafkaEventService eventService;
 
-    var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, createResourceEvent());
-    kafkaMessageListener.handleScheduledJobEvent(consumerRecord);
-
-    verify(schedulerTimerService).create(
-      new TimerDescriptor().enabled(true).type(TimerType.SYSTEM)
-        .moduleName(MODULE_NAME).moduleId(MODULE_ID1).routingEntry(routingEntry1()));
+  @AfterEach
+  void tearDown() {
+    verifyNoMoreInteractions(eventService);
   }
 
-  @Test
-  void handleScheduledJobEvent_positive_update() {
-    when(schedulerTimerService.findByModuleNameAndType(MODULE_NAME, SYSTEM)).thenReturn(
-      List.of(new TimerDescriptor().id(TIMER_ID).type(TimerType.SYSTEM).enabled(true).routingEntry(routingEntry1())));
-
-    var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, udpateResourceEvent());
-    kafkaMessageListener.handleScheduledJobEvent(consumerRec);
-
-    verify(schedulerTimerService).delete(TIMER_ID);
-    verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
-    verify(schedulerTimerService).create(
-      new TimerDescriptor().type(TimerType.SYSTEM).enabled(true)
-        .moduleName(MODULE_NAME).moduleId(MODULE_ID2).routingEntry(routingEntry2()));
-  }
-
-  @Test
-  void handleScheduledJobEvent_positive_delete() {
-    when(schedulerTimerService.findByModuleNameAndType(MODULE_NAME, SYSTEM)).thenReturn(
-      List.of(new TimerDescriptor().id(TIMER_ID).enabled(true).routingEntry(routingEntry1())));
-
-    var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, deleteResourceEvent());
-    kafkaMessageListener.handleScheduledJobEvent(consumerRec);
-
-    verify(schedulerTimerService).delete(TIMER_ID);
-    verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
-  }
-
-  @Test
-  void handleScheduledJobEvent_negative() {
-    var expectedDescriptor = new TimerDescriptor().enabled(true).type(TimerType.SYSTEM)
-      .moduleName(MODULE_NAME).moduleId(MODULE_ID1).routingEntry(routingEntry1());
-    when(schedulerTimerService.create(expectedDescriptor)).thenThrow(RuntimeException.class);
-
-    var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, createResourceEvent());
-    assertThatThrownBy(() -> kafkaMessageListener.handleScheduledJobEvent(consumerRec))
-      .isInstanceOf(RuntimeException.class);
-
-    verify(schedulerTimerService).create(expectedDescriptor);
-  }
-
-  @Test
-  void handleEntitlementEvent() {
-    var event = entitlementEvent();
-    var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
-
-    kafkaMessageListener.handleEntitlementEvent(consumerRec);
-
-    verify(schedulerTimerService).switchModuleTimers("mod-foo", true);
-  }
-
-  @Test
-  void handleEntitlementEvent_upgrade() {
-    var event = entitlementUpgradeEvent();
-    var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
-
-    kafkaMessageListener.handleEntitlementEvent(consumerRec);
-
-    verify(schedulerTimerService).switchModuleTimers("mod-foo", true);
-  }
-
-  @Test
-  void handleEntitlementEvent_revoke() {
-    var event = entitlementRevokeEvent();
-    var consumerRec = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
-
-    kafkaMessageListener.handleEntitlementEvent(consumerRec);
-
-    verify(schedulerTimerService).switchModuleTimers("mod-foo", false);
-  }
-
-  private static ResourceEvent createResourceEvent() {
-    return new ResourceEvent()
-      .type(CREATE)
-      .resourceName("Scheduled Job")
-      .tenant(TENANT_ID)
-      .newValue(scheduledTimersBeforeUpgrade());
-  }
-
-  private static ResourceEvent udpateResourceEvent() {
-    return new ResourceEvent()
-      .type(UPDATE)
-      .resourceName("Scheduled Job")
-      .tenant(TENANT_ID)
-      .oldValue(scheduledTimersBeforeUpgrade())
-      .newValue(scheduledTimersAfterUpgrade());
-  }
-
-  private static ResourceEvent deleteResourceEvent() {
-    return new ResourceEvent()
-      .type(DELETE)
-      .resourceName("Scheduled Job")
-      .tenant(TENANT_ID)
-      .oldValue(scheduledTimersBeforeUpgrade());
-  }
-
-  private static EntitlementEvent entitlementEvent() {
-    return new EntitlementEvent()
-      .setModuleId("mod-foo-1.0.0")
-      .setType(ENTITLE)
-      .setTenantName(TENANT_ID);
-  }
-
-  private static EntitlementEvent entitlementUpgradeEvent() {
-    return new EntitlementEvent()
-      .setModuleId("mod-foo-1.0.0")
-      .setType(UPGRADE)
-      .setTenantName(TENANT_ID);
-  }
-
-  private static EntitlementEvent entitlementRevokeEvent() {
-    return new EntitlementEvent()
-      .setModuleId("mod-foo-1.0.0")
-      .setType(REVOKE)
-      .setTenantName(TENANT_ID);
-  }
-
-  private static ScheduledTimers scheduledTimersBeforeUpgrade() {
-    return new ScheduledTimers()
+  private static ResourceEvent createResourceEvent(ResourceEventType type) {
+    var scheduledTimers = new ScheduledTimers()
       .moduleId(MODULE_ID1)
       .applicationId("app-foo-1.0.0")
       .timers(List.of(routingEntry1()));
+
+    var event = new ResourceEvent()
+      .type(type)
+      .resourceName("Scheduled Job")
+      .tenant(TENANT_ID);
+
+    return switch (type) {
+      case CREATE -> event.newValue(scheduledTimers);
+      case UPDATE -> event.oldValue(scheduledTimers).newValue(scheduledTimersAfterUpgrade());
+      case DELETE -> event.oldValue(scheduledTimers);
+      default -> event;
+    };
+  }
+
+  private static EntitlementEvent createEntitlementEvent(EntitlementEventType type) {
+    return new EntitlementEvent()
+      .setModuleId(MODULE_ID1)
+      .setType(type)
+      .setTenantName(TENANT_ID);
   }
 
   private static ScheduledTimers scheduledTimersAfterUpgrade() {
@@ -190,15 +86,158 @@ class KafkaMessageListenerTest {
     return new RoutingEntry()
       .addMethodsItem("POST")
       .pathPattern("/test-entities/expire")
-      .unit(MINUTE)
+      .unit(TimerUnit.MINUTE)
       .delay("1");
   }
 
   private static RoutingEntry routingEntry2() {
     return new RoutingEntry()
       .addMethodsItem("POST")
-      .pathPattern("/test-entities/expire")
-      .unit(MINUTE)
-      .delay("1");
+      .pathPattern("/test-entities/cleanup")
+      .unit(TimerUnit.MINUTE)
+      .delay("5");
+  }
+
+  @Nested
+  class HandleScheduledJobEvent {
+
+    @Test
+    void positive_createEvent() {
+      var event = createResourceEvent(CREATE);
+      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+
+      kafkaMessageListener.handleScheduledJobEvent(consumerRecord);
+
+      verify(eventService).createTimers(event);
+    }
+
+    @Test
+    void positive_updateEvent() {
+      var event = createResourceEvent(UPDATE);
+      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+
+      kafkaMessageListener.handleScheduledJobEvent(consumerRecord);
+
+      verify(eventService).updateTimers(event);
+    }
+
+    @Test
+    void positive_deleteEvent() {
+      var event = createResourceEvent(DELETE);
+      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+
+      kafkaMessageListener.handleScheduledJobEvent(consumerRecord);
+
+      verify(eventService).deleteTimers(event);
+    }
+
+    @Test
+    void negative_createEventThrowsException() {
+      var event = createResourceEvent(CREATE);
+      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+
+      doThrow(new RuntimeException("Failed to create timers"))
+        .when(eventService).createTimers(event);
+
+      assertThatThrownBy(() -> kafkaMessageListener.handleScheduledJobEvent(consumerRecord))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("Failed to create timers");
+
+      verify(eventService).createTimers(event);
+    }
+
+    @Test
+    void negative_updateEventThrowsException() {
+      var event = createResourceEvent(UPDATE);
+      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+
+      doThrow(new RuntimeException("Failed to update timers"))
+        .when(eventService).updateTimers(event);
+
+      assertThatThrownBy(() -> kafkaMessageListener.handleScheduledJobEvent(consumerRecord))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("Failed to update timers");
+
+      verify(eventService).updateTimers(event);
+    }
+
+    @Test
+    void negative_deleteEventThrowsException() {
+      var event = createResourceEvent(DELETE);
+      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+
+      doThrow(new RuntimeException("Failed to delete timers"))
+        .when(eventService).deleteTimers(event);
+
+      assertThatThrownBy(() -> kafkaMessageListener.handleScheduledJobEvent(consumerRecord))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("Failed to delete timers");
+
+      verify(eventService).deleteTimers(event);
+    }
+  }
+
+  @Nested
+  class HandleEntitlementEvent {
+
+    @Test
+    void positive_entitleEvent() {
+      var event = createEntitlementEvent(ENTITLE);
+      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+
+      kafkaMessageListener.handleEntitlementEvent(consumerRecord);
+
+      verify(eventService).enableTimers(event);
+    }
+
+    @Test
+    void positive_upgradeEvent() {
+      var event = createEntitlementEvent(UPGRADE);
+      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+
+      kafkaMessageListener.handleEntitlementEvent(consumerRecord);
+
+      verify(eventService).enableTimers(event);
+    }
+
+    @Test
+    void positive_revokeEvent() {
+      var event = createEntitlementEvent(REVOKE);
+      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+
+      kafkaMessageListener.handleEntitlementEvent(consumerRecord);
+
+      verify(eventService).disableTimers(event);
+    }
+
+    @Test
+    void negative_entitleEventThrowsException() {
+      var event = createEntitlementEvent(ENTITLE);
+      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+
+      doThrow(new RuntimeException("Failed to enable timers"))
+        .when(eventService).enableTimers(event);
+
+      assertThatThrownBy(() -> kafkaMessageListener.handleEntitlementEvent(consumerRecord))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("Failed to enable timers");
+
+      verify(eventService).enableTimers(event);
+    }
+
+    @Test
+    void negative_revokeEventThrowsException() {
+      var event = createEntitlementEvent(REVOKE);
+      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+
+      doThrow(new RuntimeException("Failed to disable timers"))
+        .when(eventService).disableTimers(event);
+
+      assertThatThrownBy(() -> kafkaMessageListener.handleEntitlementEvent(consumerRecord))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("Failed to disable timers");
+
+      verify(eventService).disableTimers(event);
+    }
   }
 }
