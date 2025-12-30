@@ -3,10 +3,10 @@ package org.folio.scheduler.integration.kafka;
 import static java.lang.Boolean.TRUE;
 import static java.util.Collections.singletonList;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
-import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.folio.common.utils.CollectionUtils.mapItems;
 import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
 import static org.folio.scheduler.utils.OkapiRequestUtils.getStaticPath;
+import static org.folio.scheduler.utils.ServiceUtils.isTimerTableMissing;
 import static org.folio.spring.integration.XOkapiHeaders.TENANT;
 
 import java.util.Collection;
@@ -24,6 +24,7 @@ import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.spring.FolioModuleMetadata;
 import org.folio.spring.scope.FolioExecutionContextSetter;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,18 +38,14 @@ public class KafkaEventService {
   private final SchedulerTimerService schedulerTimerService;
 
   public void createTimers(ResourceEvent event) {
-    var timers = event.getNewValue();
+    var newTimers = event.getNewValue();
     var tenant = event.getTenant();
 
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(tenant))) {
-      var moduleId = timers.getModuleId();
+      var moduleId = newTimers.getModuleId();
       var moduleName = SemverUtils.getName(moduleId);
-      var routingEntries = timers.getTimers();
 
-      logCreatingTimers(routingEntries);
-      for (var re : routingEntries) {
-        schedulerTimerService.create(createTimerDescriptor(re, moduleName, moduleId));
-      }
+      createModuleSystemTimers(newTimers.getTimers(), moduleName, moduleId);
     }
   }
 
@@ -60,18 +57,9 @@ public class KafkaEventService {
       var moduleId = newTimers.getModuleId();
       var moduleName = SemverUtils.getName(moduleId);
 
-      var timers = schedulerTimerService.findByModuleNameAndType(moduleName, SYSTEM);
-      if (isNotEmpty(timers)) {
-        logDeletingTimers(timers);
-        for (var timer : timers) {
-          schedulerTimerService.delete(timer.getId());
-        }
-      }
+      deleteModuleSystemTimers(moduleName);
 
-      logCreatingTimers(newTimers.getTimers());
-      for (var routingEntry : newTimers.getTimers()) {
-        schedulerTimerService.create(createTimerDescriptor(routingEntry, moduleName, moduleId));
-      }
+      createModuleSystemTimers(newTimers.getTimers(), moduleName, moduleId);
     }
   }
 
@@ -80,15 +68,16 @@ public class KafkaEventService {
 
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(tenant))) {
       var moduleName = SemverUtils.getName(event.getOldValue().getModuleId());
-      
-      var timers = schedulerTimerService.findByModuleNameAndType(moduleName, SYSTEM);
-      if (isEmpty(timers)) {
-        return;
-      }
 
-      logDeletingTimers(timers);
-      for (var timer : timers) {
-        schedulerTimerService.delete(timer.getId());
+      try {
+        deleteModuleSystemTimers(moduleName);
+      } catch (DataAccessException e) {
+        if (isTimerTableMissing(e)) {
+          log.debug("Cannot delete system timers for given module and tenant because the timer table is missing: "
+            + "module = {}, tenant = {}. Operation is ignored.", moduleName, tenant);
+        } else {
+          throw e;
+        }
       }
     }
   }
@@ -105,12 +94,48 @@ public class KafkaEventService {
     switchTimers(moduleId, tenant, false);
   }
 
+  private void createModuleSystemTimers(List<RoutingEntry> routingEntries, String moduleName, String moduleId) {
+    log.info("Creating system timers: moduleId = {}, timers = {}",
+      () -> moduleId, () -> mapItems(routingEntries, KafkaEventService::getRoutingEntryKey));
+
+    for (var re : routingEntries) {
+      schedulerTimerService.create(createTimerDescriptor(re, moduleName, moduleId));
+    }
+  }
+
+  private void deleteModuleSystemTimers(String moduleName) {
+    var timers = schedulerTimerService.findByModuleNameAndType(moduleName, SYSTEM);
+    if (isEmpty(timers)) {
+      return;
+    }
+
+    log.info("Deleting system timers: moduleName = {}, timers = {}",
+      () -> moduleName,
+      () -> mapItems(timers, t -> String.join("@", String.valueOf(t.getId()), getRoutingEntryKey(t.getRoutingEntry())))
+    );
+
+    for (var timer : timers) {
+      schedulerTimerService.delete(timer.getId());
+    }
+  }
+
   private void switchTimers(String moduleId, String tenantName, boolean enable) {
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(tenantName))) {
       var moduleName = SemverUtils.getName(moduleId);
-      int switched = schedulerTimerService.switchModuleTimers(moduleName, enable);
-      log.info("{} timers were switched to enabled={} state for module {} and tenant {}",
-        switched, enable, moduleName, tenantName);
+
+      try {
+        int switched = schedulerTimerService.switchModuleTimers(moduleName, enable);
+
+        log.info("Timers were switched to new state: count = {}, state = {}, module = {}, tenant = {}",
+          switched, enable ? "enable" : "disable", moduleName, tenantName);
+      } catch (DataAccessException e) {
+        if (isTimerTableMissing(e)) {
+          log.debug("Cannot switch timers for given module and tenant because the timer table is missing: "
+            + "module = {}, tenant = {}. Operation is ignored.", moduleName, tenantName);
+        } else {
+          throw e;
+        }
+      }
     }
   }
 
@@ -126,16 +151,6 @@ public class KafkaEventService {
       .moduleName(moduleName)
       .moduleId(moduleId)
       .routingEntry(routingEntry);
-  }
-
-  private static void logCreatingTimers(List<RoutingEntry> entries) {
-    log.debug("Processing scheduled job event from kafka: timers = {}",
-      () -> mapItems(entries, KafkaEventService::getRoutingEntryKey));
-  }
-
-  private static void logDeletingTimers(List<TimerDescriptor> timers) {
-    log.debug("Deleting timers: timers = {}",
-      () -> mapItems(timers, t -> getRoutingEntryKey(t.getRoutingEntry())));
   }
 
   private static String getRoutingEntryKey(RoutingEntry routingEntry) {
