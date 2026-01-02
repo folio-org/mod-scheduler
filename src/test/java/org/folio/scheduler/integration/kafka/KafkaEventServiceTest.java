@@ -49,12 +49,13 @@ class KafkaEventServiceTest {
 
   @Mock private SchedulerTimerService schedulerTimerService;
   @Mock private FolioModuleMetadata folioModuleMetadata;
+  @Mock private TimerTableCheckService timerTableCheckService;
   @InjectMocks
   private KafkaEventService kafkaEventService;
 
   @AfterEach
   void tearDown() {
-    verifyNoMoreInteractions(schedulerTimerService);
+    verifyNoMoreInteractions(schedulerTimerService, timerTableCheckService);
   }
 
   private static ResourceEvent createResourceEvent(List<RoutingEntry> routingEntries) {
@@ -400,11 +401,13 @@ class KafkaEventServiceTest {
         .id(UUID.randomUUID())
         .routingEntry(routingEntry2());
 
+      when(timerTableCheckService.tableExists()).thenReturn(true);
       when(schedulerTimerService.findByModuleNameAndType(MODULE_NAME, SYSTEM))
         .thenReturn(List.of(existingTimer1, existingTimer2));
 
       kafkaEventService.deleteTimers(event);
 
+      verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
       verify(schedulerTimerService).delete(existingTimer1.getId());
       verify(schedulerTimerService).delete(existingTimer2.getId());
@@ -424,11 +427,13 @@ class KafkaEventServiceTest {
         .id(UUID.randomUUID())
         .routingEntry(routingEntry1());
 
+      when(timerTableCheckService.tableExists()).thenReturn(true);
       when(schedulerTimerService.findByModuleNameAndType(MODULE_NAME, SYSTEM))
         .thenReturn(List.of(existingTimer));
 
       kafkaEventService.deleteTimers(event);
 
+      verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
       verify(schedulerTimerService).delete(existingTimer.getId());
     }
@@ -443,11 +448,13 @@ class KafkaEventServiceTest {
         .tenant(TENANT_ID)
         .oldValue(oldTimers);
 
+      when(timerTableCheckService.tableExists()).thenReturn(true);
       when(schedulerTimerService.findByModuleNameAndType(MODULE_NAME, SYSTEM))
         .thenReturn(emptyList());
 
       kafkaEventService.deleteTimers(event);
 
+      verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
       verify(schedulerTimerService, never()).delete(any(UUID.class));
     }
@@ -462,6 +469,7 @@ class KafkaEventServiceTest {
         .tenant(TENANT_ID)
         .oldValue(oldTimers);
 
+      when(timerTableCheckService.tableExists()).thenReturn(true);
       when(schedulerTimerService.findByModuleNameAndType(MODULE_NAME, SYSTEM))
         .thenThrow(new RuntimeException("Failed to find timers"));
 
@@ -469,6 +477,7 @@ class KafkaEventServiceTest {
         .isInstanceOf(RuntimeException.class)
         .hasMessage("Failed to find timers");
 
+      verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
     }
 
@@ -486,6 +495,7 @@ class KafkaEventServiceTest {
         .id(UUID.randomUUID())
         .routingEntry(routingEntry1());
 
+      when(timerTableCheckService.tableExists()).thenReturn(true);
       when(schedulerTimerService.findByModuleNameAndType(MODULE_NAME, SYSTEM))
         .thenReturn(List.of(existingTimer));
       doThrow(new RuntimeException("Failed to delete timer"))
@@ -495,6 +505,7 @@ class KafkaEventServiceTest {
         .isInstanceOf(RuntimeException.class)
         .hasMessage("Failed to delete timer");
 
+      verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
       verify(schedulerTimerService).delete(existingTimer.getId());
     }
@@ -508,6 +519,25 @@ class KafkaEventServiceTest {
       assertThatThrownBy(() -> kafkaEventService.deleteTimers(event))
         .isInstanceOf(NullPointerException.class);
     }
+
+    @Test
+    void positive_timerTableDoesNotExist() {
+      var oldTimers = new ScheduledTimers()
+        .moduleId(MODULE_ID)
+        .applicationId(APPLICATION_ID)
+        .timers(List.of(routingEntry1()));
+      var event = new ResourceEvent()
+        .tenant(TENANT_ID)
+        .oldValue(oldTimers);
+
+      when(timerTableCheckService.tableExists()).thenReturn(false);
+
+      kafkaEventService.deleteTimers(event);
+
+      verify(timerTableCheckService).tableExists();
+      verify(schedulerTimerService, never()).findByModuleNameAndType(any(), any());
+      verify(schedulerTimerService, never()).delete(any(UUID.class));
+    }
   }
 
   @Nested
@@ -519,11 +549,13 @@ class KafkaEventServiceTest {
         .setModuleId(MODULE_ID)
         .setTenantName(TENANT_ID);
 
+      when(timerTableCheckService.tableExists()).thenReturn(true);
       when(schedulerTimerService.switchModuleTimers(MODULE_NAME, true))
         .thenReturn(3);
 
       kafkaEventService.enableTimers(event);
 
+      verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).switchModuleTimers(MODULE_NAME, true);
     }
 
@@ -533,11 +565,13 @@ class KafkaEventServiceTest {
         .setModuleId(MODULE_ID)
         .setTenantName(TENANT_ID);
 
+      when(timerTableCheckService.tableExists()).thenReturn(true);
       when(schedulerTimerService.switchModuleTimers(MODULE_NAME, true))
         .thenReturn(0);
 
       kafkaEventService.enableTimers(event);
 
+      verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).switchModuleTimers(MODULE_NAME, true);
     }
 
@@ -547,6 +581,7 @@ class KafkaEventServiceTest {
         .setModuleId(MODULE_ID)
         .setTenantName(TENANT_ID);
 
+      when(timerTableCheckService.tableExists()).thenReturn(true);
       when(schedulerTimerService.switchModuleTimers(MODULE_NAME, true))
         .thenThrow(new RuntimeException("Failed to switch timers"));
 
@@ -554,6 +589,7 @@ class KafkaEventServiceTest {
         .isInstanceOf(RuntimeException.class)
         .hasMessage("Failed to switch timers");
 
+      verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).switchModuleTimers(MODULE_NAME, true);
     }
 
@@ -565,6 +601,20 @@ class KafkaEventServiceTest {
 
       assertThatThrownBy(() -> kafkaEventService.enableTimers(event))
         .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void positive_timerTableDoesNotExist() {
+      var event = new EntitlementEvent()
+        .setModuleId(MODULE_ID)
+        .setTenantName(TENANT_ID);
+
+      when(timerTableCheckService.tableExists()).thenReturn(false);
+
+      kafkaEventService.enableTimers(event);
+
+      verify(timerTableCheckService).tableExists();
+      verify(schedulerTimerService, never()).switchModuleTimers(any(), any(Boolean.class));
     }
   }
 
@@ -577,11 +627,13 @@ class KafkaEventServiceTest {
         .setModuleId(MODULE_ID)
         .setTenantName(TENANT_ID);
 
+      when(timerTableCheckService.tableExists()).thenReturn(true);
       when(schedulerTimerService.switchModuleTimers(MODULE_NAME, false))
         .thenReturn(2);
 
       kafkaEventService.disableTimers(event);
 
+      verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).switchModuleTimers(MODULE_NAME, false);
     }
 
@@ -591,11 +643,13 @@ class KafkaEventServiceTest {
         .setModuleId(MODULE_ID)
         .setTenantName(TENANT_ID);
 
+      when(timerTableCheckService.tableExists()).thenReturn(true);
       when(schedulerTimerService.switchModuleTimers(MODULE_NAME, false))
         .thenReturn(0);
 
       kafkaEventService.disableTimers(event);
 
+      verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).switchModuleTimers(MODULE_NAME, false);
     }
 
@@ -605,6 +659,7 @@ class KafkaEventServiceTest {
         .setModuleId(MODULE_ID)
         .setTenantName(TENANT_ID);
 
+      when(timerTableCheckService.tableExists()).thenReturn(true);
       when(schedulerTimerService.switchModuleTimers(MODULE_NAME, false))
         .thenThrow(new RuntimeException("Failed to switch timers"));
 
@@ -612,6 +667,7 @@ class KafkaEventServiceTest {
         .isInstanceOf(RuntimeException.class)
         .hasMessage("Failed to switch timers");
 
+      verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).switchModuleTimers(MODULE_NAME, false);
     }
 
@@ -623,6 +679,20 @@ class KafkaEventServiceTest {
 
       assertThatThrownBy(() -> kafkaEventService.disableTimers(event))
         .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void positive_timerTableDoesNotExist() {
+      var event = new EntitlementEvent()
+        .setModuleId(MODULE_ID)
+        .setTenantName(TENANT_ID);
+
+      when(timerTableCheckService.tableExists()).thenReturn(false);
+
+      kafkaEventService.disableTimers(event);
+
+      verify(timerTableCheckService).tableExists();
+      verify(schedulerTimerService, never()).switchModuleTimers(any(), any(Boolean.class));
     }
   }
 }

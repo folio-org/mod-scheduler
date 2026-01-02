@@ -6,7 +6,6 @@ import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.folio.common.utils.CollectionUtils.mapItems;
 import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
 import static org.folio.scheduler.utils.OkapiRequestUtils.getStaticPath;
-import static org.folio.scheduler.utils.ServiceUtils.isTimerTableMissing;
 import static org.folio.spring.integration.XOkapiHeaders.TENANT;
 
 import java.util.Collection;
@@ -24,7 +23,6 @@ import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.spring.FolioModuleMetadata;
 import org.folio.spring.scope.FolioExecutionContextSetter;
-import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +34,7 @@ public class KafkaEventService {
 
   private final FolioModuleMetadata folioModuleMetadata;
   private final SchedulerTimerService schedulerTimerService;
+  private final TimerTableCheckService timerTableCheckService;
 
   public void createTimers(ResourceEvent event) {
     var newTimers = event.getNewValue();
@@ -69,16 +68,13 @@ public class KafkaEventService {
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(tenant))) {
       var moduleName = SemverUtils.getName(event.getOldValue().getModuleId());
 
-      try {
-        deleteModuleSystemTimers(moduleName);
-      } catch (DataAccessException e) {
-        if (isTimerTableMissing(e)) {
-          log.debug("Cannot delete system timers for given module and tenant because the timer table is missing: "
-            + "module = {}, tenant = {}. Operation is ignored.", moduleName, tenant);
-        } else {
-          throw e;
-        }
+      if (!timerTableCheckService.tableExists()) {
+        log.debug("Cannot delete system timers for given module and tenant because the timer table is missing: "
+          + "module = {}, tenant = {}. Operation is ignored.", moduleName, tenant);
+        return;
       }
+
+      deleteModuleSystemTimers(moduleName);
     }
   }
 
@@ -123,19 +119,16 @@ public class KafkaEventService {
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(tenantName))) {
       var moduleName = SemverUtils.getName(moduleId);
 
-      try {
-        int switched = schedulerTimerService.switchModuleTimers(moduleName, enable);
-
-        log.info("Timers were switched to new state: count = {}, state = {}, module = {}, tenant = {}",
-          switched, enable ? "enable" : "disable", moduleName, tenantName);
-      } catch (DataAccessException e) {
-        if (isTimerTableMissing(e)) {
-          log.debug("Cannot switch timers for given module and tenant because the timer table is missing: "
-            + "module = {}, tenant = {}. Operation is ignored.", moduleName, tenantName);
-        } else {
-          throw e;
-        }
+      if (!timerTableCheckService.tableExists()) {
+        log.debug("Cannot switch timers for given module and tenant because the timer table is missing: "
+          + "module = {}, tenant = {}. Operation is ignored.", moduleName, tenantName);
+        return;
       }
+
+      int switched = schedulerTimerService.switchModuleTimers(moduleName, enable);
+
+      log.info("Timers were switched to new state: count = {}, state = {}, module = {}, tenant = {}",
+        switched, enable ? "enable" : "disable", moduleName, tenantName);
     }
   }
 
