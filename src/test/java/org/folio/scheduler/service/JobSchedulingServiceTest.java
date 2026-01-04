@@ -291,9 +291,9 @@ class JobSchedulingServiceTest {
   }
 
   @Test
-  void delete_positive_disabled() {
+  void delete_positive_disabled() throws SchedulerException {
     service.delete(timerDescriptor().enabled(false));
-    verifyNoInteractions(scheduler);
+    verify(scheduler).deleteJob(new JobKey(TIMER_ID));
   }
 
   @Test
@@ -304,6 +304,17 @@ class JobSchedulingServiceTest {
     assertThatThrownBy(() -> service.delete(timerDescriptor))
       .isInstanceOf(TimerSchedulingException.class)
       .hasMessage("Failed to delete job");
+  }
+
+  @Test
+  void delete_negative_nullTimerId() {
+    var timerDescriptor = timerDescriptor().id(null);
+
+    assertThatThrownBy(() -> service.delete(timerDescriptor))
+      .isInstanceOf(NullPointerException.class)
+      .hasMessage("Timer descriptor id cannot be null");
+
+    verifyNoInteractions(scheduler);
   }
 
   private static CronTrigger cronTrigger(String cronExpression, String timezone) {

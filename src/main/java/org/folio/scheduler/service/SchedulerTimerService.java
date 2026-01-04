@@ -161,13 +161,20 @@ public class SchedulerTimerService {
   public int switchModuleTimers(String moduleName, boolean enable) {
     var timers = schedulerTimerRepository.findByModuleNameAndEnabledState(moduleName, enable);
 
-    schedulerTimerRepository.switchTimersByIds(timers.stream().map(TimerDescriptorEntity::getId).toList(), enable);
-    Consumer<TimerDescriptor> operation = enable ? jobSchedulingService::schedule : jobSchedulingService::delete;
-    timers.forEach(
-      timer -> log.info(enable ? "Scheduling timer {} {} for module {}" : "Removing timer {} {} for module {}",
-        timer.getId(), timer.getType(), moduleName));
-    timers.forEach(timer -> timer.getTimerDescriptor().setEnabled(true));
-    timers.stream().map(TimerDescriptorEntity::getTimerDescriptor).forEach(operation);
+    schedulerTimerRepository.switchTimersByIds(mapItems(timers, TimerDescriptorEntity::getId), enable);
+
+    for (TimerDescriptorEntity timer : timers) {
+      log.info(enable
+          ? "Scheduling timer: timerId = {}, timerType = {}, module = {}"
+          : "Removing timer: timerId = {}, timerType = {}, module = {}",
+        timer.getId(), timer.getType(), moduleName);
+
+      var descriptor = timer.getTimerDescriptor();
+      descriptor.setEnabled(enable);
+
+      Consumer<TimerDescriptor> operation = enable ? jobSchedulingService::schedule : jobSchedulingService::delete;
+      operation.accept(descriptor);
+    }
 
     return timers.size();
   }
