@@ -10,6 +10,7 @@
 * Remove keycloak-admin-client version and add applications-poc-tools version management (KEYCLOAK-73)
 * Timers creation fails on rancher environments (MODSCHED-50)
 * Register JacksonProvider in Keycloak Resteasy client builder (KEYCLOAK-90)
+* Kafka event processing improvements (MODSCHED-57)
 ---
 
 ## Version `v3.0.0` (12.03.2025)
