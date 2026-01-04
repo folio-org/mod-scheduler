@@ -6,6 +6,7 @@ import static java.time.Duration.ofMillis;
 import static java.time.Duration.ofMinutes;
 import static java.time.Duration.ofSeconds;
 import static java.util.Map.entry;
+import static java.util.Objects.requireNonNull;
 import static java.util.TimeZone.getTimeZone;
 import static org.apache.commons.lang3.BooleanUtils.isFalse;
 import static org.apache.commons.lang3.ObjectUtils.defaultIfNull;
@@ -111,10 +112,7 @@ public class JobSchedulingService {
    */
   @Transactional
   public void delete(TimerDescriptor timerDescriptor) {
-    if (isFalse(timerDescriptor.getEnabled())) {
-      log.debug("Timer descriptor is disabled, nothing to delete [jobId: {}]", timerDescriptor.getId());
-      return;
-    }
+    requireNonNull(timerDescriptor.getId(), "Timer descriptor id cannot be null");
 
     try {
       scheduler.deleteJob(jobKey(timerDescriptor.getId().toString()));

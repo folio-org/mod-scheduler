@@ -44,6 +44,7 @@
     </mod-scheduler.yaml-file>
 
     <!-- Test dependencies versions -->
+    <mockito.version>5.20.0</mockito.version>
     <awaitility.version>4.3.0</awaitility.version>
 
     <!-- Plugins versions -->
@@ -80,6 +81,7 @@
     <sonar.coverage.jacoco.xmlReportPaths>
       target/site/jacoco-aggregate/jacoco.xml
     </sonar.coverage.jacoco.xmlReportPaths>
+    <argLine/>
   </properties>
 
   <dependencyManagement>
@@ -88,6 +90,13 @@
         <groupId>org.folio</groupId>
         <artifactId>applications-poc-tools</artifactId>
         <version>${applications-poc-tools.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-bom</artifactId>
+        <version>${mockito.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -463,6 +472,7 @@
         <configuration>
           <useSystemClassLoader>false</useSystemClassLoader>
           <groups>unit</groups>
+          <argLine>@{argLine} -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar</argLine>
         </configuration>
       </plugin>
 
@@ -472,6 +482,7 @@
         <version>${maven-failsafe-plugin.version}</version>
         <configuration>
           <groups>integration</groups>
+          <argLine>@{argLine} -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar</argLine>
         </configuration>
       </plugin>
 

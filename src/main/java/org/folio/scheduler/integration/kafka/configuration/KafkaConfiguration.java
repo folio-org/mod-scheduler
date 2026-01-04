@@ -8,13 +8,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties;
+import org.folio.scheduler.integration.kafka.TimerTableCheckService;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
+import org.folio.spring.FolioExecutionContext;
 import org.hibernate.exception.SQLGrammarException;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
@@ -88,6 +91,11 @@ public class KafkaConfiguration {
   @Bean
   public ConsumerFactory<String, EntitlementEvent> consumerFactoryEntitlementEvent() {
     return getConsumerFactory(EntitlementEvent.class);
+  }
+
+  @Bean
+  public TimerTableCheckService timerTableCheckService(DataSource dataSource, FolioExecutionContext context) {
+    return new TimerTableCheckService(dataSource, context);
   }
 
   private <T> DefaultKafkaConsumerFactory<String, T> getConsumerFactory(Class<T> eventClass) {
