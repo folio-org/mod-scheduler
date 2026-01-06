@@ -1,3 +1,8 @@
+## Version `v3.0.6` (06.01.2026)
+### Changes:
+* Kafka event processing improvements (MODSCHED-57)
+---
+
 ## Version `v3.0.5` (12.12.2025)
 ### Changes:
 * Remove keycloak-admin-client version and add applications-poc-tools version management (KEYCLOAK-73)
