@@ -12,7 +12,7 @@
   <name>mod-scheduler</name>
   <groupId>org.folio</groupId>
   <artifactId>mod-scheduler</artifactId>
-  <version>3.0.6-SNAPSHOT</version>
+  <version>3.0.6</version>
   <description>mod-scheduler</description>
   <packaging>jar</packaging>
 
@@ -81,7 +81,7 @@
     <sonar.coverage.jacoco.xmlReportPaths>
       target/site/jacoco-aggregate/jacoco.xml
     </sonar.coverage.jacoco.xmlReportPaths>
-    <argLine/>
+    <argLine />
   </properties>
 
   <dependencyManagement>
@@ -621,7 +621,7 @@
     <url>https://github.com/folio-org/mod-scheduler</url>
     <connection>scm:git:git://github.com:folio-org/mod-scheduler.git</connection>
     <developerConnection>scm:git:git@github.com:folio-org/mod-scheduler.git</developerConnection>
-    <tag>v3.0.0</tag>
+    <tag>v3.0.6</tag>
   </scm>
 
   <profiles>
