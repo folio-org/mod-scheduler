@@ -40,7 +40,8 @@ public class TimerTableCheckService {
 
         var schema = getDbSchemaName();
         var table = tableNameCase.format(tableName);
-        log.debug("Checking if table exists in schema: table = {}, schema = {}", table, schema);
+        log.debug("Checking if table exists in schema: table = {}, schema = {}. Thread: {}", table, schema,
+          Thread.currentThread().getName());
         try (ResultSet resultSet = metaData.getTables(null, schema, table, TABLE_TYPE)) {
           return resultSet.next();
         }
@@ -51,6 +52,8 @@ public class TimerTableCheckService {
   }
 
   private String getDbSchemaName() {
+    log.debug("FolioExecutionContext in use when getting DB schema name: tenantId = {}. Thread: {}",
+      context.getTenantId(), Thread.currentThread().getName());
     return context.getFolioModuleMetadata().getDBSchemaName(context.getTenantId());
   }
 
