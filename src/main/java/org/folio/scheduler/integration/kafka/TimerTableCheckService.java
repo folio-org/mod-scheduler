@@ -5,9 +5,11 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import javax.sql.DataSource;
+import lombok.extern.log4j.Log4j2;
 import org.folio.spring.FolioExecutionContext;
 import org.springframework.dao.DataRetrievalFailureException;
 
+@Log4j2
 public class TimerTableCheckService {
 
   private static final String[] TABLE_TYPE = {"TABLE"};
@@ -37,7 +39,9 @@ public class TimerTableCheckService {
         DatabaseMetaData metaData = connection.getMetaData();
 
         var schema = getDbSchemaName();
-        try (ResultSet resultSet = metaData.getTables(null, schema, tableNameCase.format(tableName), TABLE_TYPE)) {
+        var table = tableNameCase.format(tableName);
+        log.debug("Checking if table exists in schema: table = {}, schema = {}", table, schema);
+        try (ResultSet resultSet = metaData.getTables(null, schema, table, TABLE_TYPE)) {
           return resultSet.next();
         }
       }
