@@ -1,19 +1,13 @@
 package org.folio.scheduler.integration.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import javax.sql.DataSource;
 import org.folio.scheduler.integration.kafka.TimerTableCheckService.TableNameCase;
 import org.folio.spring.FolioExecutionContext;
 import org.folio.spring.FolioModuleMetadata;
@@ -23,24 +17,18 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataRetrievalFailureException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 
 @UnitTest
 @ExtendWith(MockitoExtension.class)
 class TimerTableCheckServiceTest {
 
   private static final String TIMER_TABLE_NAME = "timer";
-  private static final String[] TABLE_TYPE = {"TABLE"};
   private static final String SCHEMA_NAME = TENANT_ID + "_mod_scheduler";
 
   @Mock
-  private DataSource dataSource;
-  @Mock
-  private Connection connection;
-  @Mock
-  private DatabaseMetaData databaseMetaData;
-  @Mock
-  private ResultSet resultSet;
+  private JdbcTemplate jdbcTemplate;
   @Mock
   private FolioExecutionContext context;
   @Mock
@@ -48,148 +36,73 @@ class TimerTableCheckServiceTest {
 
   @AfterEach
   void tearDown() {
-    verifyNoMoreInteractions(dataSource, connection, databaseMetaData, resultSet);
+    verifyNoMoreInteractions(jdbcTemplate);
   }
 
   @Test
-  void tableExists_positive_tableIsPresent() throws SQLException {
+  void tableExists_positive_tableIsPresent() {
     setupContextMocks();
-    var timerTableCheckService = new TimerTableCheckService(dataSource, context);
+    var timerTableCheckService = new TimerTableCheckService(jdbcTemplate, context);
 
-    when(dataSource.getConnection()).thenReturn(connection);
-    when(connection.getMetaData()).thenReturn(databaseMetaData);
-    when(databaseMetaData.getTables(isNull(), eq(SCHEMA_NAME), eq(TIMER_TABLE_NAME), eq(TABLE_TYPE)))
-      .thenReturn(resultSet);
-    when(resultSet.next()).thenReturn(true);
+    when(jdbcTemplate.query(anyString(), any(ResultSetExtractor.class), eq(SCHEMA_NAME), eq(TIMER_TABLE_NAME)))
+      .thenReturn(true);
 
     boolean result = timerTableCheckService.tableExists();
 
     assertThat(result).isTrue();
-    verify(connection).close();
-    verify(resultSet).close();
   }
 
   @Test
-  void tableExists_positive_tableIsAbsent() throws SQLException {
+  void tableExists_positive_tableIsAbsent() {
     setupContextMocks();
-    var timerTableCheckService = new TimerTableCheckService(dataSource, context);
+    var timerTableCheckService = new TimerTableCheckService(jdbcTemplate, context);
 
-    when(dataSource.getConnection()).thenReturn(connection);
-    when(connection.getMetaData()).thenReturn(databaseMetaData);
-    when(databaseMetaData.getTables(isNull(), eq(SCHEMA_NAME), eq(TIMER_TABLE_NAME), eq(TABLE_TYPE)))
-      .thenReturn(resultSet);
-    when(resultSet.next()).thenReturn(false);
+    when(jdbcTemplate.query(anyString(), any(ResultSetExtractor.class), eq(SCHEMA_NAME), eq(TIMER_TABLE_NAME)))
+      .thenReturn(false);
 
     boolean result = timerTableCheckService.tableExists();
 
     assertThat(result).isFalse();
-    verify(connection).close();
-    verify(resultSet).close();
   }
 
   @Test
-  void tableExists_negative_sqlExceptionWhenGettingConnection() throws SQLException {
-    var timerTableCheckService = new TimerTableCheckService(dataSource, context);
-
-    var expectedException = new SQLException("Failed to get connection");
-    when(dataSource.getConnection()).thenThrow(expectedException);
-
-    assertThatThrownBy(timerTableCheckService::tableExists)
-      .isInstanceOf(DataRetrievalFailureException.class)
-      .hasMessageContaining("Failed to check if table " + TIMER_TABLE_NAME + " exists")
-      .hasCause(expectedException);
-  }
-
-  @Test
-  void tableExists_negative_sqlExceptionWhenGettingMetaData() throws SQLException {
-    var timerTableCheckService = new TimerTableCheckService(dataSource, context);
-
-    var expectedException = new SQLException("Failed to get metadata");
-    when(dataSource.getConnection()).thenReturn(connection);
-    when(connection.getMetaData()).thenThrow(expectedException);
-
-    assertThatThrownBy(timerTableCheckService::tableExists)
-      .isInstanceOf(DataRetrievalFailureException.class)
-      .hasMessageContaining("Failed to check if table " + TIMER_TABLE_NAME + " exists")
-      .hasCause(expectedException);
-
-    verify(connection).close();
-  }
-
-  @Test
-  void tableExists_negative_sqlExceptionWhenGettingTables() throws SQLException {
+  void tableExists_positive_tableIsPresentReturnsNull() {
     setupContextMocks();
-    var timerTableCheckService = new TimerTableCheckService(dataSource, context);
+    var timerTableCheckService = new TimerTableCheckService(jdbcTemplate, context);
 
-    var expectedException = new SQLException("Failed to get tables");
-    when(dataSource.getConnection()).thenReturn(connection);
-    when(connection.getMetaData()).thenReturn(databaseMetaData);
-    when(databaseMetaData.getTables(isNull(), eq(SCHEMA_NAME), eq(TIMER_TABLE_NAME), eq(TABLE_TYPE)))
-      .thenThrow(expectedException);
+    when(jdbcTemplate.query(anyString(), any(ResultSetExtractor.class), eq(SCHEMA_NAME), eq(TIMER_TABLE_NAME)))
+      .thenReturn(null);
 
-    assertThatThrownBy(timerTableCheckService::tableExists)
-      .isInstanceOf(DataRetrievalFailureException.class)
-      .hasMessageContaining("Failed to check if table " + TIMER_TABLE_NAME + " exists")
-      .hasCause(expectedException);
+    boolean result = timerTableCheckService.tableExists();
 
-    verify(connection).close();
+    assertThat(result).isFalse();
   }
 
   @Test
-  void tableExists_negative_sqlExceptionWhenCheckingResultSet() throws SQLException {
+  void tableExists_withUpperCase_tableIsPresent() {
     setupContextMocks();
-    var timerTableCheckService = new TimerTableCheckService(dataSource, context);
+    var timerTableCheckService = new TimerTableCheckService(jdbcTemplate, context, TableNameCase.UPPER);
 
-    var expectedException = new SQLException("Failed to check result set");
-    when(dataSource.getConnection()).thenReturn(connection);
-    when(connection.getMetaData()).thenReturn(databaseMetaData);
-    when(databaseMetaData.getTables(isNull(), eq(SCHEMA_NAME), eq(TIMER_TABLE_NAME), eq(TABLE_TYPE)))
-      .thenReturn(resultSet);
-    when(resultSet.next()).thenThrow(expectedException);
-
-    assertThatThrownBy(timerTableCheckService::tableExists)
-      .isInstanceOf(DataRetrievalFailureException.class)
-      .hasMessageContaining("Failed to check if table " + TIMER_TABLE_NAME + " exists")
-      .hasCause(expectedException);
-
-    verify(connection).close();
-    verify(resultSet).close();
-  }
-
-  @Test
-  void tableExists_withUpperCase_tableIsPresent() throws SQLException {
-    setupContextMocks();
-    var timerTableCheckService = new TimerTableCheckService(dataSource, context, TableNameCase.UPPER);
-
-    when(dataSource.getConnection()).thenReturn(connection);
-    when(connection.getMetaData()).thenReturn(databaseMetaData);
-    when(databaseMetaData.getTables(isNull(), eq(SCHEMA_NAME), eq(TIMER_TABLE_NAME.toUpperCase()), eq(TABLE_TYPE)))
-      .thenReturn(resultSet);
-    when(resultSet.next()).thenReturn(true);
+    when(jdbcTemplate.query(anyString(), any(ResultSetExtractor.class), eq(SCHEMA_NAME),
+      eq(TIMER_TABLE_NAME.toUpperCase())))
+      .thenReturn(true);
 
     boolean result = timerTableCheckService.tableExists();
 
     assertThat(result).isTrue();
-    verify(connection).close();
-    verify(resultSet).close();
   }
 
   @Test
-  void tableExists_withMixedCase_tableIsPresent() throws SQLException {
+  void tableExists_withMixedCase_tableIsPresent() {
     setupContextMocks();
-    var timerTableCheckService = new TimerTableCheckService(dataSource, context, TableNameCase.MIXED);
+    var timerTableCheckService = new TimerTableCheckService(jdbcTemplate, context, TableNameCase.MIXED);
 
-    when(dataSource.getConnection()).thenReturn(connection);
-    when(connection.getMetaData()).thenReturn(databaseMetaData);
-    when(databaseMetaData.getTables(isNull(), eq(SCHEMA_NAME), eq(TIMER_TABLE_NAME), eq(TABLE_TYPE)))
-      .thenReturn(resultSet);
-    when(resultSet.next()).thenReturn(true);
+    when(jdbcTemplate.query(anyString(), any(ResultSetExtractor.class), eq(SCHEMA_NAME), eq(TIMER_TABLE_NAME)))
+      .thenReturn(true);
 
     boolean result = timerTableCheckService.tableExists();
 
     assertThat(result).isTrue();
-    verify(connection).close();
-    verify(resultSet).close();
   }
 
   private void setupContextMocks() {
