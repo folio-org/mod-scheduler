@@ -40,10 +40,13 @@ public class TimerTableCheckService {
 
         var schema = getDbSchemaName();
         var table = tableNameCase.format(tableName);
-        log.debug("Checking if table exists in schema: table = {}, schema = {}. Thread: {}", table, schema,
+        log.info("Checking if table exists in schema: table = {}, schema = {}. Thread: {}", table, schema,
           Thread.currentThread().getName());
         try (ResultSet resultSet = metaData.getTables(null, schema, table, TABLE_TYPE)) {
-          return resultSet.next();
+          var found = resultSet.next();
+          log.info("Table existence check result: table = {}, schema = {}, exists = {}. Thread: {}", table, schema,
+                found, Thread.currentThread().getName());
+          return found;
         }
       }
     } catch (SQLException e) {
