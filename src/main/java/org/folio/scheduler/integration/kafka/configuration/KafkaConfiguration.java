@@ -109,7 +109,7 @@ public class KafkaConfiguration {
 
   private DefaultErrorHandler errorHandler(Class<?> eventClass) {
     var errorHandler = new DefaultErrorHandler((message, exception) ->
-      log.warn("Failed to process event [record: {}]", message, exception.getCause()));
+      log.error("Failed to process event [record: {}]", message, exception));
     errorHandler.setBackOffFunction((message, exception) -> getBackOff(exception, eventClass));
     errorHandler.setLogLevel(Level.DEBUG);
 
