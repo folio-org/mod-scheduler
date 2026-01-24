@@ -1,10 +1,18 @@
 package org.folio.scheduler.integration.kafka;
 
+import static java.util.Collections.singletonList;
+import static org.folio.spring.integration.XOkapiHeaders.TENANT;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
+import org.folio.spring.FolioModuleMetadata;
+import org.folio.spring.scope.FolioExecutionContextSetter;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +21,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class KafkaMessageListener {
 
+  private final FolioModuleMetadata folioModuleMetadata;
   private final KafkaEventService eventService;
 
   /**
@@ -28,16 +37,20 @@ public class KafkaMessageListener {
     concurrency = "#{folioKafkaProperties.listener['scheduled-jobs'].concurrency}")
   public void handleScheduledJobEvent(ConsumerRecord<String, ResourceEvent> consumerRecord) {
     var resourceEvent = consumerRecord.value();
-    var operationType = resourceEvent.getType();
+    var tenant = resourceEvent.getTenant();
 
-    log.info("Received job {} event for {} in {}", operationType, resourceEvent.getResourceName(),
-      resourceEvent.getTenant());
+    try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(tenant))) {
+      var operationType = resourceEvent.getType();
 
-    switch (operationType) {
-      case CREATE -> eventService.createTimers(resourceEvent);
-      case UPDATE -> eventService.updateTimers(resourceEvent);
-      case DELETE -> eventService.deleteTimers(resourceEvent);
-      default -> logUnsupportedOperationType(consumerRecord);
+      log.info("Received job {} event for {} in {}. Thread: {}", operationType, resourceEvent.getResourceName(),
+        tenant, Thread.currentThread().getName());
+
+      switch (operationType) {
+        case CREATE -> eventService.createTimers(resourceEvent);
+        case UPDATE -> eventService.updateTimers(resourceEvent);
+        case DELETE -> eventService.deleteTimers(resourceEvent);
+        default -> logUnsupportedOperationType(consumerRecord);
+      }
     }
   }
 
@@ -54,15 +67,26 @@ public class KafkaMessageListener {
     concurrency = "#{folioKafkaProperties.listener['entitlement-events'].concurrency}")
   public void handleEntitlementEvent(ConsumerRecord<String, EntitlementEvent> consumerRecord) {
     var event = consumerRecord.value();
-    var operationType = event.getType();
+    var tenant = event.getTenantName();
 
-    log.info("Received entitlement {} event for {} in {}", operationType, event.getModuleId(), event.getTenantName());
+    try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(tenant))) {
+      var operationType = event.getType();
 
-    switch (operationType) {
-      case ENTITLE, UPGRADE -> eventService.enableTimers(event);
-      case REVOKE -> eventService.disableTimers(event);
-      default -> logUnsupportedOperationType(consumerRecord);
+      log.info("Received entitlement {} event for {} in {}. Thread: {}", operationType, event.getModuleId(),
+        tenant, Thread.currentThread().getName());
+
+      switch (operationType) {
+        case ENTITLE, UPGRADE -> eventService.enableTimers(event);
+        case REVOKE -> eventService.disableTimers(event);
+        default -> logUnsupportedOperationType(consumerRecord);
+      }
     }
+  }
+
+  private static Map<String, Collection<String>> prepareContextHeaders(String tenant) {
+    var headers = new HashMap<String, Collection<String>>();
+    headers.put(TENANT, singletonList(tenant));
+    return headers;
   }
 
   private static void logUnsupportedOperationType(ConsumerRecord<?, ?> consumerRecord) {

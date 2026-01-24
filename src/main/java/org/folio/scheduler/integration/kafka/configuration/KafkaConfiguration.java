@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
@@ -23,6 +22,7 @@ import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.dao.InvalidDataAccessResourceUsageException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.KafkaException.Level;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -94,8 +94,8 @@ public class KafkaConfiguration {
   }
 
   @Bean
-  public TimerTableCheckService timerTableCheckService(DataSource dataSource, FolioExecutionContext context) {
-    return new TimerTableCheckService(dataSource, context);
+  public TimerTableCheckService timerTableCheckService(JdbcTemplate jdbcTemplate, FolioExecutionContext context) {
+    return new TimerTableCheckService(jdbcTemplate, context);
   }
 
   private <T> DefaultKafkaConsumerFactory<String, T> getConsumerFactory(Class<T> eventClass) {
@@ -109,7 +109,7 @@ public class KafkaConfiguration {
 
   private DefaultErrorHandler errorHandler(Class<?> eventClass) {
     var errorHandler = new DefaultErrorHandler((message, exception) ->
-      log.warn("Failed to process event [record: {}]", message, exception.getCause()));
+      log.error("Failed to process event [record: {}]", message, exception));
     errorHandler.setBackOffFunction((message, exception) -> getBackOff(exception, eventClass));
     errorHandler.setLogLevel(Level.INFO);
 
@@ -117,6 +117,9 @@ public class KafkaConfiguration {
   }
 
   private BackOff getBackOff(Exception exception, Class<?> eventClass) {
+    log.info("Calculating backoff for exception: exception = {}, eventClass = {}",
+      exception.getMessage(), eventClass.getSimpleName(), exception);
+
     var relationDoesNotExistsMessage = findRelationDoesNotExistsMessage(exception);
     if (relationDoesNotExistsMessage.isPresent()) {
       var retryProperties = getRetryProperties(eventClass);

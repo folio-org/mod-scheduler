@@ -44,6 +44,9 @@ class KafkaMessageListenerTest {
   @Mock
   private KafkaEventService eventService;
 
+  @Mock
+  private org.folio.spring.FolioModuleMetadata folioModuleMetadata;
+
   @AfterEach
   void tearDown() {
     verifyNoMoreInteractions(eventService);
