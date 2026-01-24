@@ -1,3 +1,8 @@
+## Version `v3.0.7` (24.01.2026)
+### Changes:
+* Sunflower SP#5 - Kafka event processing improvements. Part 1 (MODSCHED-58)
+---
+
 ## Version `v3.0.6` (06.01.2026)
 ### Changes:
 * Kafka event processing improvements (MODSCHED-57)
