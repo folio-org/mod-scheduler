@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.util.UUID;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
@@ -20,10 +21,11 @@ import org.hibernate.annotations.Type;
 import org.hibernate.type.SqlTypes;
 
 @Data
+@EqualsAndHashCode(callSuper = true)
 @Entity
 @NoArgsConstructor
 @Table(name = "timer")
-public class TimerDescriptorEntity {
+public class TimerDescriptorEntity extends Auditable {
 
   @Id private UUID id;
 
