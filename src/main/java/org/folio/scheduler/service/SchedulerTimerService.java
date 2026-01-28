@@ -30,7 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class SchedulerTimerService {
 
-  private final TimerDescriptorMapper timerDescriptorMapper;
+  private final TimerDescriptorMapper mapper;
   private final JobSchedulingService jobSchedulingService;
   private final SchedulerTimerRepository schedulerTimerRepository;
 
@@ -42,13 +42,13 @@ public class SchedulerTimerService {
    */
   @Transactional(readOnly = true)
   public Optional<TimerDescriptor> findById(UUID uuid) {
-    return schedulerTimerRepository.findById(uuid).map(TimerDescriptorEntity::getTimerDescriptor);
+    return schedulerTimerRepository.findById(uuid).map(mapper::toDescriptor);
   }
 
   @Transactional(readOnly = true)
   public List<TimerDescriptor> findByModuleNameAndType(String moduleName, TimerType type) {
     return mapItems(schedulerTimerRepository.findByModuleNameAndType(moduleName, type),
-      TimerDescriptorEntity::getTimerDescriptor);
+      mapper::toDescriptor);
   }
 
   /**
@@ -60,7 +60,7 @@ public class SchedulerTimerService {
    */
   @Transactional(readOnly = true)
   public TimerDescriptor getById(UUID uuid) {
-    return schedulerTimerRepository.findById(uuid).map(TimerDescriptorEntity::getTimerDescriptor).orElseThrow(
+    return schedulerTimerRepository.findById(uuid).map(mapper::toDescriptor).orElseThrow(
       () -> new EntityNotFoundException("Unable to find TimerDescriptor with id " + uuid));
   }
 
@@ -72,7 +72,7 @@ public class SchedulerTimerService {
   @Transactional(readOnly = true)
   public SearchResult<TimerDescriptor> getAll(Integer offset, Integer limit) {
     return SearchResult.of(schedulerTimerRepository.findAll(OffsetRequest.of(offset, limit)).stream()
-      .map(TimerDescriptorEntity::getTimerDescriptor).toList());
+      .map(mapper::toDescriptor).toList());
   }
 
   /**
@@ -195,22 +195,22 @@ public class SchedulerTimerService {
   }
 
   private TimerDescriptor doCreate(TimerDescriptor timerDescriptor) {
-    var entity = timerDescriptorMapper.convert(timerDescriptor);
+    var entity = mapper.toDescriptorEntity(timerDescriptor);
     var savedEntity = schedulerTimerRepository.save(entity);
     jobSchedulingService.schedule(timerDescriptor);
-    return savedEntity.getTimerDescriptor();
+    return mapper.toDescriptor(savedEntity);
   }
 
   private TimerDescriptor doUpdate(TimerDescriptor newDescriptor) {
     var oldTimerDescriptor =
-      schedulerTimerRepository.findById(newDescriptor.getId()).map(TimerDescriptorEntity::getTimerDescriptor)
+      schedulerTimerRepository.findById(newDescriptor.getId()).map(mapper::toDescriptor)
         .orElseThrow(
           () -> new EntityNotFoundException("Unable to find timer descriptor with id " + newDescriptor.getId()));
 
     newDescriptor.modified(true);
-    var convertedValue = timerDescriptorMapper.convert(newDescriptor);
+    var convertedValue = mapper.toDescriptorEntity(newDescriptor);
     var updatedEntity = schedulerTimerRepository.save(convertedValue);
-    var timerDescriptor = updatedEntity.getTimerDescriptor();
+    var timerDescriptor = mapper.toDescriptor(updatedEntity);
     jobSchedulingService.reschedule(oldTimerDescriptor, timerDescriptor);
 
     return timerDescriptor;

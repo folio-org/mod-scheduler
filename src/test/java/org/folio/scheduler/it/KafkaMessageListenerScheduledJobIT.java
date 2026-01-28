@@ -222,6 +222,33 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
       .andExpect(content().json(asJsonString(timerDescriptorList)));
   }
 
+  @Test
+  @WireMockStub("/wiremock/stubs/timer-endpoint.json")
+  @KeycloakRealms("/json/keycloak/test-realm.json")
+  void kafkaEvent_positive_createsTimerWithAuditFields() {
+    // Arrange
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, asJsonString(resourceEvent()));
+
+    // Act & Assert - Wait for timer to be created
+    await().untilAsserted(() -> {
+      var response = doGet("/scheduler/timers")
+        .andExpect(status().isOk())
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+
+      var timerList = parse(response, TimerDescriptorList.class);
+      assertThat(timerList.getTimerDescriptors()).isNotEmpty();
+
+      var timer = timerList.getTimerDescriptors().get(0);
+      assertThat(timer.getMetadata()).isNotNull();
+      assertThat(timer.getMetadata().getCreatedDate()).isNotNull();
+      assertThat(timer.getMetadata().getUpdatedDate()).isNotNull();
+      // User IDs can be null for system timers created via Kafka
+      // depending on whether system user context is available
+    });
+  }
+
   private static TimerDescriptor timerDescriptor() {
     return new TimerDescriptor().type(TimerType.SYSTEM).enabled(true)
       .moduleId(MODULE_ID).moduleName(MODULE_NAME).routingEntry(routingEntry());

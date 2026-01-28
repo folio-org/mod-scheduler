@@ -1,11 +1,14 @@
 package org.folio.scheduler.mapper;
 
+import static org.mapstruct.InjectionStrategy.CONSTRUCTOR;
+
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.ObjectFactory;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", injectionStrategy = CONSTRUCTOR, uses = DateConvertHelper.class)
 public interface TimerDescriptorMapper {
 
   /**
@@ -16,5 +19,22 @@ public interface TimerDescriptorMapper {
    */
   @Mapping(target = "naturalKey", ignore = true)
   @Mapping(target = "timerDescriptor", source = "descriptor")
-  TimerDescriptorEntity convert(TimerDescriptor descriptor);
+  @Mapping(target = "createdDate", ignore = true)
+  @Mapping(target = "createdByUserId", ignore = true)
+  @Mapping(target = "updatedDate", ignore = true)
+  @Mapping(target = "updatedByUserId", ignore = true)
+  TimerDescriptorEntity toDescriptorEntity(TimerDescriptor descriptor);
+
+  @AuditableMapping
+  @Mapping(target = "routingEntry", ignore = true)
+  @Mapping(target = "modified", ignore = true)
+  @Mapping(target = "enabled", ignore = true)
+  @Mapping(target = "moduleName", ignore = true)
+  @Mapping(target = "moduleId", ignore = true)
+  TimerDescriptor toDescriptor(TimerDescriptorEntity entity);
+
+  @ObjectFactory
+  default TimerDescriptor createDescriptor(TimerDescriptorEntity entity) {
+    return entity.getTimerDescriptor();
+  }
 }

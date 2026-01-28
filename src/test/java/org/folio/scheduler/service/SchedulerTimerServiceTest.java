@@ -97,7 +97,7 @@ class SchedulerTimerServiceTest {
     var descriptor = timerDescriptor().moduleId(MODULE_ID);
     var entity = timerDescriptorEntity(descriptor);
 
-    when(timerDescriptorMapper.convert(descriptor)).thenReturn(entity);
+    when(timerDescriptorMapper.toDescriptorEntity(descriptor)).thenReturn(entity);
     when(schedulerTimerRepository.save(entity)).thenReturn(entity);
     doAnswer(inv -> true).when(jobSchedulingService).schedule(descriptor);
 
@@ -108,7 +108,7 @@ class SchedulerTimerServiceTest {
   @Test
   void create_positive_entityIdIsNull() {
     var descriptor = timerDescriptor(null).moduleId(MODULE_ID);
-    when(timerDescriptorMapper.convert(timerDescriptorCaptor.capture()))
+    when(timerDescriptorMapper.toDescriptorEntity(timerDescriptorCaptor.capture()))
       .thenAnswer(inv -> timerDescriptorEntity(inv.getArgument(0)));
     when(schedulerTimerRepository.save(any(TimerDescriptorEntity.class))).thenAnswer(inv -> inv.getArgument(0));
     doAnswer(inv -> true).when(jobSchedulingService).schedule(any(TimerDescriptor.class));
@@ -155,7 +155,7 @@ class SchedulerTimerServiceTest {
     var entityToUpdate = timerDescriptorEntity(expectedDescriptor);
 
     when(schedulerTimerRepository.findById(TIMER_UUID)).thenReturn(Optional.of(existingEntity));
-    when(timerDescriptorMapper.convert(expectedDescriptor)).thenReturn(entityToUpdate);
+    when(timerDescriptorMapper.toDescriptorEntity(expectedDescriptor)).thenReturn(entityToUpdate);
     when(schedulerTimerRepository.save(entityToUpdate)).thenReturn(entityToUpdate);
     doNothing().when(jobSchedulingService).reschedule(existingEntity.getTimerDescriptor(), expectedDescriptor);
 
@@ -245,7 +245,7 @@ class SchedulerTimerServiceTest {
     descriptor.setId(null);
     var entity = timerDescriptorEntity(descriptor);
 
-    when(timerDescriptorMapper.convert(descriptor)).thenReturn(entity);
+    when(timerDescriptorMapper.toDescriptorEntity(descriptor)).thenReturn(entity);
     when(schedulerTimerRepository.save(entity)).thenReturn(entity);
     when(schedulerTimerRepository.findByNaturalKey(any())).thenReturn(Optional.of(entity));
     when(schedulerTimerRepository.findById(entity.getId())).thenReturn(Optional.of(entity));

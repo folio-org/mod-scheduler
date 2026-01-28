@@ -73,7 +73,10 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   void getById_positive() throws Exception {
     doGet("/scheduler/timers/{id}", TIMER_ID)
       .andExpect(jsonPath("$.id", is(TIMER_ID)))
-      .andExpect(jsonPath("$.enabled", is(true)));
+      .andExpect(jsonPath("$.enabled", is(true)))
+      .andExpect(jsonPath("$.metadata").exists())
+      .andExpect(jsonPath("$.metadata.createdDate").exists())
+      .andExpect(jsonPath("$.metadata.updatedDate").exists());
   }
 
   @Test
@@ -186,5 +189,64 @@ class SchedulerTimerIT extends BaseIntegrationTest {
       .andExpect(jsonPath("$.enabled", is(true)));
 
     doGet("/scheduler/timers").andExpect(jsonPath("$.timerDescriptors", hasSize(initialTimersCount + 1)));
+  }
+
+  @Test
+  @WireMockStub("/wiremock/stubs/user-timer-endpoint.json")
+  @KeycloakRealms("/json/keycloak/test-realm.json")
+  void create_positive_populatesMetadataInResponse() throws Exception {
+    // Arrange
+    var timerId = UUID.randomUUID();
+    var timerDescriptor = new TimerDescriptor()
+      .id(timerId)
+      .enabled(true)
+      .moduleId(MODULE_ID)
+      .routingEntry(new RoutingEntry()
+        .methods(List.of("POST"))
+        .pathPattern("/test-metadata")
+        .delay("1")
+        .unit(SECOND));
+
+    // Act
+    var result = doPost("/scheduler/timers", timerDescriptor);
+
+    // Assert
+    var responseBody = objectMapper.readValue(
+      result.andReturn().getResponse().getContentAsString(),
+      TimerDescriptor.class
+    );
+
+    assertThat(responseBody.getMetadata()).isNotNull();
+    assertThat(responseBody.getMetadata().getCreatedDate()).isNotNull();
+    assertThat(responseBody.getMetadata().getCreatedByUserId()).isNotNull();
+    assertThat(responseBody.getMetadata().getUpdatedDate()).isNotNull();
+    assertThat(responseBody.getMetadata().getUpdatedByUserId()).isNotNull();
+  }
+
+  @Test
+  void update_positive_refreshesOnlyUpdateFieldsInMetadata() throws Exception {
+    // Arrange - Get existing timer
+    var getResult = doGet("/scheduler/timers/{id}", TIMER_ID);
+    var existingTimer = objectMapper.readValue(
+      getResult.andReturn().getResponse().getContentAsString(),
+      TimerDescriptor.class
+    );
+
+    var originalCreatedByUserId = existingTimer.getMetadata().getCreatedByUserId();
+    var originalCreatedDate = existingTimer.getMetadata().getCreatedDate();
+
+    // Act - Update timer
+    existingTimer.setEnabled(false);
+    var updateResult = doPut("/scheduler/timers/{id}", existingTimer, TIMER_ID);
+
+    // Assert
+    var updatedTimer = objectMapper.readValue(
+      updateResult.andReturn().getResponse().getContentAsString(),
+      TimerDescriptor.class
+    );
+
+    assertThat(updatedTimer.getMetadata().getCreatedByUserId()).isEqualTo(originalCreatedByUserId);
+    assertThat(updatedTimer.getMetadata().getCreatedDate()).isEqualTo(originalCreatedDate);
+    assertThat(updatedTimer.getMetadata().getUpdatedDate()).isAfter(originalCreatedDate);
   }
 }

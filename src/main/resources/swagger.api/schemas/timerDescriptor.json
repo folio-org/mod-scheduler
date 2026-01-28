@@ -32,6 +32,10 @@
     "moduleId": {
       "description": "Module id timer belongs to (if present module name is not needed)",
       "type": "string"
+    },
+    "metadata": {
+      "$ref": "metadata.json",
+      "readOnly": true
     }
   },
   "required": [ "routingEntry", "enabled" ]
