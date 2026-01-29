@@ -109,8 +109,10 @@ public class KafkaEventService {
 
     int switched = schedulerTimerService.switchModuleTimers(moduleName, enable);
 
-    log.info("Timers were switched to new state: count = {}, state = {}, module = {}, tenant = {}",
-      switched, enable ? "enable" : "disable", moduleName, tenantName);
+    if (switched > 0) {
+      log.info("Timers were switched to new state: count = {}, state = {}, module = {}, tenant = {}",
+        switched, enable ? "enable" : "disable", moduleName, tenantName);
+    }
   }
 
   private static TimerDescriptor createTimerDescriptor(RoutingEntry routingEntry, String moduleName, String moduleId) {

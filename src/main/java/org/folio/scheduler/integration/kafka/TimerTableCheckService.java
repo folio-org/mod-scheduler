@@ -39,8 +39,7 @@ public class TimerTableCheckService {
     var schema = getDbSchemaName();
     var table = tableNameCase.format(tableName);
 
-    log.info("Checking if table exists in schema: table = {}, schema = {}. Thread: {}", table, schema,
-      Thread.currentThread().getName());
+    log.debug("Checking if table exists in schema: table = {}, schema = {}", table, schema);
 
     var found = isTrue(jdbcTemplate.query(
       TABLE_EXIST_SQL,
@@ -48,14 +47,11 @@ public class TimerTableCheckService {
       schema, table)
     );
 
-    log.info("Table existence check result: table = {}, schema = {}, exists = {}. Thread: {}", table, schema,
-      found, Thread.currentThread().getName());
+    log.debug("Table existence check result: table = {}, schema = {}, exists = {}", table, schema, found);
     return found;
   }
 
   private String getDbSchemaName() {
-    log.debug("FolioExecutionContext in use when getting DB schema name: tenantId = {}. Thread: {}",
-      context.getTenantId(), Thread.currentThread().getName());
     return context.getFolioModuleMetadata().getDBSchemaName(context.getTenantId());
   }
 
