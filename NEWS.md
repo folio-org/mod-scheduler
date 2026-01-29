@@ -1,6 +1,11 @@
+## Version `v3.0.8` (29.01.2026)
+### Changes:
+* Log level adjustments for timer state changes and table existence checks (MODSCHED-58)
+---
+
 ## Version `v3.0.7` (24.01.2026)
 ### Changes:
-* Sunflower SP#5 - Kafka event processing improvements. Part 1 (MODSCHED-58)
+* Sunflower SP#5 - Kafka event processing improvements. (MODSCHED-58)
 ---
 
 ## Version `v3.0.6` (06.01.2026)
