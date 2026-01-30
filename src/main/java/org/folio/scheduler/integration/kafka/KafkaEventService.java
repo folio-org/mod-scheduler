@@ -1,17 +1,12 @@
 package org.folio.scheduler.integration.kafka;
 
 import static java.lang.Boolean.TRUE;
-import static java.util.Collections.singletonList;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.folio.common.utils.CollectionUtils.mapItems;
 import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
 import static org.folio.scheduler.utils.OkapiRequestUtils.getStaticPath;
-import static org.folio.spring.integration.XOkapiHeaders.TENANT;
 
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.folio.common.utils.SemverUtils;
@@ -21,8 +16,6 @@ import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.service.SchedulerTimerService;
-import org.folio.spring.FolioModuleMetadata;
-import org.folio.spring.scope.FolioExecutionContextSetter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,50 +25,40 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class KafkaEventService {
 
-  private final FolioModuleMetadata folioModuleMetadata;
   private final SchedulerTimerService schedulerTimerService;
   private final TimerTableCheckService timerTableCheckService;
 
   public void createTimers(ResourceEvent event) {
     var newTimers = event.getNewValue();
-    var tenant = event.getTenant();
 
-    try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(tenant))) {
-      var moduleId = newTimers.getModuleId();
-      var moduleName = SemverUtils.getName(moduleId);
+    var moduleId = newTimers.getModuleId();
+    var moduleName = SemverUtils.getName(moduleId);
 
-      createModuleSystemTimers(newTimers.getTimers(), moduleName, moduleId);
-    }
+    createModuleSystemTimers(newTimers.getTimers(), moduleName, moduleId);
   }
 
   public void updateTimers(ResourceEvent event) {
     var newTimers = event.getNewValue();
-    var tenant = event.getTenant();
 
-    try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(tenant))) {
-      var moduleId = newTimers.getModuleId();
-      var moduleName = SemverUtils.getName(moduleId);
+    var moduleId = newTimers.getModuleId();
+    var moduleName = SemverUtils.getName(moduleId);
 
-      deleteModuleSystemTimers(moduleName);
+    deleteModuleSystemTimers(moduleName);
 
-      createModuleSystemTimers(newTimers.getTimers(), moduleName, moduleId);
-    }
+    createModuleSystemTimers(newTimers.getTimers(), moduleName, moduleId);
   }
 
   public void deleteTimers(ResourceEvent event) {
     var tenant = event.getTenant();
+    var moduleName = SemverUtils.getName(event.getOldValue().getModuleId());
 
-    try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(tenant))) {
-      var moduleName = SemverUtils.getName(event.getOldValue().getModuleId());
-
-      if (!timerTableCheckService.tableExists()) {
-        log.debug("Cannot delete system timers for given module and tenant because the timer table is missing: "
-          + "module = {}, tenant = {}. Operation is ignored.", moduleName, tenant);
-        return;
-      }
-
-      deleteModuleSystemTimers(moduleName);
+    if (!timerTableCheckService.tableExists()) {
+      log.debug("Cannot delete system timers for given module and tenant because the timer table is missing: "
+        + "module = {}, tenant = {}. Operation is ignored.", moduleName, tenant);
+      return;
     }
+
+    deleteModuleSystemTimers(moduleName);
   }
 
   public void enableTimers(EntitlementEvent event) {
@@ -116,26 +99,20 @@ public class KafkaEventService {
   }
 
   private void switchTimers(String moduleId, String tenantName, boolean enable) {
-    try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(tenantName))) {
-      var moduleName = SemverUtils.getName(moduleId);
+    var moduleName = SemverUtils.getName(moduleId);
 
-      if (!timerTableCheckService.tableExists()) {
-        log.debug("Cannot switch timers for given module and tenant because the timer table is missing: "
-          + "module = {}, tenant = {}. Operation is ignored.", moduleName, tenantName);
-        return;
-      }
+    if (!timerTableCheckService.tableExists()) {
+      log.debug("Cannot switch timers for given module and tenant because the timer table is missing: "
+        + "module = {}, tenant = {}. Operation is ignored.", moduleName, tenantName);
+      return;
+    }
 
-      int switched = schedulerTimerService.switchModuleTimers(moduleName, enable);
+    int switched = schedulerTimerService.switchModuleTimers(moduleName, enable);
 
+    if (switched > 0) {
       log.info("Timers were switched to new state: count = {}, state = {}, module = {}, tenant = {}",
         switched, enable ? "enable" : "disable", moduleName, tenantName);
     }
-  }
-
-  private static Map<String, Collection<String>> prepareContextHeaders(String tenant) {
-    var headers = new HashMap<String, Collection<String>>();
-    headers.put(TENANT, singletonList(tenant));
-    return headers;
   }
 
   private static TimerDescriptor createTimerDescriptor(RoutingEntry routingEntry, String moduleName, String moduleId) {
