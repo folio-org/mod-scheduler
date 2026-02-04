@@ -3,7 +3,7 @@ package org.folio.scheduler.migration;
 import static java.util.List.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.folio.scheduler.domain.entity.TimerDescriptorEntity.toNaturalKey;
-import static org.folio.scheduler.support.TestValues.MODULE_NAME;
+import static org.folio.scheduler.support.TestConstants.MODULE_NAME;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;

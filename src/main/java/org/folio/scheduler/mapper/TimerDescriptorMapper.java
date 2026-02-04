@@ -2,6 +2,9 @@ package org.folio.scheduler.mapper;
 
 import static org.mapstruct.InjectionStrategy.CONSTRUCTOR;
 
+import org.folio.scheduler.domain.dto.Metadata;
+import org.folio.scheduler.domain.dto.RoutingEntry;
+import org.folio.scheduler.domain.dto.RoutingEntrySchedule;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 import org.mapstruct.Mapper;
@@ -33,8 +36,46 @@ public interface TimerDescriptorMapper {
   @Mapping(target = "moduleId", ignore = true)
   TimerDescriptor toDescriptor(TimerDescriptorEntity entity);
 
+  /**
+   * Factory method to create a deep copy of {@link TimerDescriptor} from {@link TimerDescriptorEntity}.
+   *
+   * @param entity - source {@link TimerDescriptorEntity} object
+   * @return deep copy of the {@link TimerDescriptor} object
+   */
   @ObjectFactory
   default TimerDescriptor createDescriptor(TimerDescriptorEntity entity) {
-    return entity.getTimerDescriptor();
+    return deepCopy(entity.getTimerDescriptor());
   }
+
+  /**
+   * Creates a deep copy of {@link TimerDescriptor} object.
+   *
+   * @param source - source {@link TimerDescriptor} object to copy
+   * @return deep copy of the {@link TimerDescriptor} object
+   */
+  TimerDescriptor deepCopy(TimerDescriptor source);
+
+  /**
+   * Creates a deep copy of {@link RoutingEntry} object.
+   *
+   * @param source - source {@link RoutingEntry} object to copy
+   * @return deep copy of the {@link RoutingEntry} object
+   */
+  RoutingEntry deepCopy(RoutingEntry source);
+
+  /**
+   * Creates a deep copy of {@link RoutingEntrySchedule} object.
+   *
+   * @param source - source {@link RoutingEntrySchedule} object to copy
+   * @return deep copy of the {@link RoutingEntrySchedule} object
+   */
+  RoutingEntrySchedule deepCopy(RoutingEntrySchedule source);
+
+  /**
+   * Creates a deep copy of {@link Metadata} object.
+   *
+   * @param source - source {@link Metadata} object to copy
+   * @return deep copy of the {@link Metadata} object
+   */
+  Metadata deepCopy(Metadata source);
 }

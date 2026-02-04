@@ -5,7 +5,9 @@ import jakarta.persistence.EntityListeners;
 import jakarta.persistence.MappedSuperclass;
 import java.time.OffsetDateTime;
 import java.util.UUID;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -16,7 +18,9 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
  * Auditable is a mapped superclass that contains fields for auditing and the corresponding annotations
  * for JPA auditing. All audit fields are automatically populated by Spring Data JPA.
  */
-@Data
+@Getter
+@Setter
+@ToString
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 public class Auditable {

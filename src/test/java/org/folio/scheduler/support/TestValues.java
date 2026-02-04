@@ -1,6 +1,7 @@
 package org.folio.scheduler.support;
 
 import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
+import static org.folio.scheduler.support.TestConstants.MODULE_NAME;
 import static org.folio.scheduler.support.TestConstants.TIMER_UUID;
 
 import java.util.List;
@@ -13,9 +14,6 @@ import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class TestValues {
-
-  public static final String MODULE_NAME = "mod-foo";
-  public static final String MODULE_ID = "mod-foo-1.0.0";
 
   public static UUID randomUuid() {
     return UUID.randomUUID();

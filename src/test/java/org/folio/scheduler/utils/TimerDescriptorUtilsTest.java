@@ -1,7 +1,7 @@
 package org.folio.scheduler.utils;
 
-import static org.folio.scheduler.support.TestValues.MODULE_ID;
-import static org.folio.scheduler.support.TestValues.MODULE_NAME;
+import static org.folio.scheduler.support.TestConstants.MODULE_ID;
+import static org.folio.scheduler.support.TestConstants.MODULE_NAME;
 import static org.folio.scheduler.utils.TimerDescriptorUtils.evalModuleName;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.params.provider.Arguments.of;

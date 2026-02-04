@@ -26,26 +26,20 @@ class FolioAuditorAwareTest {
 
   @Test
   void getCurrentAuditor_positive_returnsUserIdFromContext() {
-    // Arrange
     when(folioExecutionContext.getUserId()).thenReturn(TEST_USER_ID);
 
-    // Act
     var result = auditorAware.getCurrentAuditor();
 
-    // Assert
     assertThat(result).isPresent();
     assertThat(result.get()).isEqualTo(TEST_USER_ID);
   }
 
   @Test
   void getCurrentAuditor_positive_returnsEmptyWhenNoUserContext() {
-    // Arrange
     when(folioExecutionContext.getUserId()).thenReturn(null);
 
-    // Act
     var result = auditorAware.getCurrentAuditor();
 
-    // Assert
     assertThat(result).isEmpty();
   }
 }
