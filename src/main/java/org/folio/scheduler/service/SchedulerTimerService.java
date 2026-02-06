@@ -92,16 +92,17 @@ public class SchedulerTimerService {
 
     validate(timerDescriptor);
 
-    timerDescriptor.setId(defaultIfNull(id, UUID.randomUUID()));
-    timerDescriptor.setModuleName(evalModuleName(timerDescriptor));
+    var creatingDescriptor = mapper.deepCopy(timerDescriptor); // to avoid side effects on the input parameter
+    creatingDescriptor.setId(defaultIfNull(id, UUID.randomUUID()));
+    creatingDescriptor.setModuleName(evalModuleName(timerDescriptor));
 
-    var naturalKey = TimerDescriptorEntity.toNaturalKey(timerDescriptor);
+    var naturalKey = TimerDescriptorEntity.toNaturalKey(creatingDescriptor);
     return repository.findByNaturalKey(naturalKey)
       .map(existingTimer -> {
-        timerDescriptor.setId(existingTimer.getId());
-        return doUpdate(timerDescriptor);
+        creatingDescriptor.setId(existingTimer.getId());
+        return doUpdate(creatingDescriptor);
       })
-      .orElseGet(() -> doCreate(timerDescriptor));
+      .orElseGet(() -> doCreate(creatingDescriptor));
   }
 
   /**
@@ -123,9 +124,11 @@ public class SchedulerTimerService {
     }
 
     validate(newDescriptor);
-    newDescriptor.setModuleName(evalModuleName(newDescriptor));
 
-    return doUpdate(newDescriptor);
+    var updatingDescriptor = mapper.deepCopy(newDescriptor); // to avoid side effects on the input parameter
+    updatingDescriptor.setModuleName(evalModuleName(newDescriptor));
+
+    return doUpdate(updatingDescriptor);
   }
 
   /**
@@ -203,18 +206,20 @@ public class SchedulerTimerService {
     return createdDescriptor;
   }
 
-  private TimerDescriptor doUpdate(TimerDescriptor newDescriptor) {
-    assert newDescriptor.getId() != null;
+  private TimerDescriptor doUpdate(TimerDescriptor inputDescriptor) {
+    assert inputDescriptor.getId() != null;
 
-    var oldTimerDescriptor = repository.findById(newDescriptor.getId())
+    var oldTimerDescriptor = repository.findById(inputDescriptor.getId())
       .map(mapper::toDescriptor)
       .orElseThrow(
-        () -> new EntityNotFoundException("Unable to find timer descriptor with id " + newDescriptor.getId()));
+        () -> new EntityNotFoundException("Unable to find timer descriptor with id " + inputDescriptor.getId()));
 
-    newDescriptor.modified(true);
-    var convertedValue = mapper.toDescriptorEntity(newDescriptor);
-    var updatedEntity = repository.save(convertedValue);
+    inputDescriptor.modified(true);
+
+    var convertedEntity = mapper.toDescriptorEntity(inputDescriptor);
+    var updatedEntity = repository.save(convertedEntity);
     var updatedDescriptor = mapper.toDescriptor(updatedEntity);
+
     jobSchedulingService.reschedule(oldTimerDescriptor, updatedDescriptor);
 
     return updatedDescriptor;

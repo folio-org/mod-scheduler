@@ -50,6 +50,15 @@ public interface TimerDescriptorMapper {
   /**
    * Creates a deep copy of {@link TimerDescriptor} object.
    *
+   * <p>This method is used to create a deep copy of the {@link TimerDescriptor} object
+   * to ensure that any modifications made to the copied object do not affect the original object.
+   * It is particularly useful when the {@link TimerDescriptor} contains mutable fields
+   * or nested objects that need to be duplicated rather than referenced.
+   *
+   * <p>Caution: If a new complex object is added to the {@link TimerDescriptor} class,
+   * this method must be updated to include the logic for deep copying that new object
+   * by creating a respective deep copy method for it and invoking that method within this method.
+   *
    * @param source - source {@link TimerDescriptor} object to copy
    * @return deep copy of the {@link TimerDescriptor} object
    */
