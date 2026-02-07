@@ -11,13 +11,10 @@ import lombok.NoArgsConstructor;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
+import org.folio.scheduler.domain.model.TimerType;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class TestValues {
-
-  public static UUID randomUuid() {
-    return UUID.randomUUID();
-  }
 
   public static TimerDescriptor timerDescriptor() {
     return timerDescriptor(TIMER_UUID);
@@ -42,9 +39,21 @@ public class TestValues {
   public static TimerDescriptorEntity timerDescriptorEntity(TimerDescriptor descriptor) {
     var entity = new TimerDescriptorEntity();
     entity.setId(TIMER_UUID);
+    entity.setType(toEntityTimeType(descriptor.getType()));
     entity.setTimerDescriptor(descriptor);
     entity.setModuleId(descriptor.getModuleId());
     entity.setModuleName(descriptor.getModuleName());
     return entity;
+  }
+
+  private static TimerType toEntityTimeType(org.folio.scheduler.domain.dto.TimerType timerType) {
+    if (timerType == null) {
+      return null;
+    }
+
+    return switch (timerType) {
+      case USER -> TimerType.USER;
+      case SYSTEM -> TimerType.SYSTEM;
+    };
   }
 }

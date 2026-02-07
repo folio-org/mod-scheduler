@@ -1,10 +1,10 @@
 package org.folio.scheduler.service;
 
 import static java.util.Collections.singletonList;
+import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.folio.scheduler.support.TestConstants.TIMER_UUID;
-import static org.folio.scheduler.support.TestValues.randomUuid;
 import static org.folio.scheduler.support.TestValues.timerDescriptor;
 import static org.folio.scheduler.support.TestValues.timerDescriptorEntity;
 import static org.mockito.ArgumentMatchers.any;
@@ -213,7 +213,7 @@ class SchedulerTimerServiceTest {
 
   @Test
   void update_negative_differentIdInParameterAndBody() {
-    var descriptor = timerDescriptor(randomUuid());
+    var descriptor = timerDescriptor(randomUUID());
     assertThatThrownBy(() -> service.update(TIMER_UUID, descriptor))
       .isInstanceOf(RequestValidationException.class)
       .hasMessage("Id in the url and in the entity must match");
@@ -305,9 +305,9 @@ class SchedulerTimerServiceTest {
     var module = "mod-foo";
     var enabled = true;
 
-    var id1 = UUID.randomUUID();
-    var id2 = UUID.randomUUID();
-    var id3 = UUID.randomUUID();
+    var id1 = randomUUID();
+    var id2 = randomUUID();
+    var id3 = randomUUID();
 
     doReturn(
       List.of(mockTimerDescriptorEntity(id1), mockTimerDescriptorEntity(id2), mockTimerDescriptorEntity(id3))).when(
