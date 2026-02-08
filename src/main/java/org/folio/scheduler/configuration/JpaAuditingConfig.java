@@ -1,6 +1,7 @@
 package org.folio.scheduler.configuration;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +39,7 @@ public class JpaAuditingConfig {
    */
   @Bean
   public DateTimeProvider dateTimeProvider() {
-    return () -> Optional.of(OffsetDateTime.now());
+    return () -> Optional.of(OffsetDateTime.now(ZoneOffset.UTC));
   }
 }
 

@@ -61,8 +61,7 @@ public class SchedulerTimerService {
    */
   @Transactional(readOnly = true)
   public TimerDescriptor getById(UUID uuid) {
-    var entity = getByIdInternal(uuid);
-    return mapper.toDescriptor(entity);
+    return getByIdInternal(uuid);
   }
 
   /**
@@ -212,13 +211,21 @@ public class SchedulerTimerService {
     assert inputDescriptor.getId() != null;
     var id = inputDescriptor.getId();
 
-    var oldTimerDescriptor = getById(id);
+    var oldTimerDescriptor = getByIdInternal(id);
 
     inputDescriptor.modified(true);
 
     var convertedEntity = mapper.toDescriptorEntity(inputDescriptor);
     var updatedEntity = repository.saveAndFlush(convertedEntity);
-    entityManager.refresh(updatedEntity); // to get all updated fields from the database, including audit fields
+    // Refresh is required to retrieve the complete audit metadata, particularly createdDate and
+    // createdByUserId. Flow: mapper.toDescriptorEntity() ignores all audit fields (by design) →
+    // saveAndFlush() persists the update and JPA auditing populates updatedDate/updatedByUserId
+    // via @PreUpdate callback, but the created audit fields are NOT automatically retrieved since
+    // they weren't part of the entity conversion → refresh() reloads the full entity from the
+    // database including both created and updated audit fields → mapper.toDescriptor() can then
+    // map complete audit metadata to the response. Without refresh, createdDate and createdByUserId
+    // would be null/missing in the response.
+    entityManager.refresh(updatedEntity);
 
     var updatedDescriptor = mapper.toDescriptor(updatedEntity);
 
@@ -227,8 +234,9 @@ public class SchedulerTimerService {
     return updatedDescriptor;
   }
 
-  private TimerDescriptorEntity getByIdInternal(UUID id) {
-    return repository.findById(id).orElseThrow(
+  private TimerDescriptor getByIdInternal(UUID id) {
+    var entity = repository.findById(id).orElseThrow(
       () -> new EntityNotFoundException("Unable to find timer descriptor with id " + id));
+    return mapper.toDescriptor(entity);
   }
 }

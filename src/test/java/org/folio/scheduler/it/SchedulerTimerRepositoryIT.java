@@ -101,7 +101,7 @@ class SchedulerTimerRepositoryIT extends BaseIntegrationTest {
   @Test
   void saveAndFlush_positive_populatesAllAuditFields() {
     var entity = timerDescriptorEntity();
-    var now = OffsetDateTime.now();
+    var now = OffsetDateTime.now(ZoneOffset.UTC);
 
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata,
       prepareContextHeadersWithUser(USER_ID_UUID))) {
