@@ -64,6 +64,7 @@ public abstract class BaseIntegrationTest extends BaseBackendIntegrationTest {
   protected static ResultActions attemptPut(String uri, Object body, Object... args) throws Exception {
     return mockMvc.perform(put(uri, args)
       .header(TENANT, TENANT_ID)
+      .header(USER_ID, TestConstants.USER_ID)
       .content(asJsonString(body))
       .contentType(APPLICATION_JSON));
   }
@@ -97,11 +98,6 @@ public abstract class BaseIntegrationTest extends BaseBackendIntegrationTest {
   @SneakyThrows
   protected static <T> void setUpTenant() {
     enableTenant(TENANT_ID);
-  }
-
-  @SneakyThrows
-  protected static <T> void setUpTenant(String tenant) {
-    enableTenant(tenant);
   }
 
   @SneakyThrows

@@ -6,6 +6,7 @@ import static org.folio.common.utils.CollectionUtils.mapItems;
 import static org.folio.scheduler.utils.TimerDescriptorUtils.evalModuleName;
 
 import jakarta.persistence.EntityExistsException;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import java.util.Objects;
@@ -33,6 +34,7 @@ public class SchedulerTimerService {
   private final TimerDescriptorMapper mapper;
   private final JobSchedulingService jobSchedulingService;
   private final SchedulerTimerRepository repository;
+  private final EntityManager entityManager;
 
   /**
    * Returns {@link Optional} of {@link TimerDescriptor} object by id.
@@ -59,8 +61,8 @@ public class SchedulerTimerService {
    */
   @Transactional(readOnly = true)
   public TimerDescriptor getById(UUID uuid) {
-    return repository.findById(uuid).map(mapper::toDescriptor).orElseThrow(
-      () -> new EntityNotFoundException("Unable to find TimerDescriptor with id " + uuid));
+    var entity = getByIdInternal(uuid);
+    return mapper.toDescriptor(entity);
   }
 
   /**
@@ -198,7 +200,7 @@ public class SchedulerTimerService {
 
   private TimerDescriptor doCreate(TimerDescriptor timerDescriptor) {
     var entity = mapper.toDescriptorEntity(timerDescriptor);
-    var savedEntity = repository.save(entity);
+    var savedEntity = repository.saveAndFlush(entity);
     var createdDescriptor = mapper.toDescriptor(savedEntity);
 
     jobSchedulingService.schedule(createdDescriptor);
@@ -208,20 +210,25 @@ public class SchedulerTimerService {
 
   private TimerDescriptor doUpdate(TimerDescriptor inputDescriptor) {
     assert inputDescriptor.getId() != null;
+    var id = inputDescriptor.getId();
 
-    var oldTimerDescriptor = repository.findById(inputDescriptor.getId())
-      .map(mapper::toDescriptor)
-      .orElseThrow(
-        () -> new EntityNotFoundException("Unable to find timer descriptor with id " + inputDescriptor.getId()));
+    var oldTimerDescriptor = getById(id);
 
     inputDescriptor.modified(true);
 
     var convertedEntity = mapper.toDescriptorEntity(inputDescriptor);
-    var updatedEntity = repository.save(convertedEntity);
+    var updatedEntity = repository.saveAndFlush(convertedEntity);
+    entityManager.refresh(updatedEntity); // to get all updated fields from the database, including audit fields
+
     var updatedDescriptor = mapper.toDescriptor(updatedEntity);
 
     jobSchedulingService.reschedule(oldTimerDescriptor, updatedDescriptor);
 
     return updatedDescriptor;
+  }
+
+  private TimerDescriptorEntity getByIdInternal(UUID id) {
+    return repository.findById(id).orElseThrow(
+      () -> new EntityNotFoundException("Unable to find timer descriptor with id " + id));
   }
 }

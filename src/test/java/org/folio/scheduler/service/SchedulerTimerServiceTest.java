@@ -16,6 +16,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import jakarta.persistence.EntityExistsException;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import java.util.Optional;
@@ -47,6 +48,7 @@ class SchedulerTimerServiceTest {
   @Mock private SchedulerTimerRepository repository;
   @Mock private TimerDescriptorMapper mapper;
   @Mock private JobSchedulingService jobSchedulingService;
+  @Mock private EntityManager entityManager;
 
   @Captor private ArgumentCaptor<TimerDescriptor> timerDescriptorCaptor;
 
@@ -79,7 +81,7 @@ class SchedulerTimerServiceTest {
 
   @Test
   void getById_negative_entityNotFound() {
-    var errorMessage = "Unable to find TimerDescriptor with id " + TIMER_UUID;
+    var errorMessage = "Unable to find timer descriptor with id " + TIMER_UUID;
     when(repository.findById(TIMER_UUID)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.getById(TIMER_UUID))
@@ -107,7 +109,7 @@ class SchedulerTimerServiceTest {
     when(repository.findByNaturalKey(TimerDescriptorEntity.toNaturalKey(descriptorCopy))).thenReturn(Optional.empty());
 
     when(mapper.toDescriptorEntity(descriptorCopy)).thenReturn(entity);
-    when(repository.save(entity)).thenReturn(entity);
+    when(repository.saveAndFlush(entity)).thenReturn(entity);
     when(mapper.toDescriptor(entity)).thenReturn(descriptorCopy);
     when(jobSchedulingService.schedule(descriptorCopy)).thenReturn(true);
 
@@ -125,7 +127,7 @@ class SchedulerTimerServiceTest {
 
     when(mapper.toDescriptorEntity(timerDescriptorCaptor.capture()))
       .thenAnswer(inv -> timerDescriptorEntity(inv.getArgument(0)));
-    when(repository.save(any(TimerDescriptorEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(repository.saveAndFlush(any(TimerDescriptorEntity.class))).thenAnswer(inv -> inv.getArgument(0));
     when(mapper.toDescriptor(any(TimerDescriptorEntity.class)))
       .thenAnswer(inv -> ((TimerDescriptorEntity) inv.getArgument(0)).getTimerDescriptor());
     when(jobSchedulingService.schedule(any(TimerDescriptor.class))).thenReturn(true);
@@ -195,7 +197,8 @@ class SchedulerTimerServiceTest {
     // Use any() because service calls this with the deep copy (inputDescriptorCopy), not expectedDescriptor
     when(mapper.toDescriptorEntity(any(TimerDescriptor.class))).thenReturn(entityToUpdate);
 
-    when(repository.save(entityToUpdate)).thenReturn(entityToUpdate);
+    when(repository.saveAndFlush(entityToUpdate)).thenReturn(entityToUpdate);
+    doNothing().when(entityManager).refresh(entityToUpdate);
     doNothing().when(jobSchedulingService).reschedule(existingDescriptor, expectedDescriptor);
 
     var actual = service.update(TIMER_UUID, inputDescriptor);
@@ -290,7 +293,7 @@ class SchedulerTimerServiceTest {
 
     when(mapper.deepCopy(descriptor)).thenReturn(descriptorCopy);
     when(mapper.toDescriptorEntity(any(TimerDescriptor.class))).thenReturn(entity);
-    when(repository.save(entity)).thenReturn(entity);
+    when(repository.saveAndFlush(entity)).thenReturn(entity);
     when(repository.findByNaturalKey(any())).thenReturn(Optional.of(entity));
     when(repository.findById(entity.getId())).thenReturn(Optional.of(entity));
     when(mapper.toDescriptor(entity)).thenReturn(existingDescriptor, updatedDescriptor);
