@@ -11,6 +11,7 @@
 * Timers creation fails on rancher environments (MODSCHED-50)
 * Register JacksonProvider in Keycloak Resteasy client builder (KEYCLOAK-90)
 * Kafka event processing improvements (MODSCHED-57)
+* Add Auditable Information to Timer Entity (MODSCHED-62)
 ---
 
 ## Version `v3.0.0` (12.03.2025)
