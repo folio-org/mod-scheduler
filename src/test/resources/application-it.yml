@@ -7,6 +7,8 @@ spring:
   hikari:
     data-source-properties:
       preparedStatementCacheQueries: 0
+  jpa:
+    show-sql: true
 
 folio:
   environment: it

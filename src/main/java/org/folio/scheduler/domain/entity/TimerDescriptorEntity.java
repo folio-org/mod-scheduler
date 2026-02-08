@@ -9,21 +9,27 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.Objects;
 import java.util.UUID;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.model.TimerType;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Type;
+import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.type.SqlTypes;
 
-@Data
+@Getter
+@Setter
+@ToString(callSuper = true)
 @Entity
 @NoArgsConstructor
 @Table(name = "timer")
-public class TimerDescriptorEntity {
+public class TimerDescriptorEntity extends Auditable {
 
   @Id private UUID id;
 
@@ -60,5 +66,32 @@ public class TimerDescriptorEntity {
     var methods = re.getMethods() != null ? String.join(",", re.getMethods()) : "";
     var path = re.getPath() != null ? re.getPath() : re.getPathPattern();
     return String.format("%s#%s#%s#%s", td.getType(), td.getModuleName(), methods, path);
+  }
+
+  @Override
+  public final boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    var objEffectiveClass = obj instanceof HibernateProxy
+      ? ((HibernateProxy) obj).getHibernateLazyInitializer().getPersistentClass() : obj.getClass();
+    var thisEffectiveClass = this instanceof HibernateProxy
+      ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass() : this.getClass();
+
+    if (thisEffectiveClass != objEffectiveClass) {
+      return false;
+    }
+
+    var that = (TimerDescriptorEntity) obj;
+    return getId() != null && Objects.equals(getId(), that.getId());
+  }
+
+  @Override
+  public final int hashCode() {
+    return this instanceof HibernateProxy
+      ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass().hashCode() : getClass().hashCode();
   }
 }

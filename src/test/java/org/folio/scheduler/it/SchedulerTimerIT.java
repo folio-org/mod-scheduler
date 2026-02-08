@@ -5,6 +5,10 @@ import static org.awaitility.Awaitility.await;
 import static org.awaitility.Durations.ONE_SECOND;
 import static org.awaitility.Durations.TEN_SECONDS;
 import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
+import static org.folio.scheduler.support.TestConstants.MODULE_ID;
+import static org.folio.scheduler.support.TestConstants.USER_ID;
+import static org.folio.scheduler.support.TestConstants.USER_ID_UUID;
+import static org.folio.test.TestUtils.parseResponse;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -15,10 +19,11 @@ import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TE
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import org.folio.scheduler.domain.dto.Metadata;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.RoutingEntrySchedule;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
@@ -48,10 +53,8 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   private static final String UNKNOWN_ID = "51fd5dff-5d51-4169-a296-d441e1d234c9";
   private static final UUID TIMER_ID_TO_UPDATE = UUID.fromString("123e4567-e89b-12d3-a456-426614174001");
   private static final String TIMER_ID_TO_DELETE = "123e4567-e89b-12d3-a456-426614174002";
-  private static final String MODULE_ID = "mod-foo-1.0.0";
 
   @Autowired private Scheduler scheduler;
-  @Autowired private ObjectMapper objectMapper;
 
   @BeforeAll
   static void beforeAll() {
@@ -73,7 +76,10 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   void getById_positive() throws Exception {
     doGet("/scheduler/timers/{id}", TIMER_ID)
       .andExpect(jsonPath("$.id", is(TIMER_ID)))
-      .andExpect(jsonPath("$.enabled", is(true)));
+      .andExpect(jsonPath("$.enabled", is(true)))
+      .andExpect(jsonPath("$.metadata").exists())
+      .andExpect(jsonPath("$.metadata.createdDate").exists())
+      .andExpect(jsonPath("$.metadata.updatedDate").exists());
   }
 
   @Test
@@ -87,15 +93,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   @KeycloakRealms("/json/keycloak/test-realm.json")
   void create_positive_simpleTrigger() throws Exception {
     var timerId = UUID.randomUUID();
-    var timerDescriptor = new TimerDescriptor()
-      .id(timerId)
-      .enabled(true)
-      .moduleId(MODULE_ID)
-      .routingEntry(new RoutingEntry()
-        .methods(List.of("POST"))
-        .pathPattern("/test")
-        .delay("1")
-        .unit(SECOND));
+    var timerDescriptor = timerDescriptor(timerId);
 
     var timestampBeforeSavingDesc = Instant.now();
     doPost("/scheduler/timers", timerDescriptor)
@@ -171,9 +169,8 @@ class SchedulerTimerIT extends BaseIntegrationTest {
         .delay("1")
         .unit(SECOND));
 
-    var initialTimersCount =
-      objectMapper.readValue(doGet("/scheduler/timers").andReturn().getResponse().getContentAsString(),
-        TimerDescriptorList.class).getTotalRecords();
+    var initialTimersCount = parseResponse(doGet("/scheduler/timers").andReturn(), TimerDescriptorList.class)
+      .getTotalRecords();
 
     doPost("/scheduler/timers", timerDescriptor)
       .andExpect(jsonPath("$.id", notNullValue()))
@@ -186,5 +183,68 @@ class SchedulerTimerIT extends BaseIntegrationTest {
       .andExpect(jsonPath("$.enabled", is(true)));
 
     doGet("/scheduler/timers").andExpect(jsonPath("$.timerDescriptors", hasSize(initialTimersCount + 1)));
+  }
+
+  @Test
+  @WireMockStub("/wiremock/stubs/user-timer-endpoint.json")
+  @KeycloakRealms("/json/keycloak/test-realm.json")
+  void create_positive_populatesMetadataInResponse() throws Exception {
+    var timerId = UUID.randomUUID();
+    var timerDescriptor = timerDescriptor(timerId);
+
+    var result = doPost("/scheduler/timers", timerDescriptor).andReturn();
+    var responseBody = parseResponse(result, TimerDescriptor.class);
+
+    var now = Instant.now();
+    assertMetadata(responseBody.getMetadata(), USER_ID, now, now);
+  }
+
+  @Test
+  @WireMockStub("/wiremock/stubs/timer-call-targets.json")
+  @SuppressWarnings("checkstyle:VariableDeclarationUsageDistance")
+  void update_positive_refreshesOnlyUpdateFieldsInMetadata() throws Exception {
+    var getResult = doGet("/scheduler/timers/{id}", TIMER_ID).andReturn();
+    var existingTimer = parseResponse(getResult, TimerDescriptor.class);
+
+    assertThat(existingTimer.getMetadata()).isNotNull();
+    var originalCreatedByUserId = existingTimer.getMetadata().getCreatedByUserId();
+    var originalCreatedDate = existingTimer.getMetadata().getCreatedDate();
+
+    existingTimer.setEnabled(false);
+
+    var updateResult = doPut("/scheduler/timers/{id}", existingTimer, TIMER_ID).andReturn();
+    var updatedTimer = parseResponse(updateResult, TimerDescriptor.class);
+
+    Metadata updatedMetadata = updatedTimer.getMetadata();
+    assertThat(updatedMetadata).isNotNull();
+    assertThat(updatedMetadata.getCreatedByUserId()).isEqualTo(originalCreatedByUserId);
+    assertThat(updatedMetadata.getCreatedDate()).isEqualTo(originalCreatedDate);
+    assertThat(updatedMetadata.getUpdatedDate()).isAfter(originalCreatedDate);
+    assertThat(updatedMetadata.getUpdatedByUserId()).isEqualTo(USER_ID_UUID);
+  }
+
+  private static TimerDescriptor timerDescriptor(UUID timerId) {
+    return new TimerDescriptor()
+      .id(timerId)
+      .enabled(true)
+      .moduleId(MODULE_ID)
+      .routingEntry(new RoutingEntry()
+        .methods(List.of("POST"))
+        .pathPattern("/test")
+        .delay("1")
+        .unit(SECOND));
+  }
+
+  private static void assertMetadata(Metadata metadata, String userId, Instant expectedCreatedDate,
+    Instant expectedUpdatedDate) {
+    assertThat(metadata).isNotNull();
+
+    assertThat(metadata.getCreatedDate()).isNotNull();
+    assertThat(metadata.getCreatedDate()).isCloseTo(expectedCreatedDate, TimeUnit.MINUTES.toMillis(1));
+    assertThat(metadata.getCreatedByUserId()).isEqualTo(UUID.fromString(userId));
+
+    assertThat(metadata.getUpdatedDate()).isNotNull();
+    assertThat(metadata.getUpdatedDate()).isCloseTo(expectedUpdatedDate, TimeUnit.MINUTES.toMillis(1));
+    assertThat(metadata.getUpdatedByUserId()).isEqualTo(UUID.fromString(userId));
   }
 }

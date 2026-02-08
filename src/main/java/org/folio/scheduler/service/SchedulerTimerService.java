@@ -6,6 +6,7 @@ import static org.folio.common.utils.CollectionUtils.mapItems;
 import static org.folio.scheduler.utils.TimerDescriptorUtils.evalModuleName;
 
 import jakarta.persistence.EntityExistsException;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import java.util.Objects;
@@ -30,9 +31,10 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class SchedulerTimerService {
 
-  private final TimerDescriptorMapper timerDescriptorMapper;
+  private final TimerDescriptorMapper mapper;
   private final JobSchedulingService jobSchedulingService;
-  private final SchedulerTimerRepository schedulerTimerRepository;
+  private final SchedulerTimerRepository repository;
+  private final EntityManager entityManager;
 
   /**
    * Returns {@link Optional} of {@link TimerDescriptor} object by id.
@@ -42,13 +44,12 @@ public class SchedulerTimerService {
    */
   @Transactional(readOnly = true)
   public Optional<TimerDescriptor> findById(UUID uuid) {
-    return schedulerTimerRepository.findById(uuid).map(TimerDescriptorEntity::getTimerDescriptor);
+    return repository.findById(uuid).map(mapper::toDescriptor);
   }
 
   @Transactional(readOnly = true)
   public List<TimerDescriptor> findByModuleNameAndType(String moduleName, TimerType type) {
-    return mapItems(schedulerTimerRepository.findByModuleNameAndType(moduleName, type),
-      TimerDescriptorEntity::getTimerDescriptor);
+    return mapItems(repository.findByModuleNameAndType(moduleName, type), mapper::toDescriptor);
   }
 
   /**
@@ -60,8 +61,7 @@ public class SchedulerTimerService {
    */
   @Transactional(readOnly = true)
   public TimerDescriptor getById(UUID uuid) {
-    return schedulerTimerRepository.findById(uuid).map(TimerDescriptorEntity::getTimerDescriptor).orElseThrow(
-      () -> new EntityNotFoundException("Unable to find TimerDescriptor with id " + uuid));
+    return getByIdInternal(uuid);
   }
 
   /**
@@ -71,8 +71,8 @@ public class SchedulerTimerService {
    */
   @Transactional(readOnly = true)
   public SearchResult<TimerDescriptor> getAll(Integer offset, Integer limit) {
-    return SearchResult.of(schedulerTimerRepository.findAll(OffsetRequest.of(offset, limit)).stream()
-      .map(TimerDescriptorEntity::getTimerDescriptor).toList());
+    return SearchResult.of(repository.findAll(OffsetRequest.of(offset, limit)).stream()
+      .map(mapper::toDescriptor).toList());
   }
 
   /**
@@ -85,7 +85,7 @@ public class SchedulerTimerService {
   public TimerDescriptor create(TimerDescriptor timerDescriptor) {
     var id = timerDescriptor.getId();
     if (id != null) {
-      var entityById = schedulerTimerRepository.findById(id);
+      var entityById = repository.findById(id);
       if (entityById.isPresent()) {
         throw new EntityExistsException("TimerDescriptor already exist for id " + id);
       }
@@ -93,16 +93,17 @@ public class SchedulerTimerService {
 
     validate(timerDescriptor);
 
-    timerDescriptor.setId(defaultIfNull(id, UUID.randomUUID()));
-    timerDescriptor.setModuleName(evalModuleName(timerDescriptor));
+    var creatingDescriptor = mapper.deepCopy(timerDescriptor); // to avoid side effects on the input parameter
+    creatingDescriptor.setId(defaultIfNull(id, UUID.randomUUID()));
+    creatingDescriptor.setModuleName(evalModuleName(timerDescriptor));
 
-    var naturalKey = TimerDescriptorEntity.toNaturalKey(timerDescriptor);
-    return schedulerTimerRepository.findByNaturalKey(naturalKey)
+    var naturalKey = TimerDescriptorEntity.toNaturalKey(creatingDescriptor);
+    return repository.findByNaturalKey(naturalKey)
       .map(existingTimer -> {
-        timerDescriptor.setId(existingTimer.getId());
-        return doUpdate(timerDescriptor);
+        creatingDescriptor.setId(existingTimer.getId());
+        return doUpdate(creatingDescriptor);
       })
-      .orElseGet(() -> doCreate(timerDescriptor));
+      .orElseGet(() -> doCreate(creatingDescriptor));
   }
 
   /**
@@ -124,9 +125,11 @@ public class SchedulerTimerService {
     }
 
     validate(newDescriptor);
-    newDescriptor.setModuleName(evalModuleName(newDescriptor));
 
-    return doUpdate(newDescriptor);
+    var updatingDescriptor = mapper.deepCopy(newDescriptor); // to avoid side effects on the input parameter
+    updatingDescriptor.setModuleName(evalModuleName(newDescriptor));
+
+    return doUpdate(updatingDescriptor);
   }
 
   /**
@@ -136,8 +139,8 @@ public class SchedulerTimerService {
    */
   @Transactional
   public void delete(UUID id) {
-    schedulerTimerRepository.findById(id).ifPresent(entity -> {
-      schedulerTimerRepository.delete(entity);
+    repository.findById(id).ifPresent(entity -> {
+      repository.delete(entity);
       jobSchedulingService.delete(entity.getTimerDescriptor());
     });
   }
@@ -147,9 +150,9 @@ public class SchedulerTimerService {
    */
   @Transactional
   public void deleteAll() {
-    var allEntities = schedulerTimerRepository.findAll();
+    var allEntities = repository.findAll();
     for (var timerDescriptorEntity : allEntities) {
-      schedulerTimerRepository.delete(timerDescriptorEntity);
+      repository.delete(timerDescriptorEntity);
       jobSchedulingService.delete(timerDescriptorEntity.getTimerDescriptor());
     }
   }
@@ -159,9 +162,9 @@ public class SchedulerTimerService {
    */
   @Transactional
   public int switchModuleTimers(String moduleName, boolean enable) {
-    var timers = schedulerTimerRepository.findByModuleNameAndEnabledState(moduleName, enable);
+    var timers = repository.findByModuleNameAndEnabledState(moduleName, enable);
 
-    schedulerTimerRepository.switchTimersByIds(mapItems(timers, TimerDescriptorEntity::getId), enable);
+    repository.switchTimersByIds(mapItems(timers, TimerDescriptorEntity::getId), enable);
 
     for (TimerDescriptorEntity timer : timers) {
       log.info(enable
@@ -195,24 +198,45 @@ public class SchedulerTimerService {
   }
 
   private TimerDescriptor doCreate(TimerDescriptor timerDescriptor) {
-    var entity = timerDescriptorMapper.convert(timerDescriptor);
-    var savedEntity = schedulerTimerRepository.save(entity);
-    jobSchedulingService.schedule(timerDescriptor);
-    return savedEntity.getTimerDescriptor();
+    var entity = mapper.toDescriptorEntity(timerDescriptor);
+    var savedEntity = repository.saveAndFlush(entity);
+    var createdDescriptor = mapper.toDescriptor(savedEntity);
+
+    jobSchedulingService.schedule(createdDescriptor);
+
+    return createdDescriptor;
   }
 
-  private TimerDescriptor doUpdate(TimerDescriptor newDescriptor) {
-    var oldTimerDescriptor =
-      schedulerTimerRepository.findById(newDescriptor.getId()).map(TimerDescriptorEntity::getTimerDescriptor)
-        .orElseThrow(
-          () -> new EntityNotFoundException("Unable to find timer descriptor with id " + newDescriptor.getId()));
+  private TimerDescriptor doUpdate(TimerDescriptor inputDescriptor) {
+    assert inputDescriptor.getId() != null;
+    var id = inputDescriptor.getId();
 
-    newDescriptor.modified(true);
-    var convertedValue = timerDescriptorMapper.convert(newDescriptor);
-    var updatedEntity = schedulerTimerRepository.save(convertedValue);
-    var timerDescriptor = updatedEntity.getTimerDescriptor();
-    jobSchedulingService.reschedule(oldTimerDescriptor, timerDescriptor);
+    var oldTimerDescriptor = getByIdInternal(id);
 
-    return timerDescriptor;
+    inputDescriptor.modified(true);
+
+    var convertedEntity = mapper.toDescriptorEntity(inputDescriptor);
+    var updatedEntity = repository.saveAndFlush(convertedEntity);
+    // Refresh is required to retrieve the complete audit metadata, particularly createdDate and
+    // createdByUserId. Flow: mapper.toDescriptorEntity() ignores all audit fields (by design) →
+    // saveAndFlush() persists the update and JPA auditing populates updatedDate/updatedByUserId
+    // via @PreUpdate callback, but the created audit fields are NOT automatically retrieved since
+    // they weren't part of the entity conversion → refresh() reloads the full entity from the
+    // database including both created and updated audit fields → mapper.toDescriptor() can then
+    // map complete audit metadata to the response. Without refresh, createdDate and createdByUserId
+    // would be null/missing in the response.
+    entityManager.refresh(updatedEntity);
+
+    var updatedDescriptor = mapper.toDescriptor(updatedEntity);
+
+    jobSchedulingService.reschedule(oldTimerDescriptor, updatedDescriptor);
+
+    return updatedDescriptor;
+  }
+
+  private TimerDescriptor getByIdInternal(UUID id) {
+    var entity = repository.findById(id).orElseThrow(
+      () -> new EntityNotFoundException("Unable to find timer descriptor with id " + id));
+    return mapper.toDescriptor(entity);
   }
 }

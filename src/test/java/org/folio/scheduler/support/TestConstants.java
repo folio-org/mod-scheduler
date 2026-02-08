@@ -13,4 +13,6 @@ public class TestConstants {
   public static final String USER_TOKEN = "test-token";
   public static final UUID TIMER_UUID = UUID.fromString(TIMER_ID);
   public static final UUID USER_ID_UUID = UUID.fromString(USER_ID);
+  public static final String MODULE_NAME = "mod-foo";
+  public static final String MODULE_ID = "mod-foo-1.0.0";
 }
