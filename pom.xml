@@ -55,10 +55,10 @@
     <maven-checkstyle.version>12.3.1</maven-checkstyle.version>
     <coffee-boots.version>4.0.0</coffee-boots.version>
     <copy-rename-maven-plugin.version>1.0.1</copy-rename-maven-plugin.version>
-    <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
-    <maven-failsafe-plugin.version>3.5.4</maven-failsafe-plugin.version>
+    <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
+    <maven-failsafe-plugin.version>3.5.5</maven-failsafe-plugin.version>
     <maven-release-plugin.version>3.3.1</maven-release-plugin.version>
-    <openapi-generator.version>7.19.0</openapi-generator.version>
+    <openapi-generator.version>7.20.0</openapi-generator.version>
     <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
     <folio-java-checkstyle.version>1.2.0</folio-java-checkstyle.version>
     <folio-module-descriptor-validator.version>1.0.1</folio-module-descriptor-validator.version>
