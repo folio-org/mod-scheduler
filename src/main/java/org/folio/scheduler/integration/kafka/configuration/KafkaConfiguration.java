@@ -4,13 +4,12 @@ import static org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET
 import static org.apache.kafka.clients.consumer.ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties;
 import org.folio.scheduler.integration.kafka.TimerTableCheckService;
@@ -18,7 +17,7 @@ import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.spring.FolioExecutionContext;
 import org.hibernate.exception.SQLGrammarException;
-import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
+import org.springframework.boot.kafka.autoconfigure.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.dao.InvalidDataAccessResourceUsageException;
@@ -28,7 +27,7 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.DefaultErrorHandler;
-import org.springframework.kafka.support.serializer.JsonDeserializer;
+import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.FixedBackOff;
 
@@ -37,7 +36,6 @@ import org.springframework.util.backoff.FixedBackOff;
 @RequiredArgsConstructor
 public class KafkaConfiguration {
 
-  private final ObjectMapper objectMapper;
   private final KafkaProperties kafkaProperties;
   private final RetryConfigurationProperties retryConfiguration;
 
@@ -99,8 +97,8 @@ public class KafkaConfiguration {
   }
 
   private <T> DefaultKafkaConsumerFactory<String, T> getConsumerFactory(Class<T> eventClass) {
-    var deserializer = new JsonDeserializer<>(eventClass, objectMapper);
-    Map<String, Object> config = new HashMap<>(kafkaProperties.buildConsumerProperties(null));
+    var deserializer = new JacksonJsonDeserializer<>(eventClass);
+    Map<String, Object> config = new HashMap<>(kafkaProperties.buildConsumerProperties());
     config.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     config.put(VALUE_DESERIALIZER_CLASS_CONFIG, deserializer);
     config.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
@@ -143,7 +141,7 @@ public class KafkaConfiguration {
       .map(Throwable::getCause)
       .filter(SQLGrammarException.class::isInstance)
       .map(Throwable::getCause)
-      .filter(throwable -> StringUtils.equals(throwable.getClass().getSimpleName(), "PSQLException"))
+      .filter(throwable -> Strings.CS.equals(throwable.getClass().getSimpleName(), "PSQLException"))
       .map(Throwable::getMessage)
       .filter(errorMessage -> errorMessage.startsWith("ERROR: relation") && errorMessage.contains("does not exist"))
       .map(errorMessage -> errorMessage.replaceAll("\\s+", " "));

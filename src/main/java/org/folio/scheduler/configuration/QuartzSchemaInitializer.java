@@ -3,7 +3,7 @@ package org.folio.scheduler.configuration;
 import lombok.RequiredArgsConstructor;
 import org.folio.spring.liquibase.FolioSpringLiquibase;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.boot.autoconfigure.liquibase.LiquibaseProperties;
+import org.springframework.boot.liquibase.autoconfigure.LiquibaseProperties;
 import org.springframework.stereotype.Component;
 
 @Component

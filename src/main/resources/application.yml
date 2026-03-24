@@ -19,8 +19,6 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   mustache:
     check-template-location: false
-  cache:
-    type: caffeine
   kafka:
     bootstrap-servers: ${KAFKA_HOST:kafka}:${KAFKA_PORT:9092}
     consumer:
@@ -53,11 +51,6 @@ spring:
         threadPool:
           class: org.quartz.simpl.SimpleThreadPool
           threadCount: ${QUARTZ_POOL_THREAD_COUNT:5}
-  cloud:
-    openfeign:
-      okhttp:
-        enabled: true
-
 application:
   keycloak:
     enabled: ${KC_INTEGRATION_ENABLED:true}
@@ -114,18 +107,28 @@ application:
       max: ${TOKEN_CACHE_MAX_CAPACITY:50}
     refresh-before-expiry-sec: ${TOKEN_CACHE_REFRESH_PRIOR_EXPIRATION:25}
 
-coffee-boots:
-  cache:
-    spec:
-      keycloak-user-id: maximumSize=200,expireAfterWrite=1800s
-      system-user-id: maximumSize=200,expireAfterWrite=1800s
-      client-secret-key: maximumSize=${CLIENT_SECRET_KEY_CACHE_MAX_SIZE:200},expireAfterWrite=${CLIENT_SECRET_KEY_CACHE_TTL:6000s}
+cache:
+  keycloak-user-id:
+    ttl: 1800s
+    max-size: 200
+  system-user-id:
+    ttl: 1800s
+    max-size: 200
+  client-secret-key:
+    ttl: ${CLIENT_SECRET_KEY_CACHE_TTL:6000s}
+    max-size: ${CLIENT_SECRET_KEY_CACHE_MAX_SIZE:200}
 
 okapi.url: ${OKAPI_URL:http://localhost:9130}
 server.port: 8081
 
 folio:
   environment: ${ENV:folio}
+  exchange:
+    enabled: true
+  logging:
+    exchange:
+      enabled: true
+      level: BASIC
   jpa:
     repository:
       base-packages: org.folio.scheduler.*

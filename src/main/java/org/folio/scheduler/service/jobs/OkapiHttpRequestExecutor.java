@@ -1,9 +1,5 @@
 package org.folio.scheduler.service.jobs;
 
-import static feign.Request.HttpMethod.DELETE;
-import static feign.Request.HttpMethod.GET;
-import static feign.Request.HttpMethod.POST;
-import static feign.Request.HttpMethod.PUT;
 import static java.util.Collections.singletonList;
 import static java.util.Map.entry;
 import static java.util.concurrent.ThreadLocalRandom.current;
@@ -14,10 +10,12 @@ import static org.folio.spring.integration.XOkapiHeaders.REQUEST_ID;
 import static org.folio.spring.integration.XOkapiHeaders.TENANT;
 import static org.folio.spring.integration.XOkapiHeaders.TOKEN;
 import static org.folio.spring.integration.XOkapiHeaders.URL;
+import static org.springframework.http.HttpMethod.DELETE;
+import static org.springframework.http.HttpMethod.GET;
+import static org.springframework.http.HttpMethod.POST;
+import static org.springframework.http.HttpMethod.PUT;
 import static org.springframework.web.util.UriComponentsBuilder.fromUriString;
 
-import feign.FeignException;
-import feign.Request.HttpMethod;
 import java.net.URI;
 import java.util.Collection;
 import java.util.HashMap;
@@ -39,7 +37,9 @@ import org.folio.spring.scope.FolioExecutionContextSetter;
 import org.quartz.Job;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpStatusCodeException;
 
 @Log4j2
 @Component
@@ -99,7 +99,7 @@ public class OkapiHttpRequestExecutor implements Job {
     var timerId = timerDescriptor.getId();
     var re = timerDescriptor.getRoutingEntry();
     var methods = re.getMethods();
-    var httpMethod = isNotEmpty(methods) ? HttpMethod.valueOf(methods.get(0)) : POST;
+    var httpMethod = isNotEmpty(methods) ? HttpMethod.valueOf(methods.getFirst().toUpperCase()) : POST;
 
     var okapiCallExecutor = okapiCallMap.get(httpMethod);
     if (okapiCallExecutor == null) {
@@ -113,7 +113,7 @@ public class OkapiHttpRequestExecutor implements Job {
       timerId, httpMethod, staticPath, moduleHint);
     try {
       okapiCallExecutor.accept(fromUriString("http:/" + staticPath).build().toUri(), moduleHint);
-    } catch (FeignException e) {
+    } catch (HttpStatusCodeException e) {
       log.warn("Failed to perform HTTP request [id: {}, method: {}, path: /{}]", timerId, httpMethod, staticPath, e);
     }
   }
