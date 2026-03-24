@@ -17,7 +17,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import lombok.SneakyThrows;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.folio.scheduler.support.TestConstants;
-import org.folio.scheduler.support.extension.EnablePostgres;
 import org.folio.spring.integration.XOkapiHeaders;
 import org.folio.tenant.domain.dto.TenantAttributes;
 import org.folio.test.base.BaseBackendIntegrationTest;
@@ -27,6 +26,7 @@ import org.folio.test.extensions.impl.WireMockAdminClient;
 import org.folio.test.extensions.impl.WireMockAdminClient.RequestCriteria;
 import org.quartz.Scheduler;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -35,10 +35,13 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @EnableKafka
 @EnableWireMock
-@EnablePostgres
+@Testcontainers
 @SpringBootTest
 @ActiveProfiles("it")
 @AutoConfigureMockMvc
@@ -46,6 +49,13 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 public abstract class BaseIntegrationTest extends BaseBackendIntegrationTest {
 
   protected static WireMockAdminClient wmAdminClient;
+
+  @Container // 2. Manages container start/stop
+  @ServiceConnection // 3. Automatically maps JDBC URL, username, and password to Spring properties
+  private static final PostgreSQLContainer POSTGRE_SQL_CONTAINER = new PostgreSQLContainer("postgres:16-alpine")
+    .withDatabaseName("folio_test")
+    .withUsername("folio_admin")
+    .withPassword("qwerty123");
 
   public static ResultActions attemptGet(String uri, Object... args) throws Exception {
     return mockMvc.perform(get(uri, args)

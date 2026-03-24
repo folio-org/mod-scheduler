@@ -208,7 +208,7 @@
 
     <dependency>
       <groupId>io.hypersistence</groupId>
-      <artifactId>hypersistence-utils-hibernate-70</artifactId>
+      <artifactId>hypersistence-utils-hibernate-73</artifactId>
       <version>${hypersistence-utils.version}</version>
     </dependency>
 
@@ -275,8 +275,20 @@
     </dependency>
 
     <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
 
