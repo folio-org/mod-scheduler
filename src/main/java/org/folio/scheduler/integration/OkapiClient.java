@@ -3,14 +3,14 @@ package org.folio.scheduler.integration;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 import java.net.URI;
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.service.annotation.DeleteExchange;
+import org.springframework.web.service.annotation.GetExchange;
+import org.springframework.web.service.annotation.HttpExchange;
+import org.springframework.web.service.annotation.PostExchange;
+import org.springframework.web.service.annotation.PutExchange;
 
-@FeignClient(name = "okapi")
+@HttpExchange(url = "okapi", contentType = APPLICATION_JSON_VALUE)
 public interface OkapiClient {
 
   String MODULE_HINT = "x-okapi-module-hint";
@@ -20,7 +20,7 @@ public interface OkapiClient {
    *
    * @param uri - uniform resource identifier
    */
-  @GetMapping(consumes = APPLICATION_JSON_VALUE)
+  @GetExchange
   void doGet(URI uri, @RequestHeader(MODULE_HINT) String moduleHint);
 
   /**
@@ -28,7 +28,7 @@ public interface OkapiClient {
    *
    * @param uri - uniform resource identifier
    */
-  @PostMapping(consumes = APPLICATION_JSON_VALUE)
+  @PostExchange
   void doPost(URI uri, @RequestHeader(MODULE_HINT) String moduleHint);
 
   /**
@@ -36,7 +36,7 @@ public interface OkapiClient {
    *
    * @param uri - uniform resource identifier
    */
-  @PutMapping(consumes = APPLICATION_JSON_VALUE)
+  @PutExchange
   void doPut(URI uri, @RequestHeader(MODULE_HINT) String moduleHint);
 
   /**
@@ -44,6 +44,6 @@ public interface OkapiClient {
    *
    * @param uri - uniform resource identifier
    */
-  @DeleteMapping(consumes = APPLICATION_JSON_VALUE)
+  @DeleteExchange
   void doDelete(URI uri, @RequestHeader(MODULE_HINT) String moduleHint);
 }

@@ -1,6 +1,5 @@
 package org.folio.scheduler.service.jobs;
 
-import static java.util.Collections.emptyMap;
 import static java.util.Optional.of;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.support.TestConstants.TIMER_ID;
@@ -14,10 +13,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.web.util.UriComponentsBuilder.fromUriString;
 
-import feign.FeignException.NotFound;
-import feign.Request;
-import feign.Request.HttpMethod;
-import feign.RequestTemplate;
 import java.util.List;
 import java.util.Optional;
 import org.folio.scheduler.configuration.properties.OkapiConfigurationProperties;
@@ -42,6 +37,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.quartz.JobExecutionContext;
 import org.quartz.impl.JobDetailImpl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
 
 @UnitTest
 @ExtendWith(MockitoExtension.class)
@@ -128,18 +126,17 @@ class OkapiHttpRequestExecutorTest {
   }
 
   @Test
-  void execute_negative_feignException() {
+  void execute_negative_httpException() {
     var re = new RoutingEntry().path("test-endpoint").methods(List.of("DELETE"));
     var expectedUri = fromUriString("http://test-endpoint").build().toUri();
-    var request = Request.create(HttpMethod.DELETE, "http://test-endpoint", emptyMap(), null, (RequestTemplate) null);
 
     when(folioModuleMetadata.getModuleName()).thenReturn(MODULE_NAME);
     when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
     when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail());
     when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
     when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(of(timerDescriptor(re)));
-    doThrow(new NotFound("Not Found", request, null, emptyMap())).when(okapiClient).doDelete(expectedUri,
-      TEST_MODULE_ID);
+    doThrow(HttpClientErrorException.create(HttpStatus.NOT_FOUND, "Not Found", new HttpHeaders(), null, null))
+      .when(okapiClient).doDelete(expectedUri, TEST_MODULE_ID);
 
     job.execute(jobExecutionContext);
 

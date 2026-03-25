@@ -56,11 +56,11 @@ import org.postgresql.util.PSQLException;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.dao.InvalidDataAccessResourceUsageException;
 import org.springframework.http.MediaType;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -74,7 +74,7 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
   private static final String MODULE_ID = "mod-foo-1.0.0";
   private static final String MODULE_NAME = "mod-foo";
 
-  @SpyBean private SchedulerTimerService schedulerTimerService;
+  @MockitoSpyBean private SchedulerTimerService schedulerTimerService;
   @Autowired private Scheduler scheduler;
   @Autowired private KafkaTemplate<String, String> kafkaTemplate;
 
@@ -240,7 +240,7 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
       var timerList = parse(response, TimerDescriptorList.class);
       assertThat(timerList.getTimerDescriptors()).isNotEmpty();
 
-      var timer = timerList.getTimerDescriptors().get(0);
+      var timer = timerList.getTimerDescriptors().getFirst();
       assertThat(timer.getMetadata()).isNotNull();
       assertThat(timer.getMetadata().getCreatedDate()).isNotNull();
       assertThat(timer.getMetadata().getUpdatedDate()).isNotNull();

@@ -28,7 +28,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.cache.Cache.ValueWrapper;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -36,6 +35,7 @@ import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.retry.annotation.EnableRetry;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @UnitTest
 @SpringBootTest(classes = {SystemUserService.class, TestContextConfiguration.class}, webEnvironment = NONE)
@@ -46,7 +46,7 @@ class SystemUserServiceTest {
 
   @Autowired private CacheManager cacheManager;
   @Autowired private SystemUserService systemUserService;
-  @MockBean private KeycloakUserService keycloakUserService;
+  @MockitoBean private KeycloakUserService keycloakUserService;
 
   @BeforeEach
   void setUp() {

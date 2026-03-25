@@ -28,20 +28,22 @@ import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.test.types.UnitTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @UnitTest
 @Import(ApiExceptionHandler.class)
 @WebMvcTest(SchedulerTimerController.class)
+@MockitoBean(types = {CacheManager.class})
 class SchedulerTimerControllerTest {
 
   private static final UUID TIMER_UUID = randomUUID();
 
   @Autowired private MockMvc mockMvc;
-  @MockBean private SchedulerTimerService schedulingTimerService;
+  @MockitoBean private SchedulerTimerService schedulingTimerService;
 
   @Test
   void get_positive() throws Exception {
@@ -131,7 +133,7 @@ class SchedulerTimerControllerTest {
   @Test
   void create_negative_invalidRequestBody() throws Exception {
     var errorMsgSubstring = "JSON parse error: Unexpected character ('[' (code 91)): "
-      + "was expecting double-quote to start field name";
+      + "was expecting double-quote to start property name";
     mockMvc.perform(post("/scheduler/timers")
         .content("{[..]")
         .contentType(APPLICATION_JSON))
