@@ -99,9 +99,10 @@ class SchedulerTimerIT extends BaseIntegrationTest {
     doPost("/scheduler/timers", timerDescriptor)
       .andExpect(jsonPath("$.id", notNullValue()))
       .andExpect(jsonPath("$.enabled", is(true)));
+    var timestampAfterSavingDesc = Instant.now();
 
     var nextFireTime = scheduler.getTrigger(triggerKey(timerId.toString())).getNextFireTime().toInstant();
-    assertThat(nextFireTime).isAfter(timestampBeforeSavingDesc).isBefore(timestampBeforeSavingDesc.plusSeconds(1));
+    assertThat(nextFireTime).isAfter(timestampBeforeSavingDesc).isBefore(timestampAfterSavingDesc.plusSeconds(1));
 
     await().atMost(TEN_SECONDS).pollDelay(ONE_SECOND)
       .untilAsserted(BaseIntegrationTest::verifyTimerRequestCallsCount);
