@@ -9,8 +9,12 @@ import static org.folio.scheduler.integration.kafka.model.ResourceEventType.DELE
 import static org.folio.scheduler.integration.kafka.model.ResourceEventType.UPDATE;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -21,6 +25,8 @@ import org.folio.scheduler.integration.kafka.model.EntitlementEventType;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.integration.kafka.model.ResourceEventType;
 import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
+import org.folio.spring.exception.LiquibaseMigrationException;
+import org.folio.spring.liquibase.LiquibaseMigrationLockService;
 import org.folio.test.types.UnitTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
@@ -46,6 +52,9 @@ class KafkaMessageListenerTest {
 
   @Mock
   private org.folio.spring.FolioModuleMetadata folioModuleMetadata;
+
+  @Mock
+  private LiquibaseMigrationLockService liquibaseMigrationLockService;
 
   @AfterEach
   void tearDown() {
@@ -111,7 +120,9 @@ class KafkaMessageListenerTest {
 
       kafkaMessageListener.handleScheduledJobEvent(consumerRecord);
 
-      verify(eventService).createTimers(event);
+      var inOrder = inOrder(liquibaseMigrationLockService, eventService);
+      inOrder.verify(liquibaseMigrationLockService).isMigrationRunning();
+      inOrder.verify(eventService).createTimers(event);
     }
 
     @Test
@@ -131,6 +142,18 @@ class KafkaMessageListenerTest {
 
       kafkaMessageListener.handleScheduledJobEvent(consumerRecord);
 
+      verify(eventService).deleteTimers(event);
+    }
+
+    @Test
+    void positive_deleteEventBypassesLiquibasePrecheck() {
+      var event = createResourceEvent(DELETE);
+      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+      lenient().when(liquibaseMigrationLockService.isMigrationRunning()).thenReturn(true);
+
+      kafkaMessageListener.handleScheduledJobEvent(consumerRecord);
+
+      verifyNoInteractions(liquibaseMigrationLockService);
       verify(eventService).deleteTimers(event);
     }
 
@@ -178,6 +201,19 @@ class KafkaMessageListenerTest {
 
       verify(eventService).deleteTimers(event);
     }
+
+    @Test
+    void handleScheduledJobEvent_negative_liquibaseMigrationInProgress() {
+      var event = createResourceEvent(CREATE);
+      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+      when(liquibaseMigrationLockService.isMigrationRunning()).thenReturn(true);
+
+      assertThatThrownBy(() -> kafkaMessageListener.handleScheduledJobEvent(consumerRecord))
+        .isInstanceOf(LiquibaseMigrationException.class)
+        .hasMessage("Liquibase migration is still running for tenant: " + TENANT_ID);
+
+      verify(liquibaseMigrationLockService).isMigrationRunning();
+    }
   }
 
   @Nested
@@ -190,7 +226,9 @@ class KafkaMessageListenerTest {
 
       kafkaMessageListener.handleEntitlementEvent(consumerRecord);
 
-      verify(eventService).enableTimers(event);
+      var inOrder = inOrder(liquibaseMigrationLockService, eventService);
+      inOrder.verify(liquibaseMigrationLockService).isMigrationRunning();
+      inOrder.verify(eventService).enableTimers(event);
     }
 
     @Test
@@ -210,6 +248,18 @@ class KafkaMessageListenerTest {
 
       kafkaMessageListener.handleEntitlementEvent(consumerRecord);
 
+      verify(eventService).disableTimers(event);
+    }
+
+    @Test
+    void positive_revokeEventBypassesLiquibasePrecheck() {
+      var event = createEntitlementEvent(REVOKE);
+      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+      lenient().when(liquibaseMigrationLockService.isMigrationRunning()).thenReturn(true);
+
+      kafkaMessageListener.handleEntitlementEvent(consumerRecord);
+
+      verifyNoInteractions(liquibaseMigrationLockService);
       verify(eventService).disableTimers(event);
     }
 
@@ -241,6 +291,19 @@ class KafkaMessageListenerTest {
         .hasMessage("Failed to disable timers");
 
       verify(eventService).disableTimers(event);
+    }
+
+    @Test
+    void handleEntitlementEvent_negative_liquibaseMigrationInProgress() {
+      var event = createEntitlementEvent(ENTITLE);
+      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+      when(liquibaseMigrationLockService.isMigrationRunning()).thenReturn(true);
+
+      assertThatThrownBy(() -> kafkaMessageListener.handleEntitlementEvent(consumerRecord))
+        .isInstanceOf(LiquibaseMigrationException.class)
+        .hasMessage("Liquibase migration is still running for tenant: " + TENANT_ID);
+
+      verify(liquibaseMigrationLockService).isMigrationRunning();
     }
   }
 }
