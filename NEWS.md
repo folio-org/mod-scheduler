@@ -14,6 +14,7 @@
 * Add Auditable Information to Timer Entity (MODSCHED-62)
 * Migrate CI to GitHub Actions Maven central workflow (MODSCHED-63)
 * Upgrade module to SpringBoot 4.0 and Spring 7.0 (MODSCHED-48)
+* Handle Liquibase migration state during Kafka event processing (MODSCHED-74)
 ---
 
 ## Version `v3.0.0` (12.03.2025)
