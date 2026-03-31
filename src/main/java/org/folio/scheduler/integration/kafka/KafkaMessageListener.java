@@ -10,8 +10,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
+import org.folio.scheduler.integration.kafka.model.EntitlementEventType;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
+import org.folio.scheduler.integration.kafka.model.ResourceEventType;
 import org.folio.spring.FolioModuleMetadata;
+import org.folio.spring.exception.LiquibaseMigrationException;
+import org.folio.spring.liquibase.LiquibaseMigrationLockService;
 import org.folio.spring.scope.FolioExecutionContextSetter;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -22,6 +26,7 @@ import org.springframework.stereotype.Component;
 public class KafkaMessageListener {
 
   private final FolioModuleMetadata folioModuleMetadata;
+  private final LiquibaseMigrationLockService liquibaseMigrationLockService;
   private final KafkaEventService eventService;
 
   /**
@@ -38,9 +43,13 @@ public class KafkaMessageListener {
   public void handleScheduledJobEvent(ConsumerRecord<String, ResourceEvent> consumerRecord) {
     var resourceEvent = consumerRecord.value();
     var tenant = resourceEvent.getTenant();
+    var operationType = resourceEvent.getType();
 
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(tenant))) {
-      var operationType = resourceEvent.getType();
+      if (requiresLiquibaseReadyState(operationType) && liquibaseMigrationLockService.isMigrationRunning()) {
+        log.warn("Liquibase migration in progress for tenant: {}", tenant);
+        throw new LiquibaseMigrationException("Liquibase migration is still running for tenant: " + tenant);
+      }
 
       log.info("Received job {} event for {} in {}. Thread: {}", operationType, resourceEvent.getResourceName(),
         tenant, Thread.currentThread().getName());
@@ -68,9 +77,13 @@ public class KafkaMessageListener {
   public void handleEntitlementEvent(ConsumerRecord<String, EntitlementEvent> consumerRecord) {
     var event = consumerRecord.value();
     var tenant = event.getTenantName();
+    var operationType = event.getType();
 
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders(tenant))) {
-      var operationType = event.getType();
+      if (requiresLiquibaseReadyState(operationType) && liquibaseMigrationLockService.isMigrationRunning()) {
+        log.warn("Liquibase migration in progress for tenant: {}", tenant);
+        throw new LiquibaseMigrationException("Liquibase migration is still running for tenant: " + tenant);
+      }
 
       log.info("Received entitlement {} event for {} in {}. Thread: {}", operationType, event.getModuleId(),
         tenant, Thread.currentThread().getName());
@@ -91,5 +104,13 @@ public class KafkaMessageListener {
 
   private static void logUnsupportedOperationType(ConsumerRecord<?, ?> consumerRecord) {
     log.warn("Unsupported operation type: consumerRecord = {}", consumerRecord);
+  }
+
+  private static boolean requiresLiquibaseReadyState(ResourceEventType operationType) {
+    return operationType == ResourceEventType.CREATE || operationType == ResourceEventType.UPDATE;
+  }
+
+  private static boolean requiresLiquibaseReadyState(EntitlementEventType operationType) {
+    return operationType == EntitlementEventType.ENTITLE || operationType == EntitlementEventType.UPGRADE;
   }
 }

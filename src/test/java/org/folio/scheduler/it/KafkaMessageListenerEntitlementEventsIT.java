@@ -9,6 +9,9 @@ import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.utils.TestUtils.asJsonString;
 import static org.folio.scheduler.utils.TestUtils.await;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.quartz.impl.matchers.GroupMatcher.anyJobGroup;
 import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.AFTER_TEST_METHOD;
 import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TEST_METHOD;
@@ -16,9 +19,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import lombok.extern.log4j.Log4j2;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
-import org.folio.scheduler.repository.SchedulerTimerRepository;
 import org.folio.scheduler.support.base.BaseIntegrationTest;
-import org.folio.spring.FolioModuleMetadata;
+import org.folio.spring.liquibase.LiquibaseMigrationLockService;
 import org.folio.test.extensions.EnableKeycloakTlsMode;
 import org.folio.test.extensions.KeycloakRealms;
 import org.folio.test.extensions.WireMockStub;
@@ -30,6 +32,7 @@ import org.quartz.Scheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
 
 @Log4j2
@@ -44,11 +47,9 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
   @Autowired
   private KafkaTemplate<String, String> kafkaTemplate;
   @Autowired
-  private SchedulerTimerRepository repository;
-  @Autowired
-  private FolioModuleMetadata folioModuleMetadata;
-  @Autowired
   private Scheduler scheduler;
+  @MockitoBean
+  private LiquibaseMigrationLockService liquibaseMigrationLockService;
 
   @BeforeAll
   static void beforeAll(@Autowired KafkaAdmin kafkaAdmin) {
@@ -88,6 +89,23 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
       });
     await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
       .untilAsserted(() -> assertThat(scheduler.getJobKeys(anyJobGroup())).isEmpty());
+  }
+
+  @Test
+  @KeycloakRealms("/json/keycloak/test-realm.json")
+  @WireMockStub("/wiremock/stubs/timer-call-targets.json")
+  void handleEntitlementEvent_positive_retriesWhileLiquibaseMigrationIsRunning() {
+    when(liquibaseMigrationLockService.isMigrationRunning()).thenReturn(true, false);
+
+    kafkaTemplate.send(ENTITLEMENT_EVENTS_TOPIC, asJsonString(entitlementEvent()));
+
+    await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
+      .untilAsserted(() -> {
+        checkTimerEnabled("123e4567-e89b-12d3-a456-426614174000", true);
+        checkTimerEnabled("123e4567-e89b-12d3-a456-426614174001", true);
+        checkTimerEnabled("123e4567-e89b-12d3-a456-426614174002", true);
+      });
+    await().untilAsserted(() -> verify(liquibaseMigrationLockService, atLeast(2)).isMigrationRunning());
   }
 
   private static void checkTimerEnabled(String id, boolean enabled) throws Exception {

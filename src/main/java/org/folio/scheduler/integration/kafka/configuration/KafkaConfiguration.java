@@ -12,11 +12,14 @@ import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.Strings;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties;
+import org.folio.scheduler.configuration.properties.RetryConfigurationProperties.RetryProperties;
 import org.folio.scheduler.integration.kafka.TimerTableCheckService;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.spring.FolioExecutionContext;
+import org.folio.spring.exception.LiquibaseMigrationException;
 import org.hibernate.exception.SQLGrammarException;
+import org.jspecify.annotations.NonNull;
 import org.springframework.boot.kafka.autoconfigure.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -114,15 +117,21 @@ public class KafkaConfiguration {
     return errorHandler;
   }
 
-  private BackOff getBackOff(Exception exception, Class<?> eventClass) {
+  BackOff getBackOff(Exception exception, Class<?> eventClass) {
     log.info("Calculating backoff for exception: exception = {}, eventClass = {}",
       exception.getMessage(), eventClass.getSimpleName(), exception);
+
+    if (hasCause(exception, LiquibaseMigrationException.class)) {
+      var retryProperties = getRetryProperties(eventClass);
+      log.warn("Liquibase migration in progress, retrying Kafka event", exception);
+      return getFixedBackOff(retryProperties);
+    }
 
     var relationDoesNotExistsMessage = findRelationDoesNotExistsMessage(exception);
     if (relationDoesNotExistsMessage.isPresent()) {
       var retryProperties = getRetryProperties(eventClass);
       log.warn("Tenant table is not found, retrying until created [message: {}]", relationDoesNotExistsMessage.get());
-      return new FixedBackOff(retryProperties.getRetryDelay().toMillis(), retryProperties.getRetryAttempts());
+      return getFixedBackOff(retryProperties);
     }
 
     return new FixedBackOff(0L, 0L);
@@ -133,6 +142,20 @@ public class KafkaConfiguration {
       ? "entitlement-event"
       : "scheduled-timer-event";
     return retryConfiguration.getConfig().get(propertyKey);
+  }
+
+  private static @NonNull FixedBackOff getFixedBackOff(RetryProperties retryProperties) {
+    return new FixedBackOff(retryProperties.getRetryDelay().toMillis(), retryProperties.getRetryAttempts());
+  }
+
+  private static boolean hasCause(Throwable throwable, Class<? extends Throwable> expectedType) {
+    for (var current = throwable; current != null; current = current.getCause()) {
+      if (expectedType.isInstance(current)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private static Optional<String> findRelationDoesNotExistsMessage(Exception exception) {

@@ -17,7 +17,10 @@ import static org.folio.scheduler.utils.TestUtils.parse;
 import static org.folio.scheduler.utils.TestUtils.readString;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.quartz.impl.matchers.GroupMatcher.anyJobGroup;
 import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.AFTER_TEST_METHOD;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -39,6 +42,7 @@ import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.scheduler.support.base.BaseIntegrationTest;
+import org.folio.spring.liquibase.LiquibaseMigrationLockService;
 import org.folio.test.extensions.EnableKeycloakTlsMode;
 import org.folio.test.extensions.KeycloakRealms;
 import org.folio.test.extensions.WireMockStub;
@@ -60,6 +64,7 @@ import org.springframework.dao.InvalidDataAccessResourceUsageException;
 import org.springframework.http.MediaType;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.ResultActions;
@@ -75,6 +80,7 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
   private static final String MODULE_NAME = "mod-foo";
 
   @MockitoSpyBean private SchedulerTimerService schedulerTimerService;
+  @MockitoBean private LiquibaseMigrationLockService liquibaseMigrationLockService;
   @Autowired private Scheduler scheduler;
   @Autowired private KafkaTemplate<String, String> kafkaTemplate;
 
@@ -108,6 +114,19 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
 
     await().atMost(TWO_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
       .untilAsserted(BaseIntegrationTest::verifyTimerRequestCallsCount);
+  }
+
+  @Test
+  @WireMockStub("/wiremock/stubs/timer-endpoint.json")
+  @KeycloakRealms("/json/keycloak/test-realm.json")
+  void handleScheduledJobEvent_positive_retriesWhileLiquibaseMigrationIsRunning() {
+    when(liquibaseMigrationLockService.isMigrationRunning()).thenReturn(true, false);
+
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, asJsonString(resourceEvent()));
+
+    await().untilAsserted(() -> getScheduledTimers(timerDescriptorList(timerDescriptor()))
+      .andExpect(jsonPath("$.timerDescriptors[0].id").hasJsonPath()));
+    await().untilAsserted(() -> verify(liquibaseMigrationLockService, atLeast(2)).isMigrationRunning());
   }
 
   @Test
