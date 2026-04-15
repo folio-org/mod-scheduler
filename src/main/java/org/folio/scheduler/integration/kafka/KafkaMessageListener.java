@@ -9,10 +9,10 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.folio.integration.kafka.model.ResourceEvent;
+import org.folio.integration.kafka.model.ResourceEventType;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.scheduler.integration.kafka.model.EntitlementEventType;
-import org.folio.scheduler.integration.kafka.model.ResourceEvent;
-import org.folio.scheduler.integration.kafka.model.ResourceEventType;
 import org.folio.spring.FolioModuleMetadata;
 import org.folio.spring.exception.LiquibaseMigrationException;
 import org.folio.spring.liquibase.LiquibaseMigrationLockService;
@@ -37,10 +37,11 @@ public class KafkaMessageListener {
   @KafkaListener(
     id = KafkaConstants.SCHEDULED_JOB_LISTENER_ID,
     containerFactory = "kafkaListenerContainerFactory",
-    topicPattern = "#{folioKafkaProperties.listener['scheduled-jobs'].topicPattern}",
-    groupId = "#{folioKafkaProperties.listener['scheduled-jobs'].groupId}",
-    concurrency = "#{folioKafkaProperties.listener['scheduled-jobs'].concurrency}")
-  public void handleScheduledJobEvent(ConsumerRecord<String, ResourceEvent> consumerRecord) {
+    topicPattern = "#{kafkaConsumerProperties.listener['scheduled-jobs'].topicPattern}",
+    groupId = "#{kafkaConsumerProperties.listener['scheduled-jobs'].groupId}",
+    concurrency = "#{kafkaConsumerProperties.listener['scheduled-jobs'].concurrency}",
+    filter = "tenantAwareMessageFilter")
+  public void handleScheduledJobEvent(ConsumerRecord<String, ResourceEvent<?>> consumerRecord) {
     var resourceEvent = consumerRecord.value();
     var tenant = resourceEvent.getTenant();
     var operationType = resourceEvent.getType();
@@ -71,9 +72,10 @@ public class KafkaMessageListener {
   @KafkaListener(
     id = KafkaConstants.ENTITLEMENT_EVENTS_LISTENER_ID,
     containerFactory = "listenerContainerFactoryEntitlementEvent",
-    topicPattern = "#{folioKafkaProperties.listener['entitlement-events'].topicPattern}",
-    groupId = "#{folioKafkaProperties.listener['entitlement-events'].groupId}",
-    concurrency = "#{folioKafkaProperties.listener['entitlement-events'].concurrency}")
+    topicPattern = "#{kafkaConsumerProperties.listener['entitlement-events'].topicPattern}",
+    groupId = "#{kafkaConsumerProperties.listener['entitlement-events'].groupId}",
+    concurrency = "#{kafkaConsumerProperties.listener['entitlement-events'].concurrency}",
+    filter = "tenantAwareMessageFilter")
   public void handleEntitlementEvent(ConsumerRecord<String, EntitlementEvent> consumerRecord) {
     var event = consumerRecord.value();
     var tenant = event.getTenantName();

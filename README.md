@@ -13,6 +13,7 @@ Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 * [Docker](#docker)
 * [Environment variables](#environment-variables)
   * [Kafka environment variables](#kafka-environment-variables)
+    * [Kafka tenant filtering](#kafka-tenant-filtering)
   * [Retry environment variables](#retry-environment-variables)
   * [Secure storage environment variables](#secure-storage-environment-variables)
     * [AWS-SSM](#aws-ssm)
@@ -130,18 +131,39 @@ docker run \
 
 ### Kafka environment variables
 
-| Name                            | Default value                                                        | Description                                                                                                                                                |
-|:--------------------------------|:---------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| KAFKA_HOST                      | kafka                                                                | Kafka broker hostname                                                                                                                                      |
-| KAFKA_PORT                      | 9092                                                                 | Kafka broker port                                                                                                                                          |
-| KAFKA_SECURITY_PROTOCOL         | PLAINTEXT                                                            | Kafka security protocol used to communicate with brokers (SSL or PLAINTEXT)                                                                                |
-| KAFKA_SSL_KEYSTORE_LOCATION     | -                                                                    | The location of the Kafka key store file. This is optional for client and can be used for two-way authentication for client.                               |
-| KAFKA_SSL_KEYSTORE_PASSWORD     | -                                                                    | The store password for the Kafka key store file. This is optional for client and only needed if 'ssl.keystore.location' is configured.                     |
-| KAFKA_SSL_TRUSTSTORE_LOCATION   | -                                                                    | The location of the Kafka trust store file.                                                                                                                |
-| KAFKA_SSL_TRUSTSTORE_PASSWORD   | -                                                                    | The password for the Kafka trust store file. If a password is not set, trust store file configured will still be used, but integrity checking is disabled. |
-| KAFKA_JOB_CONSUMER_PATTERN      | (${folio.environment}\.)(.*\.)mgr-tenant-entitlements\.scheduled-job | Custom subscription pattern for Kafka consumers.                                                                                                           |
-| KAFKA_JOB_CONCURRENCY           | 1                                                                    | Custom number of kafka concurrent threads for message consuming.                                                                                           |
-| KAFKA_CONSUMER_MAX_POLL_RECORDS | 200                                                                  | Maximum number of records returned in a single call to poll().                                                                                             |
+| Name                                              | Default value                                                           | Description                                                                                                                                                |
+|:--------------------------------------------------|:------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| KAFKA_HOST                                        | kafka                                                                   | Kafka broker hostname                                                                                                                                      |
+| KAFKA_PORT                                        | 9092                                                                    | Kafka broker port                                                                                                                                          |
+| KAFKA_SECURITY_PROTOCOL                           | PLAINTEXT                                                               | Kafka security protocol used to communicate with brokers (SSL or PLAINTEXT)                                                                                |
+| KAFKA_SSL_KEYSTORE_LOCATION                       | -                                                                       | The location of the Kafka key store file. This is optional for client and can be used for two-way authentication for client.                               |
+| KAFKA_SSL_KEYSTORE_PASSWORD                       | -                                                                       | The store password for the Kafka key store file. This is optional for client and only needed if 'ssl.keystore.location' is configured.                     |
+| KAFKA_SSL_TRUSTSTORE_LOCATION                     | -                                                                       | The location of the Kafka trust store file.                                                                                                                |
+| KAFKA_SSL_TRUSTSTORE_PASSWORD                     | -                                                                       | The password for the Kafka trust store file. If a password is not set, trust store file configured will still be used, but integrity checking is disabled. |
+| KAFKA_JOB_CONSUMER_PATTERN                        | (${folio.environment}\.)(.*\.)mgr-tenant-entitlements\.scheduled-job    | Custom subscription pattern for the scheduled-job Kafka consumer.                                                                                         |
+| KAFKA_JOB_CONCURRENCY                             | 1                                                                       | Number of concurrent threads for the scheduled-job Kafka consumer.                                                                                        |
+| KAFKA_ENTITLEMENT_CONSUMER_PATTERN                | (${folio.environment}\.)(.*\.)entitlement                               | Custom subscription pattern for the entitlement-events Kafka consumer.                                                                                    |
+| KAFKA_ENTITLEMENT_CONCURRENCY                     | 1                                                                       | Number of concurrent threads for the entitlement-events Kafka consumer.                                                                                   |
+| KAFKA_CONSUMER_MAX_POLL_RECORDS                   | 200                                                                     | Maximum number of records returned in a single call to poll().                                                                                             |
+| KAFKA_TENANT_FILTER_ENABLED                       | false                                                                   | Enables tenant-entitlement filtering for Kafka messages. When `true`, events for tenants not entitled to this module version are filtered.                 |
+| KAFKA_TENANT_FILTER_TENANT_DISABLED_STRATEGY      | skip                                                                    | Strategy when a message's tenant is not in the entitled set. `skip` silently discards the record; `fail` throws an exception and retries with backoff.     |
+| KAFKA_TENANT_FILTER_ALL_TENANTS_DISABLED_STRATEGY | fail                                                                    | Strategy when no tenants at all are entitled (e.g. during startup). `skip` discards the record; `fail` retries with backoff until tenants become entitled. |
+| MODULE_VERSION                                    | -                                                                       | Module version used for tenant-entitlement filter queries (e.g. `1.0.0`). Typically injected by the deployment pipeline.                                  |
+
+#### Kafka tenant filtering
+
+When `KAFKA_TENANT_FILTER_ENABLED=true`, the module queries the tenant-entitlement service
+(`GET /entitlements/modules/{moduleId}`) before processing each `scheduled-job` Kafka event.
+Only events belonging to tenants currently entitled to this module version are delivered to the
+listener; others are handled according to the configured strategy.
+
+Two independent strategies control the behaviour:
+
+- **`KAFKA_TENANT_FILTER_TENANT_DISABLED_STRATEGY`** — applied when the entitled-tenant set
+  exists but does not contain the event's tenant. Default: `skip`.
+- **`KAFKA_TENANT_FILTER_ALL_TENANTS_DISABLED_STRATEGY`** — applied when no tenants are entitled
+  at all (e.g. during startup or a full rollout). Default: `fail`, which causes the event to be
+  retried with backoff until at least one tenant becomes entitled.
 
 ### Retry environment variables
 

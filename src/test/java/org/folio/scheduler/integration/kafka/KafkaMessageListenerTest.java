@@ -1,12 +1,12 @@
 package org.folio.scheduler.integration.kafka;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.folio.integration.kafka.model.ResourceEventType.CREATE;
+import static org.folio.integration.kafka.model.ResourceEventType.DELETE;
+import static org.folio.integration.kafka.model.ResourceEventType.UPDATE;
 import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.ENTITLE;
 import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.REVOKE;
 import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.UPGRADE;
-import static org.folio.scheduler.integration.kafka.model.ResourceEventType.CREATE;
-import static org.folio.scheduler.integration.kafka.model.ResourceEventType.DELETE;
-import static org.folio.scheduler.integration.kafka.model.ResourceEventType.UPDATE;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
@@ -18,12 +18,12 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.folio.integration.kafka.model.ResourceEvent;
+import org.folio.integration.kafka.model.ResourceEventType;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerUnit;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.scheduler.integration.kafka.model.EntitlementEventType;
-import org.folio.scheduler.integration.kafka.model.ResourceEvent;
-import org.folio.scheduler.integration.kafka.model.ResourceEventType;
 import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
 import org.folio.spring.exception.LiquibaseMigrationException;
 import org.folio.spring.liquibase.LiquibaseMigrationLockService;
@@ -61,23 +61,28 @@ class KafkaMessageListenerTest {
     verifyNoMoreInteractions(eventService);
   }
 
-  private static ResourceEvent createResourceEvent(ResourceEventType type) {
-    var scheduledTimers = new ScheduledTimers()
+  private static ResourceEvent<ScheduledTimers> createResourceEvent(ResourceEventType type) {
+    var scheduledTimers = getTimers();
+    return switch (type) {
+      case CREATE -> ResourceEvent.<ScheduledTimers>builder()
+        .type(type).resourceName("Scheduled Job").tenant(TENANT_ID)
+        .newValue(scheduledTimers).build();
+      case UPDATE -> ResourceEvent.<ScheduledTimers>builder()
+        .type(type).resourceName("Scheduled Job").tenant(TENANT_ID)
+        .oldValue(scheduledTimers).newValue(scheduledTimersAfterUpgrade()).build();
+      case DELETE -> ResourceEvent.<ScheduledTimers>builder()
+        .type(type).resourceName("Scheduled Job").tenant(TENANT_ID)
+        .oldValue(scheduledTimers).build();
+      default -> ResourceEvent.<ScheduledTimers>builder()
+        .type(type).resourceName("Scheduled Job").tenant(TENANT_ID).build();
+    };
+  }
+
+  private static ScheduledTimers getTimers() {
+    return new ScheduledTimers()
       .moduleId(MODULE_ID1)
       .applicationId("app-foo-1.0.0")
       .timers(List.of(routingEntry1()));
-
-    var event = new ResourceEvent()
-      .type(type)
-      .resourceName("Scheduled Job")
-      .tenant(TENANT_ID);
-
-    return switch (type) {
-      case CREATE -> event.newValue(scheduledTimers);
-      case UPDATE -> event.oldValue(scheduledTimers).newValue(scheduledTimersAfterUpgrade());
-      case DELETE -> event.oldValue(scheduledTimers);
-      default -> event;
-    };
   }
 
   private static EntitlementEvent createEntitlementEvent(EntitlementEventType type) {
@@ -116,7 +121,7 @@ class KafkaMessageListenerTest {
     @Test
     void positive_createEvent() {
       var event = createResourceEvent(CREATE);
-      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+      var consumerRecord = new ConsumerRecord<String, ResourceEvent<?>>(TOPIC_NAME, 0, 0, TENANT_ID, event);
 
       kafkaMessageListener.handleScheduledJobEvent(consumerRecord);
 
@@ -128,7 +133,7 @@ class KafkaMessageListenerTest {
     @Test
     void positive_updateEvent() {
       var event = createResourceEvent(UPDATE);
-      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+      var consumerRecord = new ConsumerRecord<String, ResourceEvent<?>>(TOPIC_NAME, 0, 0, TENANT_ID, event);
 
       kafkaMessageListener.handleScheduledJobEvent(consumerRecord);
 
@@ -138,7 +143,7 @@ class KafkaMessageListenerTest {
     @Test
     void positive_deleteEvent() {
       var event = createResourceEvent(DELETE);
-      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+      var consumerRecord = new ConsumerRecord<String, ResourceEvent<?>>(TOPIC_NAME, 0, 0, TENANT_ID, event);
 
       kafkaMessageListener.handleScheduledJobEvent(consumerRecord);
 
@@ -148,7 +153,7 @@ class KafkaMessageListenerTest {
     @Test
     void positive_deleteEventBypassesLiquibasePrecheck() {
       var event = createResourceEvent(DELETE);
-      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+      var consumerRecord = new ConsumerRecord<String, ResourceEvent<?>>(TOPIC_NAME, 0, 0, TENANT_ID, event);
       lenient().when(liquibaseMigrationLockService.isMigrationRunning()).thenReturn(true);
 
       kafkaMessageListener.handleScheduledJobEvent(consumerRecord);
@@ -160,7 +165,7 @@ class KafkaMessageListenerTest {
     @Test
     void negative_createEventThrowsException() {
       var event = createResourceEvent(CREATE);
-      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+      var consumerRecord = new ConsumerRecord<String, ResourceEvent<?>>(TOPIC_NAME, 0, 0, TENANT_ID, event);
 
       doThrow(new RuntimeException("Failed to create timers"))
         .when(eventService).createTimers(event);
@@ -175,7 +180,7 @@ class KafkaMessageListenerTest {
     @Test
     void negative_updateEventThrowsException() {
       var event = createResourceEvent(UPDATE);
-      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+      var consumerRecord = new ConsumerRecord<String, ResourceEvent<?>>(TOPIC_NAME, 0, 0, TENANT_ID, event);
 
       doThrow(new RuntimeException("Failed to update timers"))
         .when(eventService).updateTimers(event);
@@ -190,7 +195,7 @@ class KafkaMessageListenerTest {
     @Test
     void negative_deleteEventThrowsException() {
       var event = createResourceEvent(DELETE);
-      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+      var consumerRecord = new ConsumerRecord<String, ResourceEvent<?>>(TOPIC_NAME, 0, 0, TENANT_ID, event);
 
       doThrow(new RuntimeException("Failed to delete timers"))
         .when(eventService).deleteTimers(event);
@@ -205,7 +210,7 @@ class KafkaMessageListenerTest {
     @Test
     void handleScheduledJobEvent_negative_liquibaseMigrationInProgress() {
       var event = createResourceEvent(CREATE);
-      var consumerRecord = new ConsumerRecord<>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+      var consumerRecord = new ConsumerRecord<String, ResourceEvent<?>>(TOPIC_NAME, 0, 0, TENANT_ID, event);
       when(liquibaseMigrationLockService.isMigrationRunning()).thenReturn(true);
 
       assertThatThrownBy(() -> kafkaMessageListener.handleScheduledJobEvent(consumerRecord))

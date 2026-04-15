@@ -19,14 +19,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
+import org.folio.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
-import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
 import org.folio.scheduler.service.SchedulerTimerService;
-import org.folio.spring.FolioModuleMetadata;
+import org.folio.scheduler.utils.TestUtils;
 import org.folio.test.types.UnitTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
@@ -37,7 +37,9 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import tools.jackson.databind.ObjectMapper;
 
 @UnitTest
 @ExtendWith(MockitoExtension.class)
@@ -48,8 +50,8 @@ class KafkaEventServiceTest {
   private static final String APPLICATION_ID = "app-foo-1.0.0";
 
   @Mock private SchedulerTimerService schedulerTimerService;
-  @Mock private FolioModuleMetadata folioModuleMetadata;
   @Mock private TimerTableCheckService timerTableCheckService;
+  @Spy private ObjectMapper objectMapper = TestUtils.OBJECT_MAPPER;
   @InjectMocks
   private KafkaEventService kafkaEventService;
 
@@ -58,15 +60,16 @@ class KafkaEventServiceTest {
     verifyNoMoreInteractions(schedulerTimerService, timerTableCheckService);
   }
 
-  private static ResourceEvent createResourceEvent(List<RoutingEntry> routingEntries) {
+  private static ResourceEvent<ScheduledTimers> createResourceEvent(List<RoutingEntry> routingEntries) {
     var scheduledTimers = new ScheduledTimers()
       .moduleId(MODULE_ID)
       .applicationId(APPLICATION_ID)
       .timers(routingEntries);
 
-    return new ResourceEvent()
+    return ResourceEvent.<ScheduledTimers>builder()
       .tenant(TENANT_ID)
-      .newValue(scheduledTimers);
+      .newValue(scheduledTimers)
+      .build();
   }
 
   private static RoutingEntry routingEntry1() {
@@ -164,7 +167,8 @@ class KafkaEventServiceTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("nullParameterProvider")
-    void negative_nullParameters(String testName, ResourceEvent event, Class<? extends Exception> expectedException) {
+    void negative_nullParameters(String testName, ResourceEvent<?> event,
+      Class<? extends Exception> expectedException) {
       assertThatThrownBy(() -> kafkaEventService.createTimers(event))
         .isInstanceOf(expectedException);
 
@@ -172,28 +176,24 @@ class KafkaEventServiceTest {
     }
 
     private static Stream<Arguments> nullParameterProvider() {
+      var eventNullNewValue = ResourceEvent.<ScheduledTimers>builder()
+        .tenant(TENANT_ID)
+        .build();
+
+      var eventNullTimers = ResourceEvent.<ScheduledTimers>builder()
+        .tenant(TENANT_ID)
+        .newValue(new ScheduledTimers().moduleId(MODULE_ID).applicationId(APPLICATION_ID).timers(null))
+        .build();
+
+      var eventNullModuleId = ResourceEvent.<ScheduledTimers>builder()
+        .tenant(TENANT_ID)
+        .newValue(new ScheduledTimers().moduleId(null).applicationId(APPLICATION_ID).timers(List.of(routingEntry1())))
+        .build();
+
       return Stream.of(
-        Arguments.of("negative_nullNewValue",
-          new ResourceEvent()
-            .tenant(TENANT_ID)
-            .newValue(null),
-          NullPointerException.class),
-        Arguments.of("negative_nullTimersList",
-          new ResourceEvent()
-            .tenant(TENANT_ID)
-            .newValue(new ScheduledTimers()
-              .moduleId(MODULE_ID)
-              .applicationId(APPLICATION_ID)
-              .timers(null)),
-          NullPointerException.class),
-        Arguments.of("negative_nullModuleId",
-          new ResourceEvent()
-            .tenant(TENANT_ID)
-            .newValue(new ScheduledTimers()
-              .moduleId(null)
-              .applicationId(APPLICATION_ID)
-              .timers(List.of(routingEntry1()))),
-          IllegalArgumentException.class)
+        Arguments.of("negative_nullNewValue", eventNullNewValue, NullPointerException.class),
+        Arguments.of("negative_nullTimersList", eventNullTimers, NullPointerException.class),
+        Arguments.of("negative_nullModuleId", eventNullModuleId, IllegalArgumentException.class)
       );
     }
 
@@ -233,10 +233,11 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(newRoutingEntry));
-      var event = new ResourceEvent()
+      var event = ResourceEvent.<ScheduledTimers>builder()
         .tenant(TENANT_ID)
         .oldValue(oldTimers)
-        .newValue(newTimers);
+        .newValue(newTimers)
+        .build();
 
       var existingTimer = new TimerDescriptor()
         .id(UUID.randomUUID())
@@ -269,9 +270,10 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(newRoutingEntry));
-      var event = new ResourceEvent()
+      var event = ResourceEvent.<ScheduledTimers>builder()
         .tenant(TENANT_ID)
-        .newValue(newTimers);
+        .newValue(newTimers)
+        .build();
 
       when(schedulerTimerService.findByModuleNameAndType(MODULE_NAME, SYSTEM))
         .thenReturn(emptyList());
@@ -294,9 +296,10 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(newRoutingEntry));
-      var event = new ResourceEvent()
+      var event = ResourceEvent.<ScheduledTimers>builder()
         .tenant(TENANT_ID)
-        .newValue(newTimers);
+        .newValue(newTimers)
+        .build();
 
       var existingTimer1 = new TimerDescriptor()
         .id(UUID.randomUUID())
@@ -323,9 +326,10 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(emptyList());
-      var event = new ResourceEvent()
+      var event = ResourceEvent.<ScheduledTimers>builder()
         .tenant(TENANT_ID)
-        .newValue(newTimers);
+        .newValue(newTimers)
+        .build();
 
       var existingTimer = new TimerDescriptor()
         .id(UUID.randomUUID())
@@ -349,9 +353,10 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(newRoutingEntry));
-      var event = new ResourceEvent()
+      var event = ResourceEvent.<ScheduledTimers>builder()
         .tenant(TENANT_ID)
-        .newValue(newTimers);
+        .newValue(newTimers)
+        .build();
 
       var existingTimer = new TimerDescriptor()
         .id(UUID.randomUUID())
@@ -372,9 +377,9 @@ class KafkaEventServiceTest {
 
     @Test
     void negative_nullNewValue() {
-      var event = new ResourceEvent()
+      var event = ResourceEvent.<ScheduledTimers>builder()
         .tenant(TENANT_ID)
-        .newValue(null);
+        .build();
 
       assertThatThrownBy(() -> kafkaEventService.updateTimers(event))
         .isInstanceOf(NullPointerException.class);
@@ -390,9 +395,10 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(routingEntry1()));
-      var event = new ResourceEvent()
+      var event = ResourceEvent.<ScheduledTimers>builder()
         .tenant(TENANT_ID)
-        .oldValue(oldTimers);
+        .oldValue(oldTimers)
+        .build();
 
       var existingTimer1 = new TimerDescriptor()
         .id(UUID.randomUUID())
@@ -419,9 +425,10 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(routingEntry1()));
-      var event = new ResourceEvent()
+      var event = ResourceEvent.<ScheduledTimers>builder()
         .tenant(TENANT_ID)
-        .oldValue(oldTimers);
+        .oldValue(oldTimers)
+        .build();
 
       var existingTimer = new TimerDescriptor()
         .id(UUID.randomUUID())
@@ -444,9 +451,10 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(routingEntry1()));
-      var event = new ResourceEvent()
+      var event = ResourceEvent.<ScheduledTimers>builder()
         .tenant(TENANT_ID)
-        .oldValue(oldTimers);
+        .oldValue(oldTimers)
+        .build();
 
       when(timerTableCheckService.tableExists()).thenReturn(true);
       when(schedulerTimerService.findByModuleNameAndType(MODULE_NAME, SYSTEM))
@@ -465,9 +473,10 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(routingEntry1()));
-      var event = new ResourceEvent()
+      var event = ResourceEvent.<ScheduledTimers>builder()
         .tenant(TENANT_ID)
-        .oldValue(oldTimers);
+        .oldValue(oldTimers)
+        .build();
 
       when(timerTableCheckService.tableExists()).thenReturn(true);
       when(schedulerTimerService.findByModuleNameAndType(MODULE_NAME, SYSTEM))
@@ -487,9 +496,10 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(routingEntry1()));
-      var event = new ResourceEvent()
+      var event = ResourceEvent.<ScheduledTimers>builder()
         .tenant(TENANT_ID)
-        .oldValue(oldTimers);
+        .oldValue(oldTimers)
+        .build();
 
       var existingTimer = new TimerDescriptor()
         .id(UUID.randomUUID())
@@ -512,9 +522,9 @@ class KafkaEventServiceTest {
 
     @Test
     void negative_nullOldValue() {
-      var event = new ResourceEvent()
+      var event = ResourceEvent.<ScheduledTimers>builder()
         .tenant(TENANT_ID)
-        .oldValue(null);
+        .build();
 
       assertThatThrownBy(() -> kafkaEventService.deleteTimers(event))
         .isInstanceOf(NullPointerException.class);
@@ -526,9 +536,10 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(routingEntry1()));
-      var event = new ResourceEvent()
+      var event = ResourceEvent.<ScheduledTimers>builder()
         .tenant(TENANT_ID)
-        .oldValue(oldTimers);
+        .oldValue(oldTimers)
+        .build();
 
       when(timerTableCheckService.tableExists()).thenReturn(false);
 

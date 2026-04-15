@@ -11,11 +11,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.Strings;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.folio.integration.kafka.consumer.EnableKafkaConsumer;
+import org.folio.integration.kafka.consumer.filter.TenantIsDisabledException;
+import org.folio.integration.kafka.consumer.filter.TenantsAreDisabledException;
+import org.folio.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties.RetryProperties;
 import org.folio.scheduler.integration.kafka.TimerTableCheckService;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
-import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.spring.FolioExecutionContext;
 import org.folio.spring.exception.LiquibaseMigrationException;
 import org.hibernate.exception.SQLGrammarException;
@@ -33,14 +36,17 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.FixedBackOff;
+import tools.jackson.databind.ObjectMapper;
 
 @Log4j2
 @Configuration
+@EnableKafkaConsumer
 @RequiredArgsConstructor
 public class KafkaConfiguration {
 
   private final KafkaProperties kafkaProperties;
   private final RetryConfigurationProperties retryConfiguration;
+  private final ObjectMapper objectMapper;
 
   /**
    * Creates and configures {@link ConcurrentKafkaListenerContainerFactory} as Spring bean for consuming resource events
@@ -49,8 +55,9 @@ public class KafkaConfiguration {
    * @return {@link ConcurrentKafkaListenerContainerFactory} object as Spring bean.
    */
   @Bean
-  public ConcurrentKafkaListenerContainerFactory<String, ResourceEvent> kafkaListenerContainerFactory() {
-    var factory = new ConcurrentKafkaListenerContainerFactory<String, ResourceEvent>();
+  @SuppressWarnings("rawtypes")
+  public ConcurrentKafkaListenerContainerFactory<String, ResourceEvent<?>> kafkaListenerContainerFactory() {
+    var factory = new ConcurrentKafkaListenerContainerFactory<String, ResourceEvent<?>>();
     factory.setConsumerFactory(jsonNodeConsumerFactory());
     factory.setCommonErrorHandler(errorHandler(ResourceEvent.class));
     return factory;
@@ -117,6 +124,7 @@ public class KafkaConfiguration {
     return errorHandler;
   }
 
+  @SuppressWarnings("checkstyle:MethodLength")
   BackOff getBackOff(Exception exception, Class<?> eventClass) {
     log.info("Calculating backoff for exception: exception = {}, eventClass = {}",
       exception.getMessage(), eventClass.getSimpleName(), exception);
@@ -131,6 +139,13 @@ public class KafkaConfiguration {
     if (relationDoesNotExistsMessage.isPresent()) {
       var retryProperties = getRetryProperties(eventClass);
       log.warn("Tenant table is not found, retrying until created [message: {}]", relationDoesNotExistsMessage.get());
+      return getFixedBackOff(retryProperties);
+    }
+
+    if (hasCause(exception, TenantsAreDisabledException.class)
+      || hasCause(exception, TenantIsDisabledException.class)) {
+      var retryProperties = getRetryProperties(eventClass);
+      log.warn("Tenant(s) is disabled, retrying Kafka event", exception);
       return getFixedBackOff(retryProperties);
     }
 
