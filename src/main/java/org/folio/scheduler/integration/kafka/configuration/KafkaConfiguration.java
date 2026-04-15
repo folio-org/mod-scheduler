@@ -58,7 +58,7 @@ public class KafkaConfiguration {
   @SuppressWarnings("rawtypes")
   public ConcurrentKafkaListenerContainerFactory<String, ResourceEvent<?>> kafkaListenerContainerFactory() {
     var factory = new ConcurrentKafkaListenerContainerFactory<String, ResourceEvent<?>>();
-    factory.setConsumerFactory((ConsumerFactory) jsonNodeConsumerFactory());
+    factory.setConsumerFactory(jsonNodeConsumerFactory());
     factory.setCommonErrorHandler(errorHandler(ResourceEvent.class));
     return factory;
   }
