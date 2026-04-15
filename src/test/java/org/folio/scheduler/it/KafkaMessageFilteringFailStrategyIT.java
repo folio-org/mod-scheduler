@@ -1,7 +1,9 @@
 package org.folio.scheduler.it;
 
-import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
+import static org.awaitility.Durations.TWO_SECONDS;
 import static org.folio.integration.kafka.model.ResourceEventType.CREATE;
 import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
@@ -96,6 +98,7 @@ class KafkaMessageFilteringFailStrategyIT extends BaseIntegrationTest {
   static void afterAll(@Autowired Scheduler scheduler) throws Exception {
     removeTenant();
     deleteAllQuartzJobs(scheduler);
+    assertThat(scheduler.getJobKeys(anyJobGroup())).isEmpty();
   }
 
   @AfterEach
@@ -128,6 +131,9 @@ class KafkaMessageFilteringFailStrategyIT extends BaseIntegrationTest {
     await().untilAsserted(() -> doGet("/scheduler/timers")
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.totalRecords", is(1))));
+
+    await().atMost(TWO_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
+      .untilAsserted(BaseIntegrationTest::verifyTimerRequestCallsCount);
   }
 
   private static ResourceEvent<ScheduledTimers> resourceEvent() {
@@ -143,8 +149,8 @@ class KafkaMessageFilteringFailStrategyIT extends BaseIntegrationTest {
     return new ScheduledTimers()
       .moduleId(MODULE_ID)
       .applicationId("app-foo-1.0.0")
-      .timers(asList(new RoutingEntry()
-        .methods(asList("POST"))
+      .timers(singletonList(new RoutingEntry()
+        .methods(singletonList("POST"))
         .pathPattern("/test")
         .delay("1")
         .unit(SECOND)));
