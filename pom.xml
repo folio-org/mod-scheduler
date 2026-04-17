@@ -12,7 +12,7 @@
   <name>mod-scheduler</name>
   <groupId>org.folio</groupId>
   <artifactId>mod-scheduler</artifactId>
-  <version>3.1.0-SNAPSHOT</version>
+  <version>4.1.0-SNAPSHOT</version>
   <description>mod-scheduler</description>
   <packaging>jar</packaging>
 
@@ -81,7 +81,7 @@
     <sonar.coverage.jacoco.xmlReportPaths>
       target/site/jacoco-aggregate/jacoco.xml
     </sonar.coverage.jacoco.xmlReportPaths>
-    <argLine/>
+    <argLine />
   </properties>
 
   <dependencyManagement>
