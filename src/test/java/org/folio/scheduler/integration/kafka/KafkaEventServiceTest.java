@@ -8,6 +8,7 @@ import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -25,6 +26,7 @@ import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
+import org.folio.scheduler.service.RequestOrigin;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.scheduler.utils.TestUtils;
 import org.folio.test.types.UnitTest;
@@ -103,7 +105,7 @@ class KafkaEventServiceTest {
           && Objects.equals(descriptor.getModuleName(), MODULE_NAME)
           && Objects.equals(descriptor.getModuleId(), MODULE_ID)
           && descriptor.getRoutingEntry().equals(routingEntry1())
-      ));
+      ), eq(RequestOrigin.KAFKA));
     }
 
     @Test
@@ -114,13 +116,13 @@ class KafkaEventServiceTest {
 
       kafkaEventService.createTimers(event);
 
-      verify(schedulerTimerService, times(2)).create(any(TimerDescriptor.class));
+      verify(schedulerTimerService, times(2)).create(any(TimerDescriptor.class), eq(RequestOrigin.KAFKA));
       verify(schedulerTimerService).create(argThat(descriptor ->
         descriptor.getRoutingEntry().equals(routingEntry1)
-      ));
+      ), eq(RequestOrigin.KAFKA));
       verify(schedulerTimerService).create(argThat(descriptor ->
         descriptor.getRoutingEntry().equals(routingEntry2)
-      ));
+      ), eq(RequestOrigin.KAFKA));
     }
 
     @Test
@@ -129,7 +131,7 @@ class KafkaEventServiceTest {
 
       kafkaEventService.createTimers(event);
 
-      verify(schedulerTimerService, never()).create(any(TimerDescriptor.class));
+      verify(schedulerTimerService, never()).create(any(TimerDescriptor.class), eq(RequestOrigin.KAFKA));
     }
 
     @Test
@@ -147,7 +149,7 @@ class KafkaEventServiceTest {
         && Objects.equals(descriptor.getRoutingEntry().getPathPattern(), "/test-entities/expire")
         && descriptor.getRoutingEntry().getMethods().contains("POST")
         && descriptor.getRoutingEntry().getUnit() == MINUTE
-        && Objects.equals(descriptor.getRoutingEntry().getDelay(), "1")));
+        && Objects.equals(descriptor.getRoutingEntry().getDelay(), "1")), eq(RequestOrigin.KAFKA));
     }
 
     @Test
@@ -155,14 +157,14 @@ class KafkaEventServiceTest {
       var event = createResourceEvent(List.of(routingEntry1()));
       var expectedException = new RuntimeException("Failed to create timer");
 
-      when(schedulerTimerService.create(any(TimerDescriptor.class)))
+      when(schedulerTimerService.create(any(TimerDescriptor.class), eq(RequestOrigin.KAFKA)))
         .thenThrow(expectedException);
 
       assertThatThrownBy(() -> kafkaEventService.createTimers(event))
         .isInstanceOf(RuntimeException.class)
         .hasMessage("Failed to create timer");
 
-      verify(schedulerTimerService).create(any(TimerDescriptor.class));
+      verify(schedulerTimerService).create(any(TimerDescriptor.class), eq(RequestOrigin.KAFKA));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -172,7 +174,7 @@ class KafkaEventServiceTest {
       assertThatThrownBy(() -> kafkaEventService.createTimers(event))
         .isInstanceOf(expectedException);
 
-      verify(schedulerTimerService, never()).create(any(TimerDescriptor.class));
+      verify(schedulerTimerService, never()).create(any(TimerDescriptor.class), eq(RequestOrigin.KAFKA));
     }
 
     private static Stream<Arguments> nullParameterProvider() {
@@ -204,17 +206,19 @@ class KafkaEventServiceTest {
       var event = createResourceEvent(List.of(routingEntry1, routingEntry2));
 
       when(schedulerTimerService.create(argThat(d ->
-        d != null && d.getRoutingEntry() != null && d.getRoutingEntry().equals(routingEntry1))))
+        d != null && d.getRoutingEntry() != null && d.getRoutingEntry().equals(routingEntry1)),
+        eq(RequestOrigin.KAFKA)))
         .thenReturn(new TimerDescriptor());
       when(schedulerTimerService.create(argThat(d ->
-        d != null && d.getRoutingEntry() != null && d.getRoutingEntry().equals(routingEntry2))))
+        d != null && d.getRoutingEntry() != null && d.getRoutingEntry().equals(routingEntry2)),
+        eq(RequestOrigin.KAFKA)))
         .thenThrow(new RuntimeException("Failed to create second timer"));
 
       assertThatThrownBy(() -> kafkaEventService.createTimers(event))
         .isInstanceOf(RuntimeException.class)
         .hasMessage("Failed to create second timer");
 
-      verify(schedulerTimerService, times(2)).create(any(TimerDescriptor.class));
+      verify(schedulerTimerService, times(2)).create(any(TimerDescriptor.class), eq(RequestOrigin.KAFKA));
     }
   }
 
@@ -253,14 +257,14 @@ class KafkaEventServiceTest {
       kafkaEventService.updateTimers(event);
 
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
-      verify(schedulerTimerService).delete(existingTimer.getId());
+      verify(schedulerTimerService).delete(existingTimer.getId(), RequestOrigin.KAFKA);
       verify(schedulerTimerService).create(argThat(descriptor ->
         descriptor.getEnabled().equals(TRUE)
           && descriptor.getType() == TimerType.SYSTEM
           && Objects.equals(descriptor.getModuleName(), MODULE_NAME)
           && Objects.equals(descriptor.getModuleId(), MODULE_ID)
           && descriptor.getRoutingEntry().equals(newRoutingEntry)
-      ));
+      ), eq(RequestOrigin.KAFKA));
     }
 
     @Test
@@ -281,10 +285,10 @@ class KafkaEventServiceTest {
       kafkaEventService.updateTimers(event);
 
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
-      verify(schedulerTimerService, never()).delete(any(UUID.class));
+      verify(schedulerTimerService, never()).delete(any(UUID.class), eq(RequestOrigin.KAFKA));
       verify(schedulerTimerService).create(argThat(descriptor ->
         descriptor.getRoutingEntry().equals(newRoutingEntry)
-      ));
+      ), eq(RequestOrigin.KAFKA));
     }
 
     @Test
@@ -314,9 +318,9 @@ class KafkaEventServiceTest {
       kafkaEventService.updateTimers(event);
 
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
-      verify(schedulerTimerService).delete(existingTimer1.getId());
-      verify(schedulerTimerService).delete(existingTimer2.getId());
-      verify(schedulerTimerService).create(any(TimerDescriptor.class));
+      verify(schedulerTimerService).delete(existingTimer1.getId(), RequestOrigin.KAFKA);
+      verify(schedulerTimerService).delete(existingTimer2.getId(), RequestOrigin.KAFKA);
+      verify(schedulerTimerService).create(any(TimerDescriptor.class), eq(RequestOrigin.KAFKA));
     }
 
     @Test
@@ -341,8 +345,8 @@ class KafkaEventServiceTest {
       kafkaEventService.updateTimers(event);
 
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
-      verify(schedulerTimerService).delete(existingTimer.getId());
-      verify(schedulerTimerService, never()).create(any(TimerDescriptor.class));
+      verify(schedulerTimerService).delete(existingTimer.getId(), RequestOrigin.KAFKA);
+      verify(schedulerTimerService, never()).create(any(TimerDescriptor.class), eq(RequestOrigin.KAFKA));
     }
 
     @Test
@@ -365,14 +369,14 @@ class KafkaEventServiceTest {
       when(schedulerTimerService.findByModuleNameAndType(MODULE_NAME, SYSTEM))
         .thenReturn(List.of(existingTimer));
       doThrow(new RuntimeException("Failed to delete timer"))
-        .when(schedulerTimerService).delete(existingTimer.getId());
+        .when(schedulerTimerService).delete(existingTimer.getId(), RequestOrigin.KAFKA);
 
       assertThatThrownBy(() -> kafkaEventService.updateTimers(event))
         .isInstanceOf(RuntimeException.class)
         .hasMessage("Failed to delete timer");
 
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
-      verify(schedulerTimerService).delete(existingTimer.getId());
+      verify(schedulerTimerService).delete(existingTimer.getId(), RequestOrigin.KAFKA);
     }
 
     @Test
@@ -415,8 +419,8 @@ class KafkaEventServiceTest {
 
       verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
-      verify(schedulerTimerService).delete(existingTimer1.getId());
-      verify(schedulerTimerService).delete(existingTimer2.getId());
+      verify(schedulerTimerService).delete(existingTimer1.getId(), RequestOrigin.KAFKA);
+      verify(schedulerTimerService).delete(existingTimer2.getId(), RequestOrigin.KAFKA);
     }
 
     @Test
@@ -442,7 +446,7 @@ class KafkaEventServiceTest {
 
       verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
-      verify(schedulerTimerService).delete(existingTimer.getId());
+      verify(schedulerTimerService).delete(existingTimer.getId(), RequestOrigin.KAFKA);
     }
 
     @Test
@@ -464,7 +468,7 @@ class KafkaEventServiceTest {
 
       verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
-      verify(schedulerTimerService, never()).delete(any(UUID.class));
+      verify(schedulerTimerService, never()).delete(any(UUID.class), eq(RequestOrigin.KAFKA));
     }
 
     @Test
@@ -509,7 +513,7 @@ class KafkaEventServiceTest {
       when(schedulerTimerService.findByModuleNameAndType(MODULE_NAME, SYSTEM))
         .thenReturn(List.of(existingTimer));
       doThrow(new RuntimeException("Failed to delete timer"))
-        .when(schedulerTimerService).delete(existingTimer.getId());
+        .when(schedulerTimerService).delete(existingTimer.getId(), RequestOrigin.KAFKA);
 
       assertThatThrownBy(() -> kafkaEventService.deleteTimers(event))
         .isInstanceOf(RuntimeException.class)
@@ -517,7 +521,7 @@ class KafkaEventServiceTest {
 
       verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
-      verify(schedulerTimerService).delete(existingTimer.getId());
+      verify(schedulerTimerService).delete(existingTimer.getId(), RequestOrigin.KAFKA);
     }
 
     @Test
@@ -547,7 +551,7 @@ class KafkaEventServiceTest {
 
       verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService, never()).findByModuleNameAndType(any(), any());
-      verify(schedulerTimerService, never()).delete(any(UUID.class));
+      verify(schedulerTimerService, never()).delete(any(UUID.class), eq(RequestOrigin.KAFKA));
     }
   }
 

@@ -50,4 +50,21 @@ values
           }
         }
        }'
+    ),
+    ('123e4567-e89b-12d3-a456-426614174003', 'mod-foo-1.0.0', 'mod-foo', 'SYSTEM', '{
+        "id": "123e4567-e89b-12d3-a456-426614174003",
+        "modified": "false",
+        "enabled": "false",
+        "moduleId": "mod-foo-1.0.0",
+        "moduleName": "mod-foo",
+        "type": "system",
+        "routingEntry": {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/testb/timer/5",
+          "unit": "second",
+          "delay": "30"
+        }
+       }'
     );

@@ -24,6 +24,7 @@ import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerDescriptorList;
 import org.folio.scheduler.domain.model.SearchResult;
 import org.folio.scheduler.exception.RequestValidationException;
+import org.folio.scheduler.service.RequestOrigin;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.test.types.UnitTest;
 import org.junit.jupiter.api.Test;
@@ -104,7 +105,7 @@ class SchedulerTimerControllerTest {
   @Test
   void create_positive() throws Exception {
     var timerDescriptor = timerDescriptor(null);
-    when(schedulingTimerService.create(timerDescriptor)).thenReturn(timerDescriptor());
+    when(schedulingTimerService.create(timerDescriptor, RequestOrigin.API)).thenReturn(timerDescriptor());
 
     var result = mockMvc.perform(post("/scheduler/timers")
         .contentType(APPLICATION_JSON)
@@ -119,7 +120,7 @@ class SchedulerTimerControllerTest {
   @Test
   void create_negative_internalServerError() throws Exception {
     var descriptor = timerDescriptor(null);
-    when(schedulingTimerService.create(descriptor)).thenThrow(new RuntimeException("Unknown error"));
+    when(schedulingTimerService.create(descriptor, RequestOrigin.API)).thenThrow(new RuntimeException("Unknown error"));
     mockMvc.perform(post("/scheduler/timers")
         .content(asJsonString(descriptor))
         .contentType(APPLICATION_JSON))
@@ -147,7 +148,7 @@ class SchedulerTimerControllerTest {
   @Test
   void update_positive() throws Exception {
     var timerDescriptor = timerDescriptor();
-    when(schedulingTimerService.update(TIMER_UUID, timerDescriptor)).thenReturn(timerDescriptor);
+    when(schedulingTimerService.update(TIMER_UUID, timerDescriptor, RequestOrigin.API)).thenReturn(timerDescriptor);
 
     var mvcResult = mockMvc.perform(put("/scheduler/timers/{id}", TIMER_UUID)
         .contentType(APPLICATION_JSON)
@@ -163,7 +164,8 @@ class SchedulerTimerControllerTest {
   void update_negative_entityNotFound() throws Exception {
     var errorMsg = "timer not found by id: " + TIMER_UUID;
     var timerDescriptor = timerDescriptor();
-    when(schedulingTimerService.update(TIMER_UUID, timerDescriptor)).thenThrow(new EntityNotFoundException(errorMsg));
+    when(schedulingTimerService.update(TIMER_UUID, timerDescriptor, RequestOrigin.API))
+      .thenThrow(new EntityNotFoundException(errorMsg));
     mockMvc.perform(put("/scheduler/timers/{id}", TIMER_UUID)
         .contentType(APPLICATION_JSON)
         .content(asJsonString(timerDescriptor)))
@@ -178,7 +180,7 @@ class SchedulerTimerControllerTest {
   void update_negative_idInRequestBodyNotMatch() throws Exception {
     var errorMessage = "Id in the url and in the entity must match";
     var timerDescriptor = timerDescriptor(randomUUID());
-    when(schedulingTimerService.update(TIMER_UUID, timerDescriptor))
+    when(schedulingTimerService.update(TIMER_UUID, timerDescriptor, RequestOrigin.API))
       .thenThrow(new RequestValidationException(errorMessage, "id", "null"));
 
     mockMvc.perform(put("/scheduler/timers/{id}", TIMER_UUID)
@@ -193,7 +195,7 @@ class SchedulerTimerControllerTest {
 
   @Test
   void delete_positive() throws Exception {
-    doNothing().when(schedulingTimerService).delete(TIMER_UUID);
+    doNothing().when(schedulingTimerService).delete(TIMER_UUID, RequestOrigin.API);
     mockMvc.perform(delete("/scheduler/timers/{id}", TIMER_UUID)
         .contentType(APPLICATION_JSON))
       .andExpect(status().isNoContent());

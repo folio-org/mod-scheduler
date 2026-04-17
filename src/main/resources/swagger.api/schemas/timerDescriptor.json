@@ -11,7 +11,7 @@
     },
     "type": {
       "$ref": "timerType.json",
-      "description": "Timer type"
+      "description": "Timer type. Value `SYSTEM` is not allowed in POST and PUT API requests unless `SCHEDULER_API_ALLOW_SYSTEM_TIMER_MUTATION` variable is `true`."
     },
     "modified": {
       "description": "Whether modified",
