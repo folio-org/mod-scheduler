@@ -1,4 +1,4 @@
-## Version `v4.0.0` (in progress)
+## Version `v4.0.0` (17.04.2026)
 ### Changes:
 * Normalize cron notation to the Quartz format (MODSCHED-33)
 * Introduce configuration for FSSP (APPPOCTOOL-59)
