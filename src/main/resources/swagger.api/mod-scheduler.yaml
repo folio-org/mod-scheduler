@@ -81,6 +81,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/timerDescriptor'
+        '400':
+          $ref: '#/components/responses/badRequestResponse'
         '404':
           $ref: '#/components/responses/entityNotFoundResponse'
         '500':
@@ -88,12 +90,14 @@ paths:
 
     delete:
       operationId: deleteSchedulerTimerById
-      description: delete scheduler timer by id
+      description: Delete scheduler timer by id
       parameters:
         - $ref: '#/components/parameters/path-entity-id'
       responses:
         '204':
           description: A scheduler timer
+        '400':
+          $ref: '#/components/responses/badRequestResponse'
         '500':
           $ref: '#/components/responses/internalServerErrorResponse'
 
@@ -154,4 +158,3 @@ components:
         type: integer
         minimum: 0
         default: 0
-
