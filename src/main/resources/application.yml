@@ -89,6 +89,9 @@ application:
       trust-store-password: ${SECRET_STORE_FSSP_TRUSTSTORE_PASSWORD:}
   system-user:
     username-template: ${SYSTEM_USER_USERNAME_TEMPLATE:{tenantId}-system-user}
+  timer:
+    api:
+      allow-system-timer-mutation: ${SCHEDULER_API_ALLOW_SYSTEM_TIMER_MUTATION:false}
   kafka:
     consumer:
       listener:

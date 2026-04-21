@@ -21,7 +21,9 @@ import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.folio.scheduler.configuration.properties.TimerApiConfigurationProperties;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
+import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 import org.folio.scheduler.domain.model.SearchResult;
 import org.folio.scheduler.exception.RequestValidationException;
@@ -49,6 +51,7 @@ class SchedulerTimerServiceTest {
   @Mock private TimerDescriptorMapper mapper;
   @Mock private JobSchedulingService jobSchedulingService;
   @Mock private EntityManager entityManager;
+  @Mock private TimerApiConfigurationProperties timerApiConfigurationProperties;
 
   @Captor private ArgumentCaptor<TimerDescriptor> timerDescriptorCaptor;
 
@@ -113,8 +116,40 @@ class SchedulerTimerServiceTest {
     when(mapper.toDescriptor(entity)).thenReturn(descriptorCopy);
     when(jobSchedulingService.schedule(descriptorCopy)).thenReturn(true);
 
-    var actual = service.create(descriptor);
+    var actual = service.create(descriptor, RequestOrigin.KAFKA);
     assertThat(actual).isEqualTo(descriptorCopy);
+  }
+
+  @Test
+  void create_negative_rejectsSystemTypeForApiRequest() {
+    var descriptor = timerDescriptor().moduleId(MODULE_ID).type(TimerType.SYSTEM);
+
+    when(timerApiConfigurationProperties.isAllowSystemTimerMutation()).thenReturn(false);
+
+    assertThatThrownBy(() -> service.create(descriptor, RequestOrigin.API))
+      .isInstanceOfSatisfying(RequestValidationException.class, ex -> {
+        assertThat(ex.getErrorParameter().getKey()).isEqualTo("type");
+        assertThat(ex.getErrorParameter().getValue()).isEqualTo("SYSTEM");
+      });
+  }
+
+  @Test
+  void create_positive_allowsSystemTypeForApiRequestWhenFeatureFlagDisabled() {
+    var descriptor = timerDescriptor().moduleId(MODULE_ID).type(TimerType.SYSTEM);
+    var descriptorCopy = timerDescriptor().moduleId(MODULE_ID).type(TimerType.SYSTEM);
+    var entity = timerDescriptorEntity(descriptorCopy);
+
+    when(timerApiConfigurationProperties.isAllowSystemTimerMutation()).thenReturn(true);
+    when(mapper.deepCopy(descriptor)).thenReturn(descriptorCopy);
+    when(repository.findByNaturalKey(TimerDescriptorEntity.toNaturalKey(descriptorCopy))).thenReturn(Optional.empty());
+    when(mapper.toDescriptorEntity(descriptorCopy)).thenReturn(entity);
+    when(repository.saveAndFlush(entity)).thenReturn(entity);
+    when(mapper.toDescriptor(entity)).thenReturn(descriptorCopy);
+    when(jobSchedulingService.schedule(descriptorCopy)).thenReturn(true);
+
+    var actual = service.create(descriptor, RequestOrigin.API);
+
+    assertThat(actual.getType()).isEqualTo(TimerType.SYSTEM);
   }
 
   @Test
@@ -132,7 +167,7 @@ class SchedulerTimerServiceTest {
       .thenAnswer(inv -> ((TimerDescriptorEntity) inv.getArgument(0)).getTimerDescriptor());
     when(jobSchedulingService.schedule(any(TimerDescriptor.class))).thenReturn(true);
 
-    var actual = service.create(descriptor);
+    var actual = service.create(descriptor, RequestOrigin.KAFKA);
 
     assertThat(actual.getId()).isNotNull();
     assertThat(actual).usingRecursiveComparison().ignoringFields("id").isEqualTo(descriptor);
@@ -144,7 +179,7 @@ class SchedulerTimerServiceTest {
     var descriptor = timerDescriptor();
     when(repository.findById(TIMER_UUID)).thenReturn(Optional.of(timerDescriptorEntity()));
 
-    assertThatThrownBy(() -> service.create(descriptor))
+    assertThatThrownBy(() -> service.create(descriptor, RequestOrigin.KAFKA))
       .isInstanceOf(EntityExistsException.class)
       .hasMessage("TimerDescriptor already exist for id " + TIMER_UUID);
   }
@@ -153,7 +188,7 @@ class SchedulerTimerServiceTest {
   void create_negative_moduleIdAndNameIsEmpty() {
     var descriptor = timerDescriptor().moduleId(null).moduleName(null);
 
-    assertThatThrownBy(() -> service.create(descriptor))
+    assertThatThrownBy(() -> service.create(descriptor, RequestOrigin.KAFKA))
       .isInstanceOf(IllegalArgumentException.class)
       .hasMessage("Module id or module name is required");
   }
@@ -162,7 +197,7 @@ class SchedulerTimerServiceTest {
   void create_negative_timerTypeIsNull() {
     var descriptor = timerDescriptor().type(null);
 
-    assertThatThrownBy(() -> service.create(descriptor))
+    assertThatThrownBy(() -> service.create(descriptor, RequestOrigin.KAFKA))
       .isInstanceOf(IllegalArgumentException.class)
       .hasMessage("Timer type is required");
   }
@@ -201,15 +236,75 @@ class SchedulerTimerServiceTest {
     doNothing().when(entityManager).refresh(entityToUpdate);
     doNothing().when(jobSchedulingService).reschedule(existingDescriptor, expectedDescriptor);
 
-    var actual = service.update(TIMER_UUID, inputDescriptor);
+    var actual = service.update(TIMER_UUID, inputDescriptor, RequestOrigin.KAFKA);
 
     assertThat(actual).isEqualTo(expectedDescriptor);
   }
 
   @Test
+  void update_negative_rejectsSystemTypeForApiRequest() {
+    var inputDescriptor = timerDescriptorWithPath("/modified").type(TimerType.SYSTEM);
+
+    when(timerApiConfigurationProperties.isAllowSystemTimerMutation()).thenReturn(false);
+
+    assertThatThrownBy(() -> service.update(TIMER_UUID, inputDescriptor, RequestOrigin.API))
+      .isInstanceOfSatisfying(RequestValidationException.class, ex -> {
+        assertThat(ex.getErrorParameter().getKey()).isEqualTo("type");
+        assertThat(ex.getErrorParameter().getValue()).isEqualTo("SYSTEM");
+      });
+  }
+
+  @Test
+  void update_negative_rejectsSystemTimerMutationForApiRequest() {
+    var descriptor = timerDescriptor().moduleId(MODULE_ID);
+    var existingDescriptor = timerDescriptor().moduleId(MODULE_ID).type(TimerType.SYSTEM);
+    var existingEntity = timerDescriptorEntity(existingDescriptor);
+
+    when(timerApiConfigurationProperties.isAllowSystemTimerMutation()).thenReturn(false);
+    when(repository.findById(TIMER_UUID)).thenReturn(Optional.of(existingEntity));
+    when(mapper.toDescriptor(existingEntity)).thenReturn(existingDescriptor);
+
+    assertThatThrownBy(() -> service.update(TIMER_UUID, descriptor, RequestOrigin.API))
+      .isInstanceOfSatisfying(RequestValidationException.class, ex -> {
+        assertThat(ex.getErrorParameter().getKey()).isEqualTo("type");
+        assertThat(ex.getErrorParameter().getValue()).isEqualTo("SYSTEM");
+      });
+  }
+
+  @Test
+  void update_positive_allowsSystemTypeForApiRequestWhenFeatureFlagDisabled() {
+    var inputDescriptor = timerDescriptorWithPath("/modified").type(TimerType.SYSTEM);
+    var inputDescriptorCopy = timerDescriptorWithPath("/modified").type(TimerType.SYSTEM);
+    var existingDescriptor = timerDescriptor().moduleId(MODULE_ID).type(TimerType.SYSTEM).modified(null);
+    var existingEntity = timerDescriptorEntity(existingDescriptor);
+    var expectedDescriptor = timerDescriptorWithPath("/modified").type(TimerType.SYSTEM).modified(true);
+    var entityToUpdate = timerDescriptorEntity(expectedDescriptor);
+
+    when(timerApiConfigurationProperties.isAllowSystemTimerMutation()).thenReturn(true);
+    when(mapper.deepCopy(inputDescriptor)).thenReturn(inputDescriptorCopy);
+    when(repository.findById(TIMER_UUID)).thenReturn(Optional.of(existingEntity));
+    when(mapper.toDescriptor(any(TimerDescriptorEntity.class))).thenAnswer(inv -> {
+      var entity = (TimerDescriptorEntity) inv.getArgument(0);
+      if (entity.getTimerDescriptor().getModified() == null) {
+        return existingDescriptor;
+      }
+
+      return expectedDescriptor;
+    });
+    when(mapper.toDescriptorEntity(any(TimerDescriptor.class))).thenReturn(entityToUpdate);
+    when(repository.saveAndFlush(entityToUpdate)).thenReturn(entityToUpdate);
+    doNothing().when(entityManager).refresh(entityToUpdate);
+    doNothing().when(jobSchedulingService).reschedule(existingDescriptor, expectedDescriptor);
+
+    var actual = service.update(TIMER_UUID, inputDescriptor, RequestOrigin.API);
+
+    assertThat(actual.getType()).isEqualTo(TimerType.SYSTEM);
+  }
+
+  @Test
   void update_negative_bodyWithoutId() {
     var descriptor = timerDescriptor(null);
-    assertThatThrownBy(() -> service.update(TIMER_UUID, descriptor))
+    assertThatThrownBy(() -> service.update(TIMER_UUID, descriptor, RequestOrigin.KAFKA))
       .isInstanceOf(RequestValidationException.class)
       .hasMessage("Timer descriptor id is required");
   }
@@ -217,7 +312,7 @@ class SchedulerTimerServiceTest {
   @Test
   void update_negative_differentIdInParameterAndBody() {
     var descriptor = timerDescriptor(randomUUID());
-    assertThatThrownBy(() -> service.update(TIMER_UUID, descriptor))
+    assertThatThrownBy(() -> service.update(TIMER_UUID, descriptor, RequestOrigin.KAFKA))
       .isInstanceOf(RequestValidationException.class)
       .hasMessage("Id in the url and in the entity must match");
   }
@@ -228,7 +323,7 @@ class SchedulerTimerServiceTest {
     when(mapper.deepCopy(descriptor)).thenReturn(descriptor);
     when(repository.findById(TIMER_UUID)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.update(TIMER_UUID, descriptor))
+    assertThatThrownBy(() -> service.update(TIMER_UUID, descriptor, RequestOrigin.KAFKA))
       .isInstanceOf(EntityNotFoundException.class)
       .hasMessage("Unable to find timer descriptor with id " + TIMER_UUID);
   }
@@ -237,7 +332,7 @@ class SchedulerTimerServiceTest {
   void update_negative_moduleIdAndNameIsEmpty() {
     var descriptor = timerDescriptor().moduleId(null).moduleName(null);
 
-    assertThatThrownBy(() -> service.update(TIMER_UUID, descriptor))
+    assertThatThrownBy(() -> service.update(TIMER_UUID, descriptor, RequestOrigin.KAFKA))
       .isInstanceOf(IllegalArgumentException.class)
       .hasMessage("Module id or module name is required");
   }
@@ -246,7 +341,7 @@ class SchedulerTimerServiceTest {
   void update_negative_timerTypeIsNull() {
     var descriptor = timerDescriptor().type(null);
 
-    assertThatThrownBy(() -> service.update(TIMER_UUID, descriptor))
+    assertThatThrownBy(() -> service.update(TIMER_UUID, descriptor, RequestOrigin.KAFKA))
       .isInstanceOf(IllegalArgumentException.class)
       .hasMessage("Timer type is required");
   }
@@ -259,7 +354,39 @@ class SchedulerTimerServiceTest {
     when(repository.findById(TIMER_UUID)).thenReturn(Optional.of(timerDescriptorEntity));
     doNothing().when(jobSchedulingService).delete(timerDescriptor);
 
-    service.delete(TIMER_UUID);
+    service.delete(TIMER_UUID, RequestOrigin.KAFKA);
+
+    verify(repository).findById(TIMER_UUID);
+    verify(jobSchedulingService).delete(timerDescriptor);
+  }
+
+  @Test
+  void delete_negative_rejectsSystemTimerMutationForApiRequest() {
+    var timerDescriptorEntity = timerDescriptorEntity(timerDescriptor().type(TimerType.SYSTEM));
+
+    when(timerApiConfigurationProperties.isAllowSystemTimerMutation()).thenReturn(false);
+    when(repository.findById(TIMER_UUID)).thenReturn(Optional.of(timerDescriptorEntity));
+
+    assertThatThrownBy(() -> service.delete(TIMER_UUID, RequestOrigin.API))
+      .isInstanceOfSatisfying(RequestValidationException.class, ex -> {
+        assertThat(ex.getErrorParameter().getKey()).isEqualTo("type");
+        assertThat(ex.getErrorParameter().getValue()).isEqualTo("SYSTEM");
+      });
+
+    verify(repository).findById(TIMER_UUID);
+    verifyNoInteractions(jobSchedulingService);
+  }
+
+  @Test
+  void delete_positive_allowsSystemTypeForApiRequestWhenFeatureFlagDisabled() {
+    var timerDescriptorEntity = timerDescriptorEntity(timerDescriptor().type(TimerType.SYSTEM));
+    var timerDescriptor = timerDescriptorEntity.getTimerDescriptor();
+
+    when(timerApiConfigurationProperties.isAllowSystemTimerMutation()).thenReturn(true);
+    when(repository.findById(TIMER_UUID)).thenReturn(Optional.of(timerDescriptorEntity));
+    doNothing().when(jobSchedulingService).delete(timerDescriptor);
+
+    service.delete(TIMER_UUID, RequestOrigin.API);
 
     verify(repository).findById(TIMER_UUID);
     verify(jobSchedulingService).delete(timerDescriptor);
@@ -267,7 +394,7 @@ class SchedulerTimerServiceTest {
 
   @Test
   void delete_positive_entityNotFound() {
-    service.delete(TIMER_UUID);
+    service.delete(TIMER_UUID, RequestOrigin.KAFKA);
     verify(repository).findById(TIMER_UUID);
     verifyNoInteractions(jobSchedulingService);
   }
@@ -299,7 +426,7 @@ class SchedulerTimerServiceTest {
     when(mapper.toDescriptor(entity)).thenReturn(existingDescriptor, updatedDescriptor);
     doNothing().when(jobSchedulingService).reschedule(any(TimerDescriptor.class), any(TimerDescriptor.class));
 
-    var actual = service.create(descriptor);
+    var actual = service.create(descriptor, RequestOrigin.KAFKA);
     assertThat(actual).isEqualTo(updatedDescriptor);
   }
 

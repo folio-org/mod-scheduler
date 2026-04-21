@@ -16,6 +16,7 @@
 * Upgrade module to SpringBoot 4.0 and Spring 7.0 (MODSCHED-48)
 * Handle Liquibase migration state during Kafka event processing (MODSCHED-74)
 * Filter Kafka messages by tenant entitlements (MODSCHED-69)
+* Restrict public REST API mutations for SYSTEM timers (MODSCHED-71)
 ---
 
 ## Version `v3.0.0` (12.03.2025)

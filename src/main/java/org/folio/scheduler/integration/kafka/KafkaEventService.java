@@ -16,6 +16,7 @@ import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
+import org.folio.scheduler.service.RequestOrigin;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -82,7 +83,7 @@ public class KafkaEventService {
       () -> moduleId, () -> mapItems(routingEntries, KafkaEventService::getRoutingEntryKey));
 
     for (var re : routingEntries) {
-      schedulerTimerService.create(createTimerDescriptor(re, moduleName, moduleId));
+      schedulerTimerService.create(createTimerDescriptor(re, moduleName, moduleId), RequestOrigin.KAFKA);
     }
   }
 
@@ -98,7 +99,7 @@ public class KafkaEventService {
     );
 
     for (var timer : timers) {
-      schedulerTimerService.delete(timer.getId());
+      schedulerTimerService.delete(timer.getId(), RequestOrigin.KAFKA);
     }
   }
 

@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerDescriptorList;
 import org.folio.scheduler.rest.resource.SchedulerApi;
+import org.folio.scheduler.service.RequestOrigin;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,12 +21,12 @@ public class SchedulerTimerController implements SchedulerApi {
 
   @Override
   public ResponseEntity<TimerDescriptor> createSchedulerTimers(TimerDescriptor timerDescriptor) {
-    return ResponseEntity.status(CREATED).body(schedulerTimerService.create(timerDescriptor));
+    return ResponseEntity.status(CREATED).body(schedulerTimerService.create(timerDescriptor, RequestOrigin.API));
   }
 
   @Override
   public ResponseEntity<Void> deleteSchedulerTimerById(UUID id) {
-    schedulerTimerService.delete(id);
+    schedulerTimerService.delete(id, RequestOrigin.API);
     return ResponseEntity.status(NO_CONTENT).build();
   }
 
@@ -44,6 +45,6 @@ public class SchedulerTimerController implements SchedulerApi {
 
   @Override
   public ResponseEntity<TimerDescriptor> updateSchedulerTimerById(UUID id, TimerDescriptor timerDescriptor) {
-    return ResponseEntity.ok(schedulerTimerService.update(id, timerDescriptor));
+    return ResponseEntity.ok(schedulerTimerService.update(id, timerDescriptor, RequestOrigin.API));
   }
 }

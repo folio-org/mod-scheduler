@@ -28,6 +28,7 @@ import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.RoutingEntrySchedule;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerDescriptorList;
+import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.support.TestValues;
 import org.folio.scheduler.support.base.BaseIntegrationTest;
 import org.folio.test.extensions.EnableKeycloakTlsMode;
@@ -53,6 +54,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   private static final String UNKNOWN_ID = "51fd5dff-5d51-4169-a296-d441e1d234c9";
   private static final UUID TIMER_ID_TO_UPDATE = UUID.fromString("123e4567-e89b-12d3-a456-426614174001");
   private static final String TIMER_ID_TO_DELETE = "123e4567-e89b-12d3-a456-426614174002";
+  private static final String SYSTEM_TIMER_ID = "123e4567-e89b-12d3-a456-426614174003";
 
   @Autowired private Scheduler scheduler;
 
@@ -85,7 +87,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   @Test
   void getAll_positive() throws Exception {
     doGet("/scheduler/timers")
-      .andExpect(jsonPath("$.totalRecords", is(3)));
+      .andExpect(jsonPath("$.totalRecords", is(4)));
   }
 
   @Test
@@ -135,6 +137,25 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   }
 
   @Test
+  void create_negative_systemTimerForbidden() throws Exception {
+    var timerId = UUID.randomUUID();
+    var timerDescriptor = timerDescriptor(timerId)
+      .enabled(false)
+      .type(TimerType.SYSTEM);
+
+    attemptPost("/scheduler/timers", timerDescriptor)
+      .andExpect(status().isBadRequest())
+      .andExpect(jsonPath("$.total_records", is(1)))
+      .andExpect(jsonPath("$.errors[0].type", is("RequestValidationException")))
+      .andExpect(jsonPath("$.errors[0].code", is("validation_error")))
+      .andExpect(jsonPath("$.errors[0].parameters[0].key", is("type")))
+      .andExpect(jsonPath("$.errors[0].parameters[0].value", is("SYSTEM")));
+
+    attemptGet("/scheduler/timers/{id}", timerId)
+      .andExpect(status().isNotFound());
+  }
+
+  @Test
   void update_positive() throws Exception {
     var desc = TestValues.timerDescriptor(TIMER_ID_TO_UPDATE).moduleId(MODULE_ID);
     doPut("/scheduler/timers/{id}", desc, TIMER_ID_TO_UPDATE)
@@ -143,10 +164,44 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   }
 
   @Test
+  void update_negative_systemTimerForbidden() throws Exception {
+    var result = doGet("/scheduler/timers/{id}", SYSTEM_TIMER_ID).andReturn();
+    var systemTimer = parseResponse(result, TimerDescriptor.class);
+    systemTimer.setEnabled(true);
+
+    attemptPut("/scheduler/timers/{id}", systemTimer, SYSTEM_TIMER_ID)
+      .andExpect(status().isBadRequest())
+      .andExpect(jsonPath("$.total_records", is(1)))
+      .andExpect(jsonPath("$.errors[0].type", is("RequestValidationException")))
+      .andExpect(jsonPath("$.errors[0].code", is("validation_error")))
+      .andExpect(jsonPath("$.errors[0].parameters[0].key", is("type")))
+      .andExpect(jsonPath("$.errors[0].parameters[0].value", is("SYSTEM")));
+
+    doGet("/scheduler/timers/{id}", SYSTEM_TIMER_ID)
+      .andExpect(jsonPath("$.id", is(SYSTEM_TIMER_ID)))
+      .andExpect(jsonPath("$.type", is("system")));
+  }
+
+  @Test
   void delete_positive() throws Exception {
     doDelete("/scheduler/timers/{id}", TIMER_ID_TO_DELETE);
     doGet("/scheduler/timers")
-      .andExpect(jsonPath("$.totalRecords", is(2)));
+      .andExpect(jsonPath("$.totalRecords", is(3)));
+  }
+
+  @Test
+  void delete_negative_systemTimerForbidden() throws Exception {
+    attemptDelete("/scheduler/timers/{id}", SYSTEM_TIMER_ID)
+      .andExpect(status().isBadRequest())
+      .andExpect(jsonPath("$.total_records", is(1)))
+      .andExpect(jsonPath("$.errors[0].type", is("RequestValidationException")))
+      .andExpect(jsonPath("$.errors[0].code", is("validation_error")))
+      .andExpect(jsonPath("$.errors[0].parameters[0].key", is("type")))
+      .andExpect(jsonPath("$.errors[0].parameters[0].value", is("SYSTEM")));
+
+    doGet("/scheduler/timers/{id}", SYSTEM_TIMER_ID)
+      .andExpect(jsonPath("$.id", is(SYSTEM_TIMER_ID)))
+      .andExpect(jsonPath("$.type", is("system")));
   }
 
   @Test
@@ -155,7 +210,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
       .andExpect(status().isNoContent());
 
     doGet("/scheduler/timers")
-      .andExpect(jsonPath("$.totalRecords", is(3)));
+      .andExpect(jsonPath("$.totalRecords", is(4)));
   }
 
   @Test
