@@ -6,8 +6,8 @@ import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 import static org.awaitility.Durations.ONE_SECOND;
 import static org.awaitility.Durations.TWO_SECONDS;
 import static org.folio.common.utils.CollectionUtils.mapItems;
+import static org.folio.integration.kafka.model.ResourceEventType.CREATE;
 import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
-import static org.folio.scheduler.integration.kafka.model.ResourceEventType.CREATE;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.utils.TestUtils.asJsonString;
 import static org.folio.scheduler.utils.TestUtils.await;
@@ -31,11 +31,11 @@ import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 import org.folio.common.utils.SemverUtils;
+import org.folio.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerDescriptorList;
 import org.folio.scheduler.domain.dto.TimerType;
-import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.scheduler.support.base.BaseIntegrationTest;
@@ -250,12 +250,13 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
     });
   }
 
-  private static ResourceEvent resourceEvent() {
-    return new ResourceEvent()
+  private static ResourceEvent<ScheduledTimers> resourceEvent() {
+    return ResourceEvent.<ScheduledTimers>builder()
       .resourceName("Scheduled Job")
       .tenant(TENANT_ID)
       .type(CREATE)
-      .newValue(scheduledTimers(routingEntry()));
+      .newValue(scheduledTimers(routingEntry()))
+      .build();
   }
 
   private static ScheduledTimers scheduledTimers(RoutingEntry... routingEntries) {

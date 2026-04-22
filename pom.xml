@@ -35,7 +35,7 @@
     <folio-spring-support.version>9.0.2</folio-spring-support.version>
     <commons-lang3.version>3.17.0</commons-lang3.version>
     <commons-collections4.version>4.4</commons-collections4.version>
-    <applications-poc-tools.version>3.0.9</applications-poc-tools.version>
+    <applications-poc-tools.version>3.0.10-SNAPSHOT</applications-poc-tools.version>
     <aws.version>2.38.2</aws.version>
     <vault.version>5.1.0</vault.version>
     <cron-utils.version>9.1.7</cron-utils.version>
@@ -138,6 +138,12 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-security</artifactId>
+      <version>${applications-poc-tools.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>folio-integration-kafka</artifactId>
       <version>${applications-poc-tools.version}</version>
     </dependency>
 
@@ -321,6 +327,13 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>build-info</goal>
+            </goals>
+          </execution>
+        </executions>
         <configuration>
           <layers>
             <enabled>true</enabled>
