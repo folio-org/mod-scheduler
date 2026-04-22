@@ -12,10 +12,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.folio.integration.kafka.consumer.EnableKafkaConsumer;
+import org.folio.integration.kafka.consumer.filter.TenantIsDisabledException;
+import org.folio.integration.kafka.consumer.filter.TenantsAreDisabledException;
+import org.folio.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties;
+import org.folio.scheduler.configuration.properties.RetryConfigurationProperties.RetryProperties;
 import org.folio.scheduler.integration.kafka.TimerTableCheckService;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
-import org.folio.scheduler.integration.kafka.model.ResourceEvent;
 import org.folio.spring.FolioExecutionContext;
 import org.hibernate.exception.SQLGrammarException;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
@@ -34,6 +38,7 @@ import org.springframework.util.backoff.FixedBackOff;
 
 @Log4j2
 @Configuration
+@EnableKafkaConsumer
 @RequiredArgsConstructor
 public class KafkaConfiguration {
 
@@ -48,8 +53,8 @@ public class KafkaConfiguration {
    * @return {@link ConcurrentKafkaListenerContainerFactory} object as Spring bean.
    */
   @Bean
-  public ConcurrentKafkaListenerContainerFactory<String, ResourceEvent> kafkaListenerContainerFactory() {
-    var factory = new ConcurrentKafkaListenerContainerFactory<String, ResourceEvent>();
+  public ConcurrentKafkaListenerContainerFactory<String, ResourceEvent<?>> kafkaListenerContainerFactory() {
+    var factory = new ConcurrentKafkaListenerContainerFactory<String, ResourceEvent<?>>();
     factory.setConsumerFactory(jsonNodeConsumerFactory());
     factory.setCommonErrorHandler(errorHandler(ResourceEvent.class));
     return factory;
@@ -116,7 +121,8 @@ public class KafkaConfiguration {
     return errorHandler;
   }
 
-  private BackOff getBackOff(Exception exception, Class<?> eventClass) {
+  @SuppressWarnings("checkstyle:MethodLength")
+  BackOff getBackOff(Exception exception, Class<?> eventClass) {
     log.info("Calculating backoff for exception: exception = {}, eventClass = {}",
       exception.getMessage(), eventClass.getSimpleName(), exception);
 
@@ -124,7 +130,14 @@ public class KafkaConfiguration {
     if (relationDoesNotExistsMessage.isPresent()) {
       var retryProperties = getRetryProperties(eventClass);
       log.warn("Tenant table is not found, retrying until created [message: {}]", relationDoesNotExistsMessage.get());
-      return new FixedBackOff(retryProperties.getRetryDelay().toMillis(), retryProperties.getRetryAttempts());
+      return getFixedBackOff(retryProperties);
+    }
+
+    if (hasCause(exception, TenantsAreDisabledException.class)
+      || hasCause(exception, TenantIsDisabledException.class)) {
+      var retryProperties = getRetryProperties(eventClass);
+      log.warn("Tenant(s) is disabled, retrying Kafka event", exception);
+      return getFixedBackOff(retryProperties);
     }
 
     return new FixedBackOff(0L, 0L);
@@ -135,6 +148,19 @@ public class KafkaConfiguration {
       ? "entitlement-event"
       : "scheduled-timer-event";
     return retryConfiguration.getConfig().get(propertyKey);
+  }
+
+  private static FixedBackOff getFixedBackOff(RetryProperties retryProperties) {
+    return new FixedBackOff(retryProperties.getRetryDelay().toMillis(), retryProperties.getRetryAttempts());
+  }
+
+  private static boolean hasCause(Throwable throwable, Class<? extends Throwable> expectedType) {
+    for (var current = throwable; current != null; current = current.getCause()) {
+      if (expectedType.isInstance(current)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static Optional<String> findRelationDoesNotExistsMessage(Exception exception) {

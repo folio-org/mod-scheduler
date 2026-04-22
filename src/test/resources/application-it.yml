@@ -1,4 +1,6 @@
 spring:
+  application:
+    version: 0.0.1-TEST
   datasource:
     username: folio_admin
     password: qwerty123
@@ -23,6 +25,11 @@ okapi:
   token: test-token
 
 application:
+  kafka:
+    consumer:
+      filtering:
+        tenant-filter:
+          enabled: false
   secret-store:
     type: EPHEMERAL
     ephemeral:

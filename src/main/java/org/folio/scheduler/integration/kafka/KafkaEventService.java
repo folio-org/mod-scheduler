@@ -6,15 +6,17 @@ import static org.folio.common.utils.CollectionUtils.mapItems;
 import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
 import static org.folio.scheduler.utils.OkapiRequestUtils.getStaticPath;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.folio.common.utils.SemverUtils;
+import org.folio.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
-import org.folio.scheduler.integration.kafka.model.ResourceEvent;
+import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,9 +29,10 @@ public class KafkaEventService {
 
   private final SchedulerTimerService schedulerTimerService;
   private final TimerTableCheckService timerTableCheckService;
+  private final ObjectMapper objectMapper;
 
-  public void createTimers(ResourceEvent event) {
-    var newTimers = event.getNewValue();
+  public void createTimers(ResourceEvent<?> event) {
+    var newTimers = objectMapper.convertValue(event.getNewValue(), ScheduledTimers.class);
 
     var moduleId = newTimers.getModuleId();
     var moduleName = SemverUtils.getName(moduleId);
@@ -37,8 +40,8 @@ public class KafkaEventService {
     createModuleSystemTimers(newTimers.getTimers(), moduleName, moduleId);
   }
 
-  public void updateTimers(ResourceEvent event) {
-    var newTimers = event.getNewValue();
+  public void updateTimers(ResourceEvent<?> event) {
+    var newTimers = objectMapper.convertValue(event.getNewValue(), ScheduledTimers.class);
 
     var moduleId = newTimers.getModuleId();
     var moduleName = SemverUtils.getName(moduleId);
@@ -48,9 +51,10 @@ public class KafkaEventService {
     createModuleSystemTimers(newTimers.getTimers(), moduleName, moduleId);
   }
 
-  public void deleteTimers(ResourceEvent event) {
+  public void deleteTimers(ResourceEvent<?> event) {
     var tenant = event.getTenant();
-    var moduleName = SemverUtils.getName(event.getOldValue().getModuleId());
+    var moduleName = SemverUtils.getName(
+      objectMapper.convertValue(event.getOldValue(), ScheduledTimers.class).getModuleId());
 
     if (!timerTableCheckService.tableExists()) {
       log.debug("Cannot delete system timers for given module and tenant because the timer table is missing: "
