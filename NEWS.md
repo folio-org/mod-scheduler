@@ -1,4 +1,4 @@
-## Version `v3.0.9` (24.04.2026)
+## Version `v3.0.9` (23.04.2026)
 ### Changes:
 * Sunflower SP#7 - Filter Kafka messages by tenant entitlements (MODSCHED-77)
 ---
