@@ -1,3 +1,7 @@
+## Version `v4.0.1` (07.05.2026)
+### Changes:
+* Restrict public REST API mutations for SYSTEM timers (MODSCHED-71)
+
 ## Version `v4.0.0` (17.04.2026)
 ### Changes:
 * Normalize cron notation to the Quartz format (MODSCHED-33)
@@ -16,7 +20,6 @@
 * Upgrade module to SpringBoot 4.0 and Spring 7.0 (MODSCHED-48)
 * Handle Liquibase migration state during Kafka event processing (MODSCHED-74)
 * Filter Kafka messages by tenant entitlements (MODSCHED-69)
-* Restrict public REST API mutations for SYSTEM timers (MODSCHED-71)
 ---
 
 ## Version `v3.0.0` (12.03.2025)
