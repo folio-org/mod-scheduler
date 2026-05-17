@@ -94,7 +94,7 @@ class KafkaMessageFilteringIT extends BaseIntegrationTest {
   }
 
   private static ResourceEvent<ScheduledTimers> resourceEvent(String tenant) {
-    return ResourceEvent.<ScheduledTimers>builder()
+    return ResourceEvent.<ScheduledTimers>baseBuilder()
       .resourceName("Scheduled Job")
       .tenant(tenant)
       .type(CREATE)

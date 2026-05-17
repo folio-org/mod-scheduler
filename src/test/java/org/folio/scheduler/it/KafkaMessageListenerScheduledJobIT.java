@@ -299,7 +299,7 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
   }
 
   private static ResourceEvent<ScheduledTimers> resourceEvent() {
-    return ResourceEvent.<ScheduledTimers>builder()
+    return ResourceEvent.<ScheduledTimers>baseBuilder()
       .resourceName("Scheduled Job")
       .tenant(TENANT_ID)
       .type(CREATE)
