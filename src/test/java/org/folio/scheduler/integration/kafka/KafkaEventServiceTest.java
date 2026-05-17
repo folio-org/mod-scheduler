@@ -68,7 +68,7 @@ class KafkaEventServiceTest {
       .applicationId(APPLICATION_ID)
       .timers(routingEntries);
 
-    return ResourceEvent.<ScheduledTimers>builder()
+    return ResourceEvent.<ScheduledTimers>baseBuilder()
       .tenant(TENANT_ID)
       .newValue(scheduledTimers)
       .build();
@@ -178,16 +178,16 @@ class KafkaEventServiceTest {
     }
 
     private static Stream<Arguments> nullParameterProvider() {
-      var eventNullNewValue = ResourceEvent.<ScheduledTimers>builder()
+      var eventNullNewValue = ResourceEvent.<ScheduledTimers>baseBuilder()
         .tenant(TENANT_ID)
         .build();
 
-      var eventNullTimers = ResourceEvent.<ScheduledTimers>builder()
+      var eventNullTimers = ResourceEvent.<ScheduledTimers>baseBuilder()
         .tenant(TENANT_ID)
         .newValue(new ScheduledTimers().moduleId(MODULE_ID).applicationId(APPLICATION_ID).timers(null))
         .build();
 
-      var eventNullModuleId = ResourceEvent.<ScheduledTimers>builder()
+      var eventNullModuleId = ResourceEvent.<ScheduledTimers>baseBuilder()
         .tenant(TENANT_ID)
         .newValue(new ScheduledTimers().moduleId(null).applicationId(APPLICATION_ID).timers(List.of(routingEntry1())))
         .build();
@@ -237,7 +237,7 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(newRoutingEntry));
-      var event = ResourceEvent.<ScheduledTimers>builder()
+      var event = ResourceEvent.<ScheduledTimers>baseBuilder()
         .tenant(TENANT_ID)
         .oldValue(oldTimers)
         .newValue(newTimers)
@@ -274,7 +274,7 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(newRoutingEntry));
-      var event = ResourceEvent.<ScheduledTimers>builder()
+      var event = ResourceEvent.<ScheduledTimers>baseBuilder()
         .tenant(TENANT_ID)
         .newValue(newTimers)
         .build();
@@ -300,7 +300,7 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(newRoutingEntry));
-      var event = ResourceEvent.<ScheduledTimers>builder()
+      var event = ResourceEvent.<ScheduledTimers>baseBuilder()
         .tenant(TENANT_ID)
         .newValue(newTimers)
         .build();
@@ -330,7 +330,7 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(emptyList());
-      var event = ResourceEvent.<ScheduledTimers>builder()
+      var event = ResourceEvent.<ScheduledTimers>baseBuilder()
         .tenant(TENANT_ID)
         .newValue(newTimers)
         .build();
@@ -357,7 +357,7 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(newRoutingEntry));
-      var event = ResourceEvent.<ScheduledTimers>builder()
+      var event = ResourceEvent.<ScheduledTimers>baseBuilder()
         .tenant(TENANT_ID)
         .newValue(newTimers)
         .build();
@@ -381,7 +381,7 @@ class KafkaEventServiceTest {
 
     @Test
     void negative_nullNewValue() {
-      var event = ResourceEvent.<ScheduledTimers>builder()
+      var event = ResourceEvent.<ScheduledTimers>baseBuilder()
         .tenant(TENANT_ID)
         .build();
 
@@ -399,7 +399,7 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(routingEntry1()));
-      var event = ResourceEvent.<ScheduledTimers>builder()
+      var event = ResourceEvent.<ScheduledTimers>baseBuilder()
         .tenant(TENANT_ID)
         .oldValue(oldTimers)
         .build();
@@ -429,7 +429,7 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(routingEntry1()));
-      var event = ResourceEvent.<ScheduledTimers>builder()
+      var event = ResourceEvent.<ScheduledTimers>baseBuilder()
         .tenant(TENANT_ID)
         .oldValue(oldTimers)
         .build();
@@ -455,7 +455,7 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(routingEntry1()));
-      var event = ResourceEvent.<ScheduledTimers>builder()
+      var event = ResourceEvent.<ScheduledTimers>baseBuilder()
         .tenant(TENANT_ID)
         .oldValue(oldTimers)
         .build();
@@ -477,7 +477,7 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(routingEntry1()));
-      var event = ResourceEvent.<ScheduledTimers>builder()
+      var event = ResourceEvent.<ScheduledTimers>baseBuilder()
         .tenant(TENANT_ID)
         .oldValue(oldTimers)
         .build();
@@ -500,7 +500,7 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(routingEntry1()));
-      var event = ResourceEvent.<ScheduledTimers>builder()
+      var event = ResourceEvent.<ScheduledTimers>baseBuilder()
         .tenant(TENANT_ID)
         .oldValue(oldTimers)
         .build();
@@ -526,7 +526,7 @@ class KafkaEventServiceTest {
 
     @Test
     void negative_nullOldValue() {
-      var event = ResourceEvent.<ScheduledTimers>builder()
+      var event = ResourceEvent.<ScheduledTimers>baseBuilder()
         .tenant(TENANT_ID)
         .build();
 
@@ -540,7 +540,7 @@ class KafkaEventServiceTest {
         .moduleId(MODULE_ID)
         .applicationId(APPLICATION_ID)
         .timers(List.of(routingEntry1()));
-      var event = ResourceEvent.<ScheduledTimers>builder()
+      var event = ResourceEvent.<ScheduledTimers>baseBuilder()
         .tenant(TENANT_ID)
         .oldValue(oldTimers)
         .build();
