@@ -116,6 +116,11 @@ application:
         max-delay: ${SYSTEM_USER_MAX_DELAY:1m}
         retry-attempts: ${SYSTEM_USER_RETRY_ATTEMPTS:2147483647}
         retry-multiplier: ${SYSTEM_USER_RETRY_MULTIPLIER:1.5}
+      user-impersonation:
+        retry-delay: ${USER_IMPERSONATION_RETRY_DELAY:1s}
+        max-delay: ${USER_IMPERSONATION_MAX_DELAY:30s}
+        retry-attempts: ${USER_IMPERSONATION_RETRY_ATTEMPTS:3}
+        retry-multiplier: ${USER_IMPERSONATION_RETRY_MULTIPLIER:1.5}
       scheduled-timer-event:
         retry-delay: ${SCHEDULED_TIMER_EVENT_RETRY_DELAY:1s}
         retry-attempts: ${SCHEDULED_TIMER_EVENT_ATTEMPTS:2147483647}

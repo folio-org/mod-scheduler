@@ -174,8 +174,16 @@ Two independent strategies control the behaviour:
 | SYSTEM_USER_MAX_DELAY             | 1m            | Maximum delay between attempts to retrieve system user                                                                                  |
 | SYSTEM_USER_RETRY_ATTEMPTS        | 2147483647    | Number of retry attempts to retrieve system user (default value is Long.MAX_VALUE ~= infinite amount of retries)                        |
 | SYSTEM_USER_RETRY_MULTIPLIER      | 1.5           | Retry attempts delay multiplier to retrieve system user                                                                                 |
+| USER_IMPERSONATION_RETRY_DELAY    | 1s            | Retry delay between attempts to obtain a user impersonation token for scheduled job execution                                           |
+| USER_IMPERSONATION_MAX_DELAY      | 1m            | Maximum delay between attempts to obtain a user impersonation token                                                                     |
+| USER_IMPERSONATION_RETRY_ATTEMPTS | 3             | Number of retry attempts to obtain a user impersonation token                                                                           |
+| USER_IMPERSONATION_RETRY_MULTIPLIER | 1.5           | Retry attempts delay multiplier to obtain a user impersonation token                                                                    |
 | SCHEDULED_TIMER_EVENT_RETRY_DELAY | 1s            | Retry delay between attempts to process event from `scheduled-job` Kafka topic                                                          |
 | SCHEDULED_TIMER_EVENT_ATTEMPTS    | 2147483647    | Number of attempts to process event from `scheduled-job` Kafka topic (default value is Integer.MAX_VALUE ~= infinite amount of retries) |
+
+Timer execution uses a Keycloak user impersonation token as `X-Okapi-Token`. If token exchange returns a blank,
+missing, or literal `null` token, the response is not cached and the impersonation request is retried according to
+the `USER_IMPERSONATION_*` settings. If a valid token still cannot be obtained, the timer request is not sent.
 
 ### Secure storage environment variables
 

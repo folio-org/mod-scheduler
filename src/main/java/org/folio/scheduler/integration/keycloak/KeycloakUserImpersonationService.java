@@ -2,6 +2,7 @@ package org.folio.scheduler.integration.keycloak;
 
 import static java.net.URI.create;
 import static java.util.Collections.singletonList;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.keycloak.OAuth2Constants.TOKEN_EXCHANGE_GRANT_TYPE;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -14,6 +15,8 @@ import org.folio.scheduler.service.UserImpersonationService;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.token.TokenService;
 import org.keycloak.representations.AccessTokenResponse;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 
 @Log4j2
 @RequiredArgsConstructor
@@ -26,15 +29,26 @@ public class KeycloakUserImpersonationService implements UserImpersonationServic
   private final Cache<String, AccessTokenResponse> tokenCache;
 
   @Override
+  @Retryable(
+    maxAttemptsExpression = "#{@retryConfigurationProperties.config['user-impersonation'].retryAttempts}",
+    backoff = @Backoff(
+      delayExpression = "#{@retryConfigurationProperties.config['user-impersonation'].retryDelay.toMillis()}",
+      maxDelayExpression = "#{@retryConfigurationProperties.config['user-impersonation'].maxDelay.toMillis()}",
+      multiplierExpression = "#{@retryConfigurationProperties.config['user-impersonation'].retryMultiplier}"
+    ),
+    retryFor = {RuntimeException.class},
+    listeners = "methodLoggingRetryListener")
   public String impersonate(String tenant, String userId) {
     var key = buildCacheKey(tenant, userId);
     var accessTokenResponse = tokenCache.getIfPresent(key);
     if (accessTokenResponse == null) {
       accessTokenResponse = getUserToken(tenant, userId);
+      var token = accessToken(accessTokenResponse, tenant, userId);
       tokenCache.put(key, accessTokenResponse);
       log.debug("Update cache with user token: tenant = {}, userId = {}", tenant, userId);
+      return token;
     }
-    return accessTokenResponse.getToken();
+    return accessToken(accessTokenResponse, tenant, userId);
   }
 
   private AccessTokenResponse getUserToken(String tenant, String userId) {
@@ -57,5 +71,15 @@ public class KeycloakUserImpersonationService implements UserImpersonationServic
 
   private static String buildCacheKey(String tenant, String userId) {
     return tenant + ":" + userId;
+  }
+
+  private String accessToken(AccessTokenResponse response, String tenant, String userId) {
+    var token = response == null ? null : response.getToken();
+    if (isBlank(token) || "null".equalsIgnoreCase(token.trim())) {
+      tokenCache.invalidate(buildCacheKey(tenant, userId));
+      throw new IllegalStateException("Failed to obtain user impersonation token: token is blank [tenant: "
+        + tenant + ", userId: " + userId + "]");
+    }
+    return token;
   }
 }
