@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.NONE;
 
@@ -22,6 +23,7 @@ import org.folio.scheduler.configuration.properties.RetryConfigurationProperties
 import org.folio.scheduler.integration.keycloak.KeycloakUserImpersonationServiceTest.TestContextConfiguration;
 import org.folio.scheduler.integration.keycloak.configuration.properties.KeycloakProperties;
 import org.folio.scheduler.service.UserImpersonationService;
+import org.folio.spring.exception.NotFoundException;
 import org.folio.test.types.UnitTest;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -140,6 +142,25 @@ class KeycloakUserImpersonationServiceTest {
       verify(tokenCache).invalidate(cacheKey());
       verify(tokenCache).put(cacheKey(), accessTokenResponse);
       verify(tokenService).grantToken(eq(TENANT_ID), any());
+    }
+
+    @Test
+    void impersonate_negative_userNotFoundIsNotRetried() {
+      when(properties.getBaseUrl()).thenReturn(BASE_URL);
+      when(properties.getImpersonationClient()).thenReturn(IMPERSONATION_CLIENT);
+      when(clientSecretService.retrieveSecretFromSecretStore(TENANT_ID, IMPERSONATION_CLIENT))
+        .thenReturn("clientSecret");
+      when(keycloak.proxy(TokenService.class, URI.create(BASE_URL))).thenReturn(tokenService);
+      when(userService.findKeycloakIdByTenantAndUserId(TENANT_ID, USER_ID))
+        .thenThrow(new NotFoundException("missing user"));
+
+      assertThatThrownBy(() -> service.impersonate(TENANT_ID, USER_ID))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("missing user");
+
+      verify(tokenCache).getIfPresent(cacheKey());
+      verify(userService).findKeycloakIdByTenantAndUserId(TENANT_ID, USER_ID);
+      verifyNoInteractions(tokenService);
     }
   }
 

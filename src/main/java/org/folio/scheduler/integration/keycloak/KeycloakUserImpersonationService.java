@@ -6,6 +6,8 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.keycloak.OAuth2Constants.TOKEN_EXCHANGE_GRANT_TYPE;
 
 import com.github.benmanes.caffeine.cache.Cache;
+import jakarta.ws.rs.ProcessingException;
+import jakarta.ws.rs.ServerErrorException;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.MultivaluedMap;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +38,7 @@ public class KeycloakUserImpersonationService implements UserImpersonationServic
       maxDelayExpression = "#{@retryConfigurationProperties.config['user-impersonation'].maxDelay.toMillis()}",
       multiplierExpression = "#{@retryConfigurationProperties.config['user-impersonation'].retryMultiplier}"
     ),
-    retryFor = {RuntimeException.class},
+    retryFor = {InvalidUserImpersonationTokenException.class, ProcessingException.class, ServerErrorException.class},
     listeners = "methodLoggingRetryListener")
   public String impersonate(String tenant, String userId) {
     var key = buildCacheKey(tenant, userId);
@@ -77,9 +79,16 @@ public class KeycloakUserImpersonationService implements UserImpersonationServic
     var token = response == null ? null : response.getToken();
     if (isBlank(token) || "null".equalsIgnoreCase(token.trim())) {
       tokenCache.invalidate(buildCacheKey(tenant, userId));
-      throw new IllegalStateException("Failed to obtain user impersonation token: token is blank [tenant: "
-        + tenant + ", userId: " + userId + "]");
+      throw new InvalidUserImpersonationTokenException("Failed to obtain user impersonation token: token is blank "
+        + "[tenant: " + tenant + ", userId: " + userId + "]");
     }
     return token;
+  }
+
+  private static final class InvalidUserImpersonationTokenException extends IllegalStateException {
+
+    private InvalidUserImpersonationTokenException(String message) {
+      super(message);
+    }
   }
 }
