@@ -1,6 +1,7 @@
 package org.folio.scheduler.service.jobs;
 
 import static java.util.Optional.of;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.support.TestConstants.TIMER_ID;
 import static org.folio.scheduler.support.TestConstants.TIMER_UUID;
@@ -32,6 +33,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -71,18 +75,19 @@ class OkapiHttpRequestExecutorTest {
       okapiClient, jobExecutionContext, schedulerTimerService, okapiConfigurationProperties);
   }
 
-  @Test
-  void execute_positive_userTokenIsNull() {
-    var re = new RoutingEntry().methods(List.of("GET")).pathPattern("/test-endpoint");
-    when(folioModuleMetadata.getModuleName()).thenReturn(MODULE_NAME);
-    when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" ", "null", " NULL "})
+  void execute_negative_userTokenIsBlank(String userToken) {
     when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail());
-    when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(of(timerDescriptor(re)));
-    when(userImpersonationService.impersonate(TENANT_ID, TestConstants.USER_ID)).thenReturn(null);
+    when(userImpersonationService.impersonate(TENANT_ID, TestConstants.USER_ID)).thenReturn(userToken);
 
-    job.execute(jobExecutionContext);
+    assertThatThrownBy(() -> job.execute(jobExecutionContext))
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessage("Failed to prepare timer request: user impersonation token is blank [tenant: test, userId: "
+        + TestConstants.USER_ID + "]");
 
-    verify(okapiClient).doGet(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_ID);
+    verifyNoInteractions(okapiClient, schedulerTimerService);
   }
 
   @Test

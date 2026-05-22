@@ -36,17 +36,18 @@ public class KeycloakUserService {
   public String findUserIdByKeycloakUsername(String realm, String username) {
     var foundUsers = keycloak.realm(realm).users().searchByUsername(username, true);
     if (isEmpty(foundUsers)) {
-      throw new NotFoundException("Keycloak user doesn't exist with the given username: " + username);
+      throw new NotFoundException("Keycloak user doesn't exist with the given username: " + username
+        + " [tenant: " + realm + "]");
     }
 
-    var keycloakUser = foundUsers.get(0);
+    var keycloakUser = foundUsers.getFirst();
     var userIdAttributes = MapUtils.emptyIfNull(keycloakUser.getAttributes()).get(USER_ID_ATTR);
     if (isEmpty(userIdAttributes)) {
       throw new NotFoundException(format(
         "%s attribute is not found in user with username: %s", USER_ID_ATTR, username));
     }
 
-    return userIdAttributes.get(0);
+    return userIdAttributes.getFirst();
   }
 
   private UserRepresentation findKeycloakUser(String tenant, String userId) {
@@ -54,12 +55,13 @@ public class KeycloakUserService {
     refreshTokenIfExists();
     var keycloakUser = keycloak.realm(tenant).users().searchByAttributes(query);
     if (isEmpty(keycloakUser)) {
-      throw new NotFoundException("Keycloak user doesn't exist with the given 'user_id' attribute: " + userId);
+      throw new NotFoundException("Keycloak user doesn't exist with the given 'user_id' attribute: " + userId
+        + " [tenant: " + tenant + "]");
     }
     if (keycloakUser.size() != 1) {
       throw new IllegalStateException("Too many keycloak users with 'user_id' attribute: " + userId);
     }
-    return keycloakUser.get(0);
+    return keycloakUser.getFirst();
   }
 
   private void refreshTokenIfExists() {
