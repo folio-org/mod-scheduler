@@ -79,7 +79,7 @@ class KeycloakUserServiceTest {
 
       assertThatThrownBy(() -> service.findUserIdByKeycloakUsername(TENANT_ID, USERNAME))
         .isInstanceOf(NotFoundException.class)
-        .hasMessage("Keycloak user doesn't exist with the given username: test-username");
+        .hasMessage("Keycloak user doesn't exist with the given username: test-username [tenant: test]");
     }
   }
 
@@ -112,8 +112,10 @@ class KeycloakUserServiceTest {
 
       assertThrows(IllegalStateException.class, () -> service.findKeycloakIdByTenantAndUserId(TENANT_ID, USER_ID),
         "Too many keycloak users with 'user_id' attribute: " + USER_ID);
-      assertThrows(NotFoundException.class, () -> service.findKeycloakIdByTenantAndUserId(TENANT_ID, USER_ID),
-        "Keycloak user doesn't exist with the given 'user_id' attribute: " + USER_ID);
+      assertThatThrownBy(() -> service.findKeycloakIdByTenantAndUserId(TENANT_ID, USER_ID))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Keycloak user doesn't exist with the given 'user_id' attribute: "
+          + USER_ID + " [tenant: test]");
     }
   }
 }

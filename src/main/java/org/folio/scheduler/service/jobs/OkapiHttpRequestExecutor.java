@@ -4,6 +4,7 @@ import static java.util.Collections.singletonList;
 import static java.util.Map.entry;
 import static java.util.concurrent.ThreadLocalRandom.current;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.common.utils.OkapiHeaders.USER_ID;
 import static org.folio.spring.integration.XOkapiHeaders.REQUEST_ID;
@@ -136,12 +137,21 @@ public class OkapiHttpRequestExecutor implements Job {
     var headers = new HashMap<String, Collection<String>>();
     var tenant = (String) jobDataMap.get(TENANT);
     var userId = getUserId(jobDataMap, tenant);
+    var userToken = userImpersonationService.impersonate(tenant, userId);
+    validateUserToken(userToken, tenant, userId);
 
     headers.put(URL, singletonList(okapiConfigurationProperties.getUrl()));
-    headers.put(TOKEN, singletonList(userImpersonationService.impersonate(tenant, userId)));
+    headers.put(TOKEN, singletonList(userToken));
     headers.put(REQUEST_ID, singletonList(String.format("%06d", current().nextInt(1000000))));
     headers.put(TENANT, singletonList(tenant));
     return headers;
+  }
+
+  private static void validateUserToken(String userToken, String tenant, String userId) {
+    if (isBlank(userToken) || "null".equalsIgnoreCase(userToken.trim())) {
+      throw new IllegalStateException("Failed to prepare timer request: user impersonation token is blank [tenant: "
+        + tenant + ", userId: " + userId + "]");
+    }
   }
 
   private String getUserId(JobDataMap jobDataMap, String tenant) {
