@@ -1,3 +1,7 @@
+## Version `v4.0.2` (26.05.2026)
+### Changes:
+* Retry user impersonation token retrieval and prevent scheduled timer calls without a valid token (MODSCHED-83)
+
 ## Version `v4.0.1` (07.05.2026)
 ### Changes:
 * Restrict public REST API mutations for SYSTEM timers (MODSCHED-71)
