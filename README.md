@@ -250,6 +250,5 @@ using [Quart configuration properties](http://www.quartz-scheduler.org/documenta
 ```
 <second> <minute> <hour> <day-of-month> <month> <day-of-week> [year]
 ```
-
 ## AI Documentation
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/folio-org/mod-scheduler)
