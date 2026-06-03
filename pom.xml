@@ -44,6 +44,9 @@
     <mod-scheduler.yaml-file>${project.basedir}/src/main/resources/swagger.api/mod-scheduler.yaml
     </mod-scheduler.yaml-file>
 
+    <!-- overrides Spring Boot BOM default; can be removed once Spring Boot ships this version -->
+    <kafka.version>4.2.0</kafka.version>
+
     <!-- Test dependencies versions -->
     <mockito.version>5.23.0</mockito.version>
     <awaitility.version>4.3.0</awaitility.version>

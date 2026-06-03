@@ -1,3 +1,8 @@
+## Version `v4.1.0` (In Progress)
+### Changes:
+* Upgrade dependencies for Kafka 4.2 compatibility in mod-scheduler (MODSCHED-84)
+---
+
 ## Version `v4.0.0` (17.04.2026)
 ### Changes:
 * Normalize cron notation to the Quartz format (MODSCHED-33)
