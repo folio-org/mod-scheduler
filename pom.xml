@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>4.0.6</version>
+    <version>4.1.0</version>
     <relativePath />
   </parent>
 
@@ -30,14 +30,14 @@
     <lombok.version>1.18.46</lombok.version>
     <mapstruct.version>1.6.3</mapstruct.version>
     <hypersistence-utils.version>3.15.3</hypersistence-utils.version>
-    <swagger-annotations.version>2.2.50</swagger-annotations.version>
+    <swagger-annotations.version>2.2.51</swagger-annotations.version>
     <openapi-tools.jackson-databind-nullable.version>0.2.10</openapi-tools.jackson-databind-nullable.version>
     <folio-spring-support.version>10.0.0</folio-spring-support.version>
     <commons-lang3.version>3.20.0</commons-lang3.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <applications-poc-tools.version>4.1.0-SNAPSHOT</applications-poc-tools.version>
-    <spring-retry.version>2.0.12</spring-retry.version>
-    <aws.version>2.46.5</aws.version>
+    <spring-retry.version>2.0.13</spring-retry.version>
+    <aws.version>2.46.10</aws.version>
     <vault.version>5.1.0</vault.version>
     <cron-utils.version>9.2.1</cron-utils.version>
 
