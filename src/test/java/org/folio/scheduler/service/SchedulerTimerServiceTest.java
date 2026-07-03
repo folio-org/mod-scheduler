@@ -98,8 +98,22 @@ class SchedulerTimerServiceTest {
     var expectedTimerDescriptors = new PageImpl<>(singletonList(entity));
     when(repository.findAll(OffsetRequest.of(0, 100))).thenReturn(expectedTimerDescriptors);
     when(mapper.toDescriptor(entity)).thenReturn(timerDescriptor());
-    var actual = service.getAll(0, 100);
+    var actual = service.getAll(null, 0, 100);
     assertThat(actual).isEqualTo(SearchResult.of(1, singletonList(timerDescriptor())));
+  }
+
+  @Test
+  void getAll_positive_query() {
+    var entity = timerDescriptorEntity();
+    var query = "moduleName==mod-foo";
+    var offsetRequest = OffsetRequest.of(0, 1);
+    var expectedTimerDescriptors = new PageImpl<>(singletonList(entity), offsetRequest, 5);
+    when(repository.findByCql(query, offsetRequest)).thenReturn(expectedTimerDescriptors);
+    when(mapper.toDescriptor(entity)).thenReturn(timerDescriptor());
+
+    var actual = service.getAll(query, 0, 1);
+
+    assertThat(actual).isEqualTo(SearchResult.of(5, singletonList(timerDescriptor())));
   }
 
   @Test

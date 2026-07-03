@@ -90,8 +90,26 @@ class SchedulerTimerControllerTest {
     var timerDescriptors = SearchResult.of(
       List.of(new TimerDescriptor().id(TIMER_UUID), new TimerDescriptor().id(randomUUID())));
 
-    when(schedulingTimerService.getAll(0, 10)).thenReturn(timerDescriptors);
+    when(schedulingTimerService.getAll(null, 0, 10)).thenReturn(timerDescriptors);
     var mvcResult = mockMvc.perform(get("/scheduler/timers")
+        .contentType(APPLICATION_JSON))
+      .andExpect(status().isOk())
+      .andReturn();
+
+    var actual = parseResponse(mvcResult, TimerDescriptorList.class);
+    assertThat(actual).isEqualTo(new TimerDescriptorList()
+      .timerDescriptors(timerDescriptors.getRecords())
+      .totalRecords(timerDescriptors.getTotalRecords()));
+  }
+
+  @Test
+  void get_all_positive_query() throws Exception {
+    var query = "moduleName==mod-foo";
+    var timerDescriptors = SearchResult.of(List.of(new TimerDescriptor().id(TIMER_UUID)));
+
+    when(schedulingTimerService.getAll(query, 0, 10)).thenReturn(timerDescriptors);
+    var mvcResult = mockMvc.perform(get("/scheduler/timers")
+        .queryParam("query", query)
         .contentType(APPLICATION_JSON))
       .andExpect(status().isOk())
       .andReturn();

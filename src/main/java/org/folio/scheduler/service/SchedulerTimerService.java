@@ -1,6 +1,7 @@
 package org.folio.scheduler.service;
 
 import static java.util.Objects.requireNonNullElseGet;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.common.utils.CollectionUtils.mapItems;
 import static org.folio.scheduler.utils.TimerDescriptorUtils.evalModuleName;
@@ -72,9 +73,10 @@ public class SchedulerTimerService {
    * @return saved {@link TimerDescriptor} object
    */
   @Transactional(readOnly = true)
-  public SearchResult<TimerDescriptor> getAll(Integer offset, Integer limit) {
-    return SearchResult.of(repository.findAll(OffsetRequest.of(offset, limit)).stream()
-      .map(mapper::toDescriptor).toList());
+  public SearchResult<TimerDescriptor> getAll(String query, Integer offset, Integer limit) {
+    var offsetRequest = OffsetRequest.of(offset, limit);
+    var page = isBlank(query) ? repository.findAll(offsetRequest) : repository.findByCql(query, offsetRequest);
+    return SearchResult.of((int) page.getTotalElements(), page.map(mapper::toDescriptor).getContent());
   }
 
   /**

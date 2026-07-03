@@ -36,8 +36,8 @@ public class SchedulerTimerController implements SchedulerApi {
   }
 
   @Override
-  public ResponseEntity<TimerDescriptorList> getSchedulerTimers(Integer offset, Integer limit) {
-    var result = schedulerTimerService.getAll(offset, limit);
+  public ResponseEntity<TimerDescriptorList> getSchedulerTimers(String query, Integer offset, Integer limit) {
+    var result = schedulerTimerService.getAll(query, offset, limit);
     return ResponseEntity.ok(new TimerDescriptorList()
       .timerDescriptors(result.getRecords())
       .totalRecords(result.getTotalRecords()));

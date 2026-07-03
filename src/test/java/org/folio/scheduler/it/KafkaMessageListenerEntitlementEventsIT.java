@@ -75,10 +75,11 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
         checkTimerEnabled("123e4567-e89b-12d3-a456-426614174000", true);
         checkTimerEnabled("123e4567-e89b-12d3-a456-426614174001", true);
         checkTimerEnabled("123e4567-e89b-12d3-a456-426614174002", true);
+        checkTimerEnabled("123e4567-e89b-12d3-a456-426614174003", true);
       });
-    // Two jobs must be added because one time was already enabled and thus didn't change
+    // Three jobs must be added because one timer was already enabled and thus didn't change.
     await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
-      .untilAsserted(() -> assertThat(scheduler.getJobKeys(anyJobGroup())).hasSize(2));
+      .untilAsserted(() -> assertThat(scheduler.getJobKeys(anyJobGroup())).hasSize(3));
 
     kafkaTemplate.send(ENTITLEMENT_EVENTS_TOPIC, asJsonString(entitlementEvent().setType(REVOKE)));
     await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
@@ -86,6 +87,7 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
         checkTimerEnabled("123e4567-e89b-12d3-a456-426614174000", false);
         checkTimerEnabled("123e4567-e89b-12d3-a456-426614174001", false);
         checkTimerEnabled("123e4567-e89b-12d3-a456-426614174002", false);
+        checkTimerEnabled("123e4567-e89b-12d3-a456-426614174003", false);
       });
     await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
       .untilAsserted(() -> assertThat(scheduler.getJobKeys(anyJobGroup())).isEmpty());
@@ -104,6 +106,7 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
         checkTimerEnabled("123e4567-e89b-12d3-a456-426614174000", true);
         checkTimerEnabled("123e4567-e89b-12d3-a456-426614174001", true);
         checkTimerEnabled("123e4567-e89b-12d3-a456-426614174002", true);
+        checkTimerEnabled("123e4567-e89b-12d3-a456-426614174003", true);
       });
     await().untilAsserted(() -> verify(liquibaseMigrationLockService, atLeast(2)).isMigrationRunning());
   }
