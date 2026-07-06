@@ -15,6 +15,7 @@ paths:
       operationId: getSchedulerTimers
       description: Retrieve timer list
       parameters:
+        - $ref: '#/components/parameters/cql-query'
         - $ref: '#/components/parameters/query-offset'
         - $ref: '#/components/parameters/query-limit'
       responses:
@@ -158,3 +159,13 @@ components:
         type: integer
         minimum: 0
         default: 0
+    cql-query:
+      in: query
+      required: false
+      name: query
+      description: >
+        A CQL query string with search conditions. Supported timer fields: moduleName, moduleId, type.
+        The type field uses USER or SYSTEM values. Fields stored only in timerDescriptor JSON, such as enabled,
+        are not supported.
+      schema:
+        type: string

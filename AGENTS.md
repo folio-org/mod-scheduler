@@ -1,6 +1,6 @@
 # mod-scheduler
 
-Spring Boot 3.5.7 microservice (Java 21) providing scheduled job execution for FOLIO. Quartz Scheduler for jobs, Kafka for event-driven provisioning, Keycloak for auth, PostgreSQL/Liquibase.
+Spring Boot 4.1.0 microservice (Java 21) providing scheduled job execution for FOLIO. Quartz Scheduler for jobs, Kafka for event-driven provisioning, Keycloak for auth, PostgreSQL/Liquibase.
 
 ## Build & Test
 
@@ -38,7 +38,7 @@ Run locally needs PostgreSQL + env (`DB_*`, `okapi.url`); Docker build `docker b
 
 ## Key Patterns
 
-- **Natural-key dedup**: `{TYPE}#{MODULE_NAME}#{METHODS}#{PATH}` (e.g. `SYSTEM#mod-foo#POST#/timers`).
+- **Natural-key dedup**: `{type}#{moduleName}#{methods}#{path}` — runtime lowercases the type (e.g. `system#mod-foo#POST#/timers`); legacy migration-`07` rows use an uppercase `SYSTEM#…` prefix, a known case mismatch vs the case-sensitive `natural_key_index` (see MODSCHED-88).
 - **JSONB queries**: native PG JSONB operators in `@Query`.
 - **Retry**: Spring Retry w/ exponential backoff (`SYSTEM_USER_RETRY_*`, `SCHEDULED_TIMER_EVENT_*`).
 - **Caching**: Caffeine TTL — Keycloak/system-user IDs (30m), client secrets (6000s), tokens (refresh 25s before expiry).

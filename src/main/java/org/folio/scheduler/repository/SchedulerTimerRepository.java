@@ -7,14 +7,14 @@ import java.util.Optional;
 import java.util.UUID;
 import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 import org.folio.scheduler.domain.model.TimerType;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.folio.spring.cql.JpaCqlRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface SchedulerTimerRepository extends JpaRepository<TimerDescriptorEntity, UUID> {
+public interface SchedulerTimerRepository extends JpaCqlRepository<TimerDescriptorEntity, UUID> {
 
   List<TimerDescriptorEntity> findByModuleNameAndType(String moduleName, TimerType type);
 

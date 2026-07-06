@@ -91,6 +91,42 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   }
 
   @Test
+  void getAll_positive_queryByModuleName() throws Exception {
+    doGet("/scheduler/timers?query=moduleName==mod-foo")
+      .andExpect(jsonPath("$.totalRecords", is(4)))
+      .andExpect(jsonPath("$.timerDescriptors", hasSize(4)));
+  }
+
+  @Test
+  void getAll_positive_queryByModuleId() throws Exception {
+    doGet("/scheduler/timers?query=moduleId==mod-foo-1.0.0")
+      .andExpect(jsonPath("$.totalRecords", is(4)))
+      .andExpect(jsonPath("$.timerDescriptors", hasSize(4)));
+  }
+
+  @Test
+  void getAll_positive_queryByType() throws Exception {
+    doGet("/scheduler/timers?query=type==SYSTEM")
+      .andExpect(jsonPath("$.totalRecords", is(1)))
+      .andExpect(jsonPath("$.timerDescriptors", hasSize(1)))
+      .andExpect(jsonPath("$.timerDescriptors[0].id", is(SYSTEM_TIMER_ID)));
+  }
+
+  @Test
+  void getAll_positive_combinedQuery() throws Exception {
+    doGet("/scheduler/timers?query=moduleName==mod-foo and type==SYSTEM")
+      .andExpect(jsonPath("$.totalRecords", is(1)))
+      .andExpect(jsonPath("$.timerDescriptors", hasSize(1)))
+      .andExpect(jsonPath("$.timerDescriptors[0].id", is(SYSTEM_TIMER_ID)));
+  }
+
+  @Test
+  void getAll_negative_queryByEnabledIsUnsupported() throws Exception {
+    attemptGet("/scheduler/timers?query=enabled==true")
+      .andExpect(status().isBadRequest());
+  }
+
+  @Test
   @WireMockStub("/wiremock/stubs/user-timer-endpoint.json")
   @KeycloakRealms("/json/keycloak/test-realm.json")
   void create_positive_simpleTrigger() throws Exception {

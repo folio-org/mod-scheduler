@@ -64,23 +64,23 @@ class SchedulerTimerRepositoryIT extends BaseIntegrationTest {
 
   @Test
   @Sql(scripts = "classpath:/sql/timer-repo-it.sql", executionPhase = BEFORE_TEST_METHOD)
-  void switchTimersByModuleNameAndType_shouldSetEnabledTrue_forTimersWithEnabledFalseOrNull() {
+  void switchTimersByModuleNameAndEnabledState_shouldSetEnabledTrue_forUserAndSystemTimers() {
     var enabled = true;
 
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders())) {
       var timers = repository.findByModuleNameAndEnabledState(MODULE_NAME, enabled);
       repository.switchTimersByIds(timers.stream().map(TimerDescriptorEntity::getId).toList(), enabled);
 
-      assertThat(timers).hasSize(2);
+      assertThat(timers).hasSize(3);
       assertThat(repository.findAll())
-        .hasSize(3)
+        .hasSize(4)
         .allSatisfy(t -> assertThat(t.getTimerDescriptor().getEnabled()).isTrue());
     }
   }
 
   @Test
   @Sql(scripts = "classpath:/sql/timer-repo-it.sql", executionPhase = BEFORE_TEST_METHOD)
-  void switchTimersByModuleNameAndType_shouldSetEnabledFalse_forTimersWithEnabledTrue() {
+  void switchTimersByModuleNameAndEnabledState_shouldSetEnabledFalse_forUserAndSystemTimers() {
     var enabled = false;
 
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, prepareContextHeaders())) {
@@ -89,7 +89,7 @@ class SchedulerTimerRepositoryIT extends BaseIntegrationTest {
 
       assertThat(timers).hasSize(1);
       assertThat(repository.findAll())
-        .hasSize(3)
+        .hasSize(4)
         .allSatisfy(t -> {
           if (nonNull(t.getTimerDescriptor().getEnabled())) {
             assertThat(t.getTimerDescriptor().getEnabled()).isFalse();
