@@ -17,10 +17,7 @@ import static org.folio.scheduler.domain.dto.TimerUnit.MILLISECOND;
 import static org.folio.scheduler.domain.dto.TimerUnit.MINUTE;
 import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
 import static org.folio.scheduler.utils.CronUtils.convertToQuartz;
-import static org.folio.spring.integration.XOkapiHeaders.TENANT;
-import static org.folio.spring.integration.XOkapiHeaders.USER_ID;
 import static org.quartz.CronScheduleBuilder.cronSchedule;
-import static org.quartz.JobBuilder.newJob;
 import static org.quartz.JobKey.jobKey;
 import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
 import static org.quartz.TriggerBuilder.newTrigger;
@@ -31,9 +28,10 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
+import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.domain.dto.TimerUnit;
+import org.folio.scheduler.exception.RequestValidationException;
 import org.folio.scheduler.exception.TimerSchedulingException;
-import org.folio.scheduler.service.jobs.OkapiHttpRequestExecutor;
 import org.folio.scheduler.utils.Validate;
 import org.folio.spring.FolioExecutionContext;
 import org.quartz.CronTrigger;
@@ -151,13 +149,21 @@ public class JobSchedulingService {
   }
 
   private JobDetail getJobDetail(TimerDescriptor timerDescriptor) {
-    var task = newJob(OkapiHttpRequestExecutor.class)
-      .withIdentity(timerDescriptor.getId().toString())
-      .usingJobData(TENANT, folioExecutionContext.getTenantId());
-    if (folioExecutionContext.getUserId() != null) {
-      task.usingJobData(USER_ID, folioExecutionContext.getUserId().toString());
+    var jobDetailBuilder = ScheduledJobDetail.builder()
+      .id(timerDescriptor.getId())
+      .tenantId(folioExecutionContext.getTenantId())
+      .timerType(timerDescriptor.getType())
+      .userId(folioExecutionContext.getUserId());
+
+    if (timerDescriptor.getType() == TimerType.USER) {
+      if (folioExecutionContext.getUserId() != null) {
+        jobDetailBuilder.userId(folioExecutionContext.getUserId());
+      } else {
+        throw new RequestValidationException("User timer cannot be scheduled without userId");
+      }
     }
-    return task.build();
+
+    return jobDetailBuilder.build().toQuartzJobDetail();
   }
 
   private Trigger getTrigger(TimerDescriptor timerDescriptor) {

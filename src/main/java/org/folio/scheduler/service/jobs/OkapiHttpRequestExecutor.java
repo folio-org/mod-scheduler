@@ -6,7 +6,6 @@ import static java.util.concurrent.ThreadLocalRandom.current;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
-import static org.folio.common.utils.OkapiHeaders.USER_ID;
 import static org.folio.spring.integration.XOkapiHeaders.REQUEST_ID;
 import static org.folio.spring.integration.XOkapiHeaders.TENANT;
 import static org.folio.spring.integration.XOkapiHeaders.TOKEN;
@@ -21,7 +20,6 @@ import java.net.URI;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.BiConsumer;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
@@ -31,12 +29,12 @@ import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.integration.OkapiClient;
 import org.folio.scheduler.integration.keycloak.SystemUserService;
+import org.folio.scheduler.service.ScheduledJobDetail;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.scheduler.service.UserImpersonationService;
 import org.folio.spring.FolioModuleMetadata;
 import org.folio.spring.scope.FolioExecutionContextSetter;
 import org.quartz.Job;
-import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
@@ -80,15 +78,14 @@ public class OkapiHttpRequestExecutor implements Job {
 
   @Override
   public void execute(JobExecutionContext context) {
-    var jobDetail = context.getJobDetail();
-    var timerId = UUID.fromString(jobDetail.getKey().getName());
+    var jobDetail = ScheduledJobDetail.fromQuartzJobDetail(context.getJobDetail());
 
-    var allHeaders = prepareAllHeadersMap(jobDetail.getJobDataMap());
+    var allHeaders = prepareAllHeadersMap(jobDetail);
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, allHeaders)) {
-      var timerDescriptor = schedulerTimerService.findById(timerId);
+      var timerDescriptor = schedulerTimerService.findById(jobDetail.getId());
 
       if (timerDescriptor.isEmpty()) {
-        log.warn("Failed to find timer descriptor [timerId: {}]", timerId);
+        log.warn("Failed to find timer descriptor [timerId: {}]", jobDetail.getId());
         return;
       }
 
@@ -133,10 +130,10 @@ public class OkapiHttpRequestExecutor implements Job {
   }
 
   @SuppressWarnings("java:S2245")
-  private Map<String, Collection<String>> prepareAllHeadersMap(JobDataMap jobDataMap) {
+  private Map<String, Collection<String>> prepareAllHeadersMap(ScheduledJobDetail jobDetail) {
     var headers = new HashMap<String, Collection<String>>();
-    var tenant = (String) jobDataMap.get(TENANT);
-    var userId = getUserId(jobDataMap, tenant);
+    var tenant = jobDetail.getTenantId();
+    var userId = getUserId(jobDetail);
     var userToken = userImpersonationService.impersonate(tenant, userId);
     validateUserToken(userToken, tenant, userId);
 
@@ -154,9 +151,16 @@ public class OkapiHttpRequestExecutor implements Job {
     }
   }
 
-  private String getUserId(JobDataMap jobDataMap, String tenant) {
-    return jobDataMap.get(USER_ID) == null || isEmpty((String) jobDataMap.get(USER_ID))
-      ? systemUserService.findSystemUserId(tenant)
-      : (String) jobDataMap.get(USER_ID);
+  private String getUserId(ScheduledJobDetail jobDetail) {
+    return switch (jobDetail.getTimerType()) {
+      case USER -> {
+        if (jobDetail.getUserId() == null) {
+          throw new IllegalStateException("Failed to prepare timer request: userId is null for user timer [tenant: "
+            + jobDetail.getTenantId() + "]");
+        }
+        yield jobDetail.getUserId().toString();
+      }
+      case SYSTEM -> systemUserService.findSystemUserId(jobDetail.getTenantId());
+    };
   }
 }
