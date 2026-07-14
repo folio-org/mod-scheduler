@@ -22,23 +22,29 @@ import org.quartz.JobDetail;
  * </p>
  */
 @Value
-public class ScheduledJobDetail {
+public final class ScheduledJobDetail {
 
   private static final String TIME_TYPE_DATA_FIELD = "timer-type";
 
-  /** Unique identifier of the timer; used as the Quartz job key. Never {@code null}. */
+  /**
+   * Unique identifier of the timer; used as the Quartz job key. Never {@code null}.
+   */
   UUID id;
 
-  /** Identifier of the tenant that owns the timer. Never blank. */
+  /**
+   * Identifier of the tenant that owns the timer. Never blank.
+   */
   String tenantId;
 
-  /** Type of the timer, determining how the request is impersonated at execution time. Never {@code null}. */
+  /**
+   * Type of the timer, determining how the request is impersonated at execution time. Never {@code null}.
+   */
   TimerType timerType;
 
   /**
-   * Identifier of the user on whose behalf the request is executed. Populated for {@link TimerType#USER} timers and left
-   * {@code null} for {@link TimerType#SYSTEM} timers, whose user is resolved from the tenant's system user at execution
-   * time.
+   * Identifier of the user on whose behalf the request is executed. Populated for {@link TimerType#USER} timers and
+   * left {@code null} for {@link TimerType#SYSTEM} timers, whose user is resolved from the tenant's system user at
+   * execution time.
    */
   UUID userId;
 
@@ -73,7 +79,8 @@ public class ScheduledJobDetail {
    * Reconstructs a {@link ScheduledJobDetail} from a Quartz {@link JobDetail}.
    *
    * <p>
-   * The timer id is read from the job key name, while the tenant, timer type and user id are read from the job data map.
+   * The timer id is read from the job key name, while the tenant, timer type and user id are read from the job data
+   * map.
    * </p>
    *
    * @param jobDetail - Quartz job detail to convert
@@ -95,8 +102,8 @@ public class ScheduledJobDetail {
    * Converts this instance into a Quartz {@link JobDetail} that runs {@link OkapiHttpRequestExecutor}.
    *
    * <p>
-   * The timer id becomes the job identity, and the tenant, timer type and user id are stored in the job data map so they
-   * can be restored via {@link #fromQuartzJobDetail(JobDetail)} at execution time.
+   * The timer id becomes the job identity, and the tenant, timer type and user id are stored in the job data map so
+   * they can be restored via {@link #fromQuartzJobDetail(JobDetail)} at execution time.
    * </p>
    *
    * @return the Quartz {@link JobDetail} representing this timer

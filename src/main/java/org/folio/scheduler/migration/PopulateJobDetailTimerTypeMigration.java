@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.UUID;
 import liquibase.database.Database;
 import lombok.extern.log4j.Log4j2;
+import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 import org.folio.scheduler.exception.MigrationException;
@@ -30,12 +31,12 @@ import org.springframework.transaction.annotation.Transactional;
  * field and system timers no longer keep a stale user id.
  *
  * <p>
- * Existing jobs were scheduled by the previous code, so their job details lack {@code timer-type} and system timers may
- * still carry the user id of whoever originally scheduled them. For each enabled timer the original user id is read from
- * the current job detail, the job is deleted and then rescheduled from the timer descriptor via
+ * Existing jobs were scheduled by the previous code, so their job details lack {@code timer-type} and system timers
+ * may still carry the user id of whoever originally scheduled them. For each enabled timer the original user id is read
+ * from the current job detail, the job is deleted and then rescheduled from the timer descriptor via
  * {@link JobSchedulingService#schedule}. The reschedule runs inside a {@link FolioExecutionContextSetter} that supplies
- * the tenant and - for USER timers only - the preserved user id, so USER timers keep their owner while SYSTEM timers are
- * rescheduled without a user id (the cleanup this migration performs).
+ * the tenant and - for USER timers only - the preserved user id, so USER timers keep their owner while SYSTEM timers
+ * are rescheduled without a user id (the cleanup this migration performs).
  * </p>
  */
 @Log4j2
@@ -68,6 +69,12 @@ public class PopulateJobDetailTimerTypeMigration extends AbstractCustomTaskChang
     log.info("Recreating {} enabled timer(s) to populate timer type in job details and clean up user ids of "
       + "system timers [tenant: {}]", enabledTimerIds.size(), tenantId);
 
+    recreateTimers(enabledTimerIds, repository, jobSchedulingService, scheduler, moduleMetadata, tenantId);
+  }
+
+  private void recreateTimers(List<String> enabledTimerIds, SchedulerTimerRepository repository,
+    JobSchedulingService jobSchedulingService, Scheduler scheduler, FolioModuleMetadata moduleMetadata,
+    String tenantId) {
     for (var id : enabledTimerIds) {
       var timerId = UUID.fromString(id);
       repository.findById(timerId).ifPresentOrElse(
@@ -81,12 +88,7 @@ public class PopulateJobDetailTimerTypeMigration extends AbstractCustomTaskChang
     var timerId = entity.getId();
     var descriptor = entity.getTimerDescriptor();
     var type = resolveType(entity);
-    if (descriptor.getId() == null) {
-      descriptor.setId(timerId);
-    }
-    if (descriptor.getType() == null) {
-      descriptor.setType(type);
-    }
+    ensureDescriptorIdentifiers(descriptor, timerId, type);
 
     UUID userId = null;
     if (type == TimerType.USER) {
@@ -99,12 +101,24 @@ public class PopulateJobDetailTimerTypeMigration extends AbstractCustomTaskChang
     }
 
     deleteExistingJob(scheduler, timerId);
+    scheduleWithContext(jobSchedulingService, moduleMetadata, tenantId, userId, descriptor);
+    log.info("Recreated timer [timerId: {}, type: {}, userIdPreserved: {}]", timerId, type, userId != null);
+  }
 
+  private static void ensureDescriptorIdentifiers(TimerDescriptor descriptor, UUID timerId, TimerType type) {
+    if (descriptor.getId() == null) {
+      descriptor.setId(timerId);
+    }
+    if (descriptor.getType() == null) {
+      descriptor.setType(type);
+    }
+  }
+
+  private static void scheduleWithContext(JobSchedulingService jobSchedulingService, FolioModuleMetadata moduleMetadata,
+    String tenantId, UUID userId, TimerDescriptor descriptor) {
     try (var ignored = new FolioExecutionContextSetter(moduleMetadata, buildHeaders(tenantId, userId))) {
       jobSchedulingService.schedule(descriptor);
     }
-
-    log.info("Recreated timer [timerId: {}, type: {}, userIdPreserved: {}]", timerId, type, userId != null);
   }
 
   private static UUID readOriginalUserId(Scheduler scheduler, UUID timerId) {
