@@ -14,4 +14,5 @@
   <include file="changes/07_add_type_column_to_timer.xml" relativeToChangelogFile="true"/>
   <include file="changes/08_mark_cron_based_timers_as_outdated.xml" relativeToChangelogFile="true"/>
   <include file="changes/09_add_audit_fields_to_timer.xml" relativeToChangelogFile="true"/>
+  <include file="changes/10_populate_job_detail_timer_type.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
