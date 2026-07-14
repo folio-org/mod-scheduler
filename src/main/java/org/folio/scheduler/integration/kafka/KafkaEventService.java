@@ -4,7 +4,7 @@ import static java.lang.Boolean.TRUE;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.folio.common.utils.CollectionUtils.mapItems;
 import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
-import static org.folio.scheduler.utils.ModuleRequestUtils.getStaticPath;
+import static org.folio.scheduler.utils.OkapiRequestUtils.getStaticPath;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;

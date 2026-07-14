@@ -9,7 +9,7 @@ import static java.util.Map.entry;
 import static java.util.Objects.requireNonNull;
 import static java.util.TimeZone.getTimeZone;
 import static org.apache.commons.lang3.BooleanUtils.isFalse;
-import static org.apache.commons.lang3.ObjectUtils.getIfNull;
+import static org.apache.commons.lang3.ObjectUtils.defaultIfNull;
 import static org.apache.commons.lang3.math.NumberUtils.createLong;
 import static org.folio.scheduler.domain.dto.TimerUnit.DAY;
 import static org.folio.scheduler.domain.dto.TimerUnit.HOUR;
@@ -152,7 +152,8 @@ public class JobSchedulingService {
     var jobDetailBuilder = ScheduledJobDetail.builder()
       .id(timerDescriptor.getId())
       .tenantId(folioExecutionContext.getTenantId())
-      .timerType(timerDescriptor.getType());
+      .timerType(timerDescriptor.getType())
+      .userId(folioExecutionContext.getUserId());
 
     if (timerDescriptor.getType() == TimerType.USER) {
       if (folioExecutionContext.getUserId() != null) {
@@ -196,7 +197,7 @@ public class JobSchedulingService {
   private CronTrigger getCronTrigger(TimerDescriptor timerDescriptor) {
     var timerId = timerDescriptor.getId().toString();
     var schedule = timerDescriptor.getRoutingEntry().getSchedule();
-    var timeZone = getIfNull(schedule.getZone(), "UTC");
+    var timeZone = defaultIfNull(schedule.getZone(), "UTC");
     var cron = schedule.getCron();
     var cronExpression = convertToQuartz(cron);
     return newTrigger()

@@ -9,7 +9,7 @@ import java.util.UUID;
 import lombok.Builder;
 import lombok.Value;
 import org.folio.scheduler.domain.dto.TimerType;
-import org.folio.scheduler.service.jobs.ModuleHttpRequestExecutor;
+import org.folio.scheduler.service.jobs.OkapiHttpRequestExecutor;
 import org.quartz.JobDetail;
 
 /**
@@ -92,7 +92,7 @@ public class ScheduledJobDetail {
   }
 
   /**
-   * Converts this instance into a Quartz {@link JobDetail} that runs {@link ModuleHttpRequestExecutor}.
+   * Converts this instance into a Quartz {@link JobDetail} that runs {@link OkapiHttpRequestExecutor}.
    *
    * <p>
    * The timer id becomes the job identity, and the tenant, timer type and user id are stored in the job data map so they
@@ -102,7 +102,7 @@ public class ScheduledJobDetail {
    * @return the Quartz {@link JobDetail} representing this timer
    */
   public JobDetail toQuartzJobDetail() {
-    var jobBuilder = newJob(ModuleHttpRequestExecutor.class)
+    var jobBuilder = newJob(OkapiHttpRequestExecutor.class)
       .withIdentity(id.toString())
       .usingJobData(TENANT, tenantId)
       .usingJobData(TIME_TYPE_DATA_FIELD, timerType.getValue());

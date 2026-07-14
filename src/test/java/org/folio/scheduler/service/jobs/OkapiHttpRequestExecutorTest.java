@@ -20,7 +20,7 @@ import org.folio.scheduler.configuration.properties.OkapiConfigurationProperties
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
-import org.folio.scheduler.integration.ModuleClient;
+import org.folio.scheduler.integration.OkapiClient;
 import org.folio.scheduler.integration.keycloak.SystemUserService;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.scheduler.service.UserImpersonationService;
@@ -47,7 +47,7 @@ import org.springframework.web.client.HttpClientErrorException;
 
 @UnitTest
 @ExtendWith(MockitoExtension.class)
-class ModuleHttpRequestExecutorTest {
+class OkapiHttpRequestExecutorTest {
 
   private static final String TEST_MODULE_ID = "mod-test-1.0";
   private static final String TEST_MODULE_NAME = "mod-test";
@@ -55,8 +55,8 @@ class ModuleHttpRequestExecutorTest {
   private static final String OKAPI_URL = "http://okapi:9130";
   private static final String MODULE_NAME = "mod-scheduler";
 
-  @InjectMocks private ModuleHttpRequestExecutor job;
-  @Mock private ModuleClient moduleClient;
+  @InjectMocks private OkapiHttpRequestExecutor job;
+  @Mock private OkapiClient okapiClient;
   @Mock private JobExecutionContext jobExecutionContext;
   @Mock private FolioModuleMetadata folioModuleMetadata;
   @Mock private SchedulerTimerService schedulerTimerService;
@@ -72,7 +72,7 @@ class ModuleHttpRequestExecutorTest {
   @AfterEach
   void tearDown() {
     verifyNoMoreInteractions(
-      moduleClient, jobExecutionContext, schedulerTimerService, okapiConfigurationProperties);
+      okapiClient, jobExecutionContext, schedulerTimerService, okapiConfigurationProperties);
   }
 
   @ParameterizedTest
@@ -87,7 +87,7 @@ class ModuleHttpRequestExecutorTest {
       .hasMessage("Failed to prepare timer request: user impersonation token is blank [tenant: test, userId: "
         + TestConstants.USER_ID + "]");
 
-    verifyNoInteractions(moduleClient, schedulerTimerService);
+    verifyNoInteractions(okapiClient, schedulerTimerService);
   }
 
   @Test
@@ -100,7 +100,7 @@ class ModuleHttpRequestExecutorTest {
 
     job.execute(jobExecutionContext);
 
-    verify(moduleClient).doGet(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_ID);
+    verify(okapiClient).doGet(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_ID);
   }
 
   @Test
@@ -113,7 +113,7 @@ class ModuleHttpRequestExecutorTest {
 
     job.execute(jobExecutionContext);
 
-    verify(moduleClient).doPost(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_ID);
+    verify(okapiClient).doPost(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_ID);
   }
 
   @Test
@@ -127,7 +127,7 @@ class ModuleHttpRequestExecutorTest {
 
     job.execute(jobExecutionContext);
 
-    verify(moduleClient).doGet(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_NAME);
+    verify(okapiClient).doGet(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_NAME);
   }
 
   @Test
@@ -141,11 +141,11 @@ class ModuleHttpRequestExecutorTest {
     when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
     when(schedulerTimerService.findById(TIMER_UUID)).thenReturn(of(timerDescriptor(re)));
     doThrow(HttpClientErrorException.create(HttpStatus.NOT_FOUND, "Not Found", new HttpHeaders(), null, null))
-      .when(moduleClient).doDelete(expectedUri, TEST_MODULE_ID);
+      .when(okapiClient).doDelete(expectedUri, TEST_MODULE_ID);
 
     job.execute(jobExecutionContext);
 
-    verify(moduleClient).doDelete(expectedUri, TEST_MODULE_ID);
+    verify(okapiClient).doDelete(expectedUri, TEST_MODULE_ID);
   }
 
   @Test
@@ -159,7 +159,7 @@ class ModuleHttpRequestExecutorTest {
 
     job.execute(jobExecutionContext);
 
-    verifyNoInteractions(moduleClient);
+    verifyNoInteractions(okapiClient);
   }
 
   @Test
@@ -171,7 +171,7 @@ class ModuleHttpRequestExecutorTest {
 
     job.execute(jobExecutionContext);
 
-    verifyNoInteractions(moduleClient);
+    verifyNoInteractions(okapiClient);
   }
 
   @Test
@@ -185,7 +185,7 @@ class ModuleHttpRequestExecutorTest {
 
     job.execute(jobExecutionContext);
 
-    verify(moduleClient).doGet(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_ID);
+    verify(okapiClient).doGet(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_ID);
     verify(systemUserService).findSystemUserId(TENANT_ID);
   }
 
@@ -200,7 +200,7 @@ class ModuleHttpRequestExecutorTest {
 
     job.execute(jobExecutionContext);
 
-    verify(moduleClient).doPost(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_ID);
+    verify(okapiClient).doPost(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_ID);
     verify(systemUserService).findSystemUserId(TENANT_ID);
   }
 
