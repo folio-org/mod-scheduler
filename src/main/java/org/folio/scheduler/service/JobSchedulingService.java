@@ -161,6 +161,8 @@ public class JobSchedulingService {
         throw new RequestValidationException("User timer cannot be scheduled without userId");
       }
     }
+    // For a system timer the userId is intentionally left unset; it is resolved at execution
+    // time via the tenant's system user.
 
     return jobDetailBuilder.build().toQuartzJobDetail();
   }

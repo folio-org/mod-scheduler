@@ -82,14 +82,9 @@ public class ModuleHttpRequestExecutor implements Job {
 
     var allHeaders = prepareAllHeadersMap(jobDetail);
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, allHeaders)) {
-      var timerDescriptor = schedulerTimerService.findById(jobDetail.getId());
+      var timerDescriptor = schedulerTimerService.getById(jobDetail.getId());
 
-      if (timerDescriptor.isEmpty()) {
-        log.warn("Failed to find timer descriptor [timerId: {}]", jobDetail.getId());
-        return;
-      }
-
-      callHttpMethod(timerDescriptor.get());
+      callHttpMethod(timerDescriptor);
     }
   }
 
