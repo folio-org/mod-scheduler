@@ -11,7 +11,7 @@ import org.springframework.web.service.annotation.PostExchange;
 import org.springframework.web.service.annotation.PutExchange;
 
 @HttpExchange(url = "okapi", contentType = APPLICATION_JSON_VALUE)
-public interface OkapiClient {
+public interface ModuleClient {
 
   String MODULE_HINT = "x-okapi-module-hint";
 

@@ -9,7 +9,7 @@ import java.util.UUID;
 import lombok.Builder;
 import lombok.Value;
 import org.folio.scheduler.domain.dto.TimerType;
-import org.folio.scheduler.service.jobs.OkapiHttpRequestExecutor;
+import org.folio.scheduler.service.jobs.ModuleHttpRequestExecutor;
 import org.quartz.JobDetail;
 
 @Value
@@ -52,7 +52,7 @@ public class ScheduledJobDetail {
   }
 
   public JobDetail toQuartzJobDetail() {
-    return newJob(OkapiHttpRequestExecutor.class)
+    return newJob(ModuleHttpRequestExecutor.class)
       .withIdentity(id.toString())
       .usingJobData(TENANT, tenantId)
       .usingJobData(TIME_TYPE_DATA_FIELD, timerType.getValue())

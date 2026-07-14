@@ -13,7 +13,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @UnitTest
-class OkapiRequestUtilsTest {
+class ModuleRequestUtilsTest {
 
   @Nested
   @DisplayName("getStaticPath")
@@ -23,7 +23,7 @@ class OkapiRequestUtilsTest {
     @ParameterizedTest(name = "[{index}] {0}")
     @DisplayName("positive_parameterized")
     void positive_parameterized(@SuppressWarnings("unused") String name, RoutingEntry routingEntry, String expected) {
-      var result = OkapiRequestUtils.getStaticPath(routingEntry);
+      var result = ModuleRequestUtils.getStaticPath(routingEntry);
       assertThat(result).isEqualTo(expected);
     }
 

@@ -27,7 +27,7 @@ import org.folio.scheduler.configuration.properties.OkapiConfigurationProperties
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
-import org.folio.scheduler.integration.OkapiClient;
+import org.folio.scheduler.integration.ModuleClient;
 import org.folio.scheduler.integration.keycloak.SystemUserService;
 import org.folio.scheduler.service.ScheduledJobDetail;
 import org.folio.scheduler.service.SchedulerTimerService;
@@ -42,7 +42,7 @@ import org.springframework.web.client.HttpStatusCodeException;
 
 @Log4j2
 @Component
-public class OkapiHttpRequestExecutor implements Job {
+public class ModuleHttpRequestExecutor implements Job {
 
   private final FolioModuleMetadata folioModuleMetadata;
   private final SchedulerTimerService schedulerTimerService;
@@ -52,14 +52,14 @@ public class OkapiHttpRequestExecutor implements Job {
   private final SystemUserService systemUserService;
 
   /**
-   * Injects required spring components into {@link OkapiHttpRequestExecutor} bean.
+   * Injects required spring components into {@link ModuleHttpRequestExecutor} bean.
    *
-   * @param okapiClient - {@link OkapiClient} feign client
+   * @param moduleClient - {@link ModuleClient} feign client
    * @param folioModuleMetadata - {@link FolioModuleMetadata} component
    * @param schedulerTimerService - {@link SchedulerTimerService} service
    * @param okapiConfigurationProperties - {@link OkapiConfigurationProperties} component
    */
-  public OkapiHttpRequestExecutor(OkapiClient okapiClient, FolioModuleMetadata folioModuleMetadata,
+  public ModuleHttpRequestExecutor(ModuleClient moduleClient, FolioModuleMetadata folioModuleMetadata,
     SchedulerTimerService schedulerTimerService, OkapiConfigurationProperties okapiConfigurationProperties,
     UserImpersonationService userImpersonationService, SystemUserService systemUserService) {
     this.folioModuleMetadata = folioModuleMetadata;
@@ -69,10 +69,10 @@ public class OkapiHttpRequestExecutor implements Job {
     this.systemUserService = systemUserService;
 
     this.okapiCallMap = Map.ofEntries(
-      entry(GET, okapiClient::doGet),
-      entry(POST, okapiClient::doPost),
-      entry(PUT, okapiClient::doPut),
-      entry(DELETE, okapiClient::doDelete)
+      entry(GET, moduleClient::doGet),
+      entry(POST, moduleClient::doPost),
+      entry(PUT, moduleClient::doPut),
+      entry(DELETE, moduleClient::doDelete)
     );
   }
 
