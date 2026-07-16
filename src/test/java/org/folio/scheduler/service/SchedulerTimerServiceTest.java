@@ -11,6 +11,7 @@ import static org.folio.scheduler.support.TestValues.timerDescriptorEntity;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -580,11 +581,36 @@ class SchedulerTimerServiceTest {
     verify(repository, times(1)).switchTimersByIds(List.of(id1, id2, id3), enabled);
   }
 
+  @Test
+  void switchModuleTimers_positive_skipsUserTimerWithoutUserId() {
+    var module = "mod-foo";
+    var withUserId = userTimerEntity(randomUUID(), USER_ID_UUID);
+    var withoutUserId = userTimerEntity(randomUUID(), null);
+
+    doReturn(List.of(withUserId, withoutUserId)).when(repository).findByModuleNameAndEnabledState(module, true);
+    when(mapper.toDescriptor(withUserId)).thenReturn(timerDescriptor());
+
+    var result = service.switchModuleTimers(module, true);
+
+    assertThat(result).isEqualTo(1);
+    verify(repository).switchTimersByIds(List.of(withUserId.getId()), true);
+    verify(jobSchedulingService).schedule(any(TimerDescriptor.class));
+    verify(mapper, never()).toDescriptor(withoutUserId);
+  }
+
   private static TimerDescriptorEntity mockTimerDescriptorEntity(UUID id) {
     var result = new TimerDescriptorEntity();
     result.setId(id);
     result.setTimerDescriptor(new TimerDescriptor());
     return result;
+  }
+
+  private static TimerDescriptorEntity userTimerEntity(UUID id, UUID userId) {
+    var entity = new TimerDescriptorEntity();
+    entity.setId(id);
+    entity.setType(org.folio.scheduler.domain.model.TimerType.USER);
+    entity.setUserId(userId);
+    return entity;
   }
 
   private static TimerDescriptor timerDescriptorWithPath(String path) {

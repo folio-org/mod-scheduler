@@ -9,6 +9,7 @@ import static org.folio.scheduler.utils.TimerDescriptorUtils.evalModuleName;
 import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -164,10 +165,11 @@ public class SchedulerTimerService {
   @Transactional
   public int switchModuleTimers(String moduleName, boolean enable) {
     var timers = repository.findByModuleNameAndEnabledState(moduleName, enable);
+    var timersToSwitch = enable ? schedulableTimers(timers, moduleName) : timers;
 
-    repository.switchTimersByIds(mapItems(timers, TimerDescriptorEntity::getId), enable);
+    repository.switchTimersByIds(mapItems(timersToSwitch, TimerDescriptorEntity::getId), enable);
 
-    for (TimerDescriptorEntity timer : timers) {
+    for (TimerDescriptorEntity timer : timersToSwitch) {
       log.info(enable
           ? "Scheduling timer: timerId = {}, timerType = {}, module = {}"
           : "Removing timer: timerId = {}, timerType = {}, module = {}",
@@ -180,7 +182,34 @@ public class SchedulerTimerService {
       operation.accept(descriptor);
     }
 
-    return timers.size();
+    return timersToSwitch.size();
+  }
+
+  /**
+   * Returns only the timers that can be scheduled when a module is enabled, logging a warning for the rest.
+   *
+   * <p>A USER timer with no user id has no one to impersonate, so {@link JobSchedulingService#schedule} rejects it;
+   * because scheduling joins this transaction, that failure would roll back the whole module switch. To stop a single
+   * incomplete timer from aborting the entire entitlement, such timers are skipped here: they are neither enabled nor
+   * scheduled and stay disabled until a user id is set (for example via an update). The user id column is empty only
+   * for legacy USER timers that were disabled when the backfill migration ran; timers created or updated through the
+   * API always carry a user id.</p>
+   */
+  private List<TimerDescriptorEntity> schedulableTimers(List<TimerDescriptorEntity> timers, String moduleName) {
+    var schedulable = new ArrayList<TimerDescriptorEntity>(timers.size());
+    for (var timer : timers) {
+      if (isSchedulable(timer)) {
+        schedulable.add(timer);
+      } else {
+        log.warn("Skipping USER timer without a user id on module enable [timerId: {}, module: {}]",
+          timer.getId(), moduleName);
+      }
+    }
+    return schedulable;
+  }
+
+  private static boolean isSchedulable(TimerDescriptorEntity entity) {
+    return entity.getType() != org.folio.scheduler.domain.model.TimerType.USER || entity.getUserId() != null;
   }
 
   private void validateCreate(TimerDescriptor timerDescriptor) {
