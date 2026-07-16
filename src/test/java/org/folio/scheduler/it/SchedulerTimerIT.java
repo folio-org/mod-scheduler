@@ -55,6 +55,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   private static final UUID TIMER_ID_TO_UPDATE = UUID.fromString("123e4567-e89b-12d3-a456-426614174001");
   private static final String TIMER_ID_TO_DELETE = "123e4567-e89b-12d3-a456-426614174002";
   private static final String SYSTEM_TIMER_ID = "123e4567-e89b-12d3-a456-426614174003";
+  private static final String USER_B_ID = "5d07750b-22ce-4f42-864a-3e476e6992e8";
 
   @Autowired private Scheduler scheduler;
 
@@ -313,6 +314,60 @@ class SchedulerTimerIT extends BaseIntegrationTest {
     assertThat(updatedMetadata.getCreatedDate()).isEqualTo(originalCreatedDate);
     assertThat(updatedMetadata.getUpdatedDate()).isAfter(originalCreatedDate);
     assertThat(updatedMetadata.getUpdatedByUserId()).isEqualTo(USER_ID_UUID);
+  }
+
+  @Test
+  void getById_positive_userTimerHasUserId() throws Exception {
+    doGet("/scheduler/timers/{id}", TIMER_ID)
+      .andExpect(jsonPath("$.type", is("user")))
+      .andExpect(jsonPath("$.userId", is(USER_ID)));
+  }
+
+  @Test
+  void getById_positive_systemTimerHasNoUserId() throws Exception {
+    doGet("/scheduler/timers/{id}", SYSTEM_TIMER_ID)
+      .andExpect(jsonPath("$.type", is("system")))
+      .andExpect(jsonPath("$.userId").doesNotExist());
+  }
+
+  @Test
+  void create_positive_populatesUserIdFromContext() throws Exception {
+    var timerDescriptor = timerDescriptor(UUID.randomUUID()).enabled(false);
+
+    doPost("/scheduler/timers", timerDescriptor)
+      .andExpect(jsonPath("$.type", is("user")))
+      .andExpect(jsonPath("$.userId", is(USER_ID)));
+  }
+
+  @Test
+  void create_positive_userIdInRequestBodyIsIgnored() throws Exception {
+    var timerDescriptor = timerDescriptor(UUID.randomUUID()).enabled(false)
+      .userId(UUID.fromString("99999999-9999-9999-9999-999999999999"));
+
+    doPost("/scheduler/timers", timerDescriptor)
+      .andExpect(jsonPath("$.userId", is(USER_ID)));
+  }
+
+  @Test
+  void create_negative_userTimerWithoutUserContext() throws Exception {
+    var timerDescriptor = timerDescriptor(UUID.randomUUID()).enabled(false);
+
+    attemptPostAsUser("/scheduler/timers", null, timerDescriptor)
+      .andExpect(status().isBadRequest())
+      .andExpect(jsonPath("$.total_records", is(1)))
+      .andExpect(jsonPath("$.errors[0].type", is("RequestValidationException")))
+      .andExpect(jsonPath("$.errors[0].message", is("User timer requires a userId")));
+  }
+
+  @Test
+  void update_positive_preservesUserIdByDefault() throws Exception {
+    var timerId = UUID.randomUUID();
+    doPost("/scheduler/timers", timerDescriptor(timerId).enabled(false))
+      .andExpect(jsonPath("$.userId", is(USER_ID)));
+
+    attemptPutAsUser("/scheduler/timers/{id}", USER_B_ID, timerDescriptor(timerId).enabled(false), timerId.toString())
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.userId", is(USER_ID)));
   }
 
   private static TimerDescriptor timerDescriptor(UUID timerId) {
