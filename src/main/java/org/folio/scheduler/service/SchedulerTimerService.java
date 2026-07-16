@@ -18,12 +18,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.folio.scheduler.configuration.properties.TimerApiConfigurationProperties;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
+import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 import org.folio.scheduler.domain.model.SearchResult;
-import org.folio.scheduler.domain.model.TimerType;
 import org.folio.scheduler.exception.RequestValidationException;
 import org.folio.scheduler.mapper.TimerDescriptorMapper;
 import org.folio.scheduler.repository.SchedulerTimerRepository;
+import org.folio.spring.FolioExecutionContext;
 import org.folio.spring.data.OffsetRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +39,7 @@ public class SchedulerTimerService {
   private final SchedulerTimerRepository repository;
   private final EntityManager entityManager;
   private final TimerApiConfigurationProperties timerApiConfigurationProperties;
+  private final FolioExecutionContext folioExecutionContext;
 
   /**
    * Returns {@link Optional} of {@link TimerDescriptor} object by id.
@@ -51,7 +53,8 @@ public class SchedulerTimerService {
   }
 
   @Transactional(readOnly = true)
-  public List<TimerDescriptor> findByModuleNameAndType(String moduleName, TimerType type) {
+  public List<TimerDescriptor> findByModuleNameAndType(String moduleName,
+    org.folio.scheduler.domain.model.TimerType type) {
     return mapItems(repository.findByModuleNameAndType(moduleName, type), mapper::toDescriptor);
   }
 
@@ -170,7 +173,7 @@ public class SchedulerTimerService {
           : "Removing timer: timerId = {}, timerType = {}, module = {}",
         timer.getId(), timer.getType(), moduleName);
 
-      var descriptor = timer.getTimerDescriptor();
+      var descriptor = mapper.toDescriptor(timer);
       descriptor.setEnabled(enable);
 
       Consumer<TimerDescriptor> operation = enable ? jobSchedulingService::schedule : jobSchedulingService::delete;
@@ -222,11 +225,14 @@ public class SchedulerTimerService {
   private TimerDescriptor prepareDescriptor(TimerDescriptor timerDescriptor) {
     var descriptor = mapper.deepCopy(timerDescriptor); // to avoid side effects on the input parameter
     descriptor.setModuleName(evalModuleName(descriptor));
+    // userId is read-only and owned by the module: it lives in a dedicated column, never in the timer_descriptor
+    // jsonb, and is resolved from the timer type and execution context in doCreate/doUpdate.
+    descriptor.setUserId(null);
     return descriptor;
   }
 
   private static void rejectSystemTimerMutation(TimerDescriptor timerDescriptor) {
-    if (timerDescriptor.getType() == org.folio.scheduler.domain.dto.TimerType.SYSTEM) {
+    if (timerDescriptor.getType() == TimerType.SYSTEM) {
       throw new RequestValidationException(
         "SYSTEM timers are internal-only and cannot be modified via the public API", "type", "SYSTEM");
     }
@@ -238,6 +244,7 @@ public class SchedulerTimerService {
 
   private TimerDescriptor doCreate(TimerDescriptor timerDescriptor) {
     var entity = mapper.toDescriptorEntity(timerDescriptor);
+    entity.setUserId(resolveUserId(timerDescriptor.getType(), null, true));
     var savedEntity = repository.saveAndFlush(entity);
     var createdDescriptor = mapper.toDescriptor(savedEntity);
 
@@ -255,6 +262,9 @@ public class SchedulerTimerService {
     inputDescriptor.modified(true);
 
     var convertedEntity = mapper.toDescriptorEntity(inputDescriptor);
+    convertedEntity.setUserId(resolveUserId(inputDescriptor.getType(), oldTimerDescriptor.getUserId(),
+      timerApiConfigurationProperties.isAllowUserIdUpdate()));
+
     var updatedEntity = repository.saveAndFlush(convertedEntity);
     // Refresh is required to retrieve the complete audit metadata, particularly createdDate and
     // createdByUserId. Flow: mapper.toDescriptorEntity() ignores all audit fields (by design) →
@@ -271,6 +281,37 @@ public class SchedulerTimerService {
     jobSchedulingService.reschedule(oldTimerDescriptor, updatedDescriptor);
 
     return updatedDescriptor;
+  }
+
+  /**
+   * Resolves the userId to persist for a timer based on its type.
+   *
+   * <p>
+   * SYSTEM timers are not owned by a user, so {@code null} is returned - their user is resolved from the tenant's
+   * system user at execution time. USER timers keep their {@code existingUserId} unless a refresh is requested or none
+   * has been assigned yet, in which case the userId is taken from the current execution context.
+   * </p>
+   *
+   * @param type - timer type that determines how the userId is resolved
+   * @param existingUserId - userId currently stored for the timer, may be {@code null}
+   * @param allowRefresh - whether an existing userId may be replaced with the one from the current context
+   * @return the userId to persist, or {@code null} for SYSTEM timers
+   */
+  private UUID resolveUserId(TimerType type, UUID existingUserId, boolean allowRefresh) {
+    return switch (type) {
+      case USER -> (allowRefresh || existingUserId == null)
+        ? getUserIdFromContext()
+        : existingUserId;
+      case SYSTEM -> null;
+    };
+  }
+
+  private UUID getUserIdFromContext() {
+    var contextUserId = folioExecutionContext.getUserId();
+    if (contextUserId == null) {
+      throw new RequestValidationException("User timer requires a userId");
+    }
+    return contextUserId;
   }
 
   private TimerDescriptor getByIdInternal(UUID id) {

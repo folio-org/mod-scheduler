@@ -17,6 +17,7 @@ import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 import org.folio.scheduler.exception.MigrationException;
+import org.folio.scheduler.mapper.TimerDescriptorMapper;
 import org.folio.scheduler.repository.SchedulerTimerRepository;
 import org.folio.scheduler.service.JobSchedulingService;
 import org.folio.spring.FolioExecutionContext;
@@ -27,20 +28,20 @@ import org.quartz.SchedulerException;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Recreates every enabled timer's Quartz job so that its job detail carries the newly introduced {@code timer-type}
- * field and system timers no longer keep a stale user id.
+ * Recreates every enabled timer's Quartz job and backfills the newly added {@code user_id} column, so that each job
+ * detail carries the {@code timer-type} field and the correct user id.
  *
  * <p>
- * Existing jobs were scheduled by the previous code, so their job details lack {@code timer-type} and system timers
- * may still carry the user id of whoever originally scheduled them. For each enabled timer the original user id is read
- * from the current job detail, the job is deleted and then rescheduled from the timer descriptor via
- * {@link JobSchedulingService#schedule}. The reschedule runs inside a {@link FolioExecutionContextSetter} that supplies
- * the tenant and - for USER timers only - the preserved user id, so USER timers keep their owner while SYSTEM timers
- * are rescheduled without a user id (the cleanup this migration performs).
+ * Jobs scheduled by the previous code lack {@code timer-type} in their job details, SYSTEM timers may still carry the
+ * user id of whoever originally scheduled them, and the {@code user_id} column is empty for every timer. For each
+ * enabled timer the original user id is read from the current job detail (USER timers only) and persisted into the
+ * {@code user_id} column; the timer is then rescheduled from a descriptor rebuilt from the entity, so the fresh job
+ * detail carries the correct type and user id. SYSTEM timers are recreated without a user id (in both the column and
+ * the job detail), which is the stale-user-id cleanup this migration performs.
  * </p>
  */
 @Log4j2
-public class PopulateJobDetailTimerTypeMigration extends AbstractCustomTaskChangeMigration {
+public class PopulateTimerTypeAndUserIdMigration extends AbstractCustomTaskChangeMigration {
 
   private static final String SELECT_ENABLED_TIMER_IDS =
     "SELECT id FROM timer WHERE timer_descriptor->'enabled' = 'true'";
@@ -56,43 +57,43 @@ public class PopulateJobDetailTimerTypeMigration extends AbstractCustomTaskChang
       return;
     }
 
-    var repository = springApplicationContext.getBean(SchedulerTimerRepository.class);
-    var jobSchedulingService = springApplicationContext.getBean(JobSchedulingService.class);
-    var scheduler = springApplicationContext.getBean(Scheduler.class);
-    var moduleMetadata = springApplicationContext.getBean(FolioModuleMetadata.class);
-    var tenantId = springApplicationContext.getBean(FolioExecutionContext.class).getTenantId();
-
-    if (isBlank(tenantId)) {
+    var context = buildContext();
+    if (isBlank(context.tenantId())) {
       throw new MigrationException("Cannot recreate timers: tenant id is missing in the execution context", null);
     }
 
-    log.info("Recreating {} enabled timer(s) to populate timer type in job details and clean up user ids of "
-      + "system timers [tenant: {}]", enabledTimerIds.size(), tenantId);
+    log.info("Recreating {} enabled timer(s) to populate timer type in job details, backfill user id, and clear user "
+      + "ids of system timers [tenant: {}]", enabledTimerIds.size(), context.tenantId());
 
-    recreateTimers(enabledTimerIds, repository, jobSchedulingService, scheduler, moduleMetadata, tenantId);
+    recreateTimers(enabledTimerIds, context);
   }
 
-  private void recreateTimers(List<String> enabledTimerIds, SchedulerTimerRepository repository,
-    JobSchedulingService jobSchedulingService, Scheduler scheduler, FolioModuleMetadata moduleMetadata,
-    String tenantId) {
+  private MigrationContext buildContext() {
+    return new MigrationContext(
+      springApplicationContext.getBean(TimerDescriptorMapper.class),
+      springApplicationContext.getBean(SchedulerTimerRepository.class),
+      springApplicationContext.getBean(JobSchedulingService.class),
+      springApplicationContext.getBean(Scheduler.class),
+      springApplicationContext.getBean(FolioModuleMetadata.class),
+      springApplicationContext.getBean(FolioExecutionContext.class).getTenantId());
+  }
+
+  private void recreateTimers(List<String> enabledTimerIds, MigrationContext context) {
     for (var id : enabledTimerIds) {
       var timerId = UUID.fromString(id);
-      repository.findById(timerId).ifPresentOrElse(
-        entity -> recreateTimer(entity, tenantId, jobSchedulingService, scheduler, moduleMetadata),
+      context.repository().findById(timerId).ifPresentOrElse(
+        entity -> recreateTimer(entity, context),
         () -> log.warn("Enabled timer not found by id, skipping [timerId: {}]", timerId));
     }
   }
 
-  private void recreateTimer(TimerDescriptorEntity entity, String tenantId, JobSchedulingService jobSchedulingService,
-    Scheduler scheduler, FolioModuleMetadata moduleMetadata) {
+  private void recreateTimer(TimerDescriptorEntity entity, MigrationContext context) {
     var timerId = entity.getId();
-    var descriptor = entity.getTimerDescriptor();
     var type = resolveType(entity);
-    ensureDescriptorIdentifiers(descriptor, timerId, type);
 
     UUID userId = null;
     if (type == TimerType.USER) {
-      userId = readOriginalUserId(scheduler, timerId);
+      userId = readOriginalUserId(context.scheduler(), timerId);
       if (userId == null) {
         log.error("Skipping user timer recreation: original user id could not be resolved from the existing "
           + "job detail [timerId: {}]", timerId);
@@ -100,24 +101,18 @@ public class PopulateJobDetailTimerTypeMigration extends AbstractCustomTaskChang
       }
     }
 
-    deleteExistingJob(scheduler, timerId);
-    scheduleWithContext(jobSchedulingService, moduleMetadata, tenantId, userId, descriptor);
+    entity.setUserId(userId);
+    context.repository().save(entity);
+
+    var descriptor = context.mapper().toDescriptor(entity);
+    deleteExistingJob(context.scheduler(), timerId);
+    scheduleWithContext(context, descriptor);
     log.info("Recreated timer [timerId: {}, type: {}, userIdPreserved: {}]", timerId, type, userId != null);
   }
 
-  private static void ensureDescriptorIdentifiers(TimerDescriptor descriptor, UUID timerId, TimerType type) {
-    if (descriptor.getId() == null) {
-      descriptor.setId(timerId);
-    }
-    if (descriptor.getType() == null) {
-      descriptor.setType(type);
-    }
-  }
-
-  private static void scheduleWithContext(JobSchedulingService jobSchedulingService, FolioModuleMetadata moduleMetadata,
-    String tenantId, UUID userId, TimerDescriptor descriptor) {
-    try (var ignored = new FolioExecutionContextSetter(moduleMetadata, buildHeaders(tenantId, userId))) {
-      jobSchedulingService.schedule(descriptor);
+  private static void scheduleWithContext(MigrationContext context, TimerDescriptor descriptor) {
+    try (var ignored = new FolioExecutionContextSetter(context.moduleMetadata(), buildHeaders(context.tenantId()))) {
+      context.jobSchedulingService().schedule(descriptor);
     }
   }
 
@@ -143,12 +138,9 @@ public class PopulateJobDetailTimerTypeMigration extends AbstractCustomTaskChang
     }
   }
 
-  private static Map<String, Collection<String>> buildHeaders(String tenantId, UUID userId) {
+  private static Map<String, Collection<String>> buildHeaders(String tenantId) {
     var headers = new HashMap<String, Collection<String>>();
     headers.put(TENANT, List.of(tenantId));
-    if (userId != null) {
-      headers.put(USER_ID, List.of(userId.toString()));
-    }
     return headers;
   }
 
@@ -162,4 +154,8 @@ public class PopulateJobDetailTimerTypeMigration extends AbstractCustomTaskChang
       case SYSTEM -> TimerType.SYSTEM;
     };
   }
+
+  private record MigrationContext(TimerDescriptorMapper mapper, SchedulerTimerRepository repository,
+    JobSchedulingService jobSchedulingService, Scheduler scheduler, FolioModuleMetadata moduleMetadata,
+    String tenantId) {}
 }

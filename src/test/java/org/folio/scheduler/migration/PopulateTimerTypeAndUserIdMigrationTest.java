@@ -1,5 +1,6 @@
 package org.folio.scheduler.migration;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.support.TestConstants.TIMER_ID;
@@ -23,6 +24,7 @@ import liquibase.database.jvm.JdbcConnection;
 import liquibase.integration.spring.SpringResourceAccessor;
 import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.exception.MigrationException;
+import org.folio.scheduler.mapper.TimerDescriptorMapper;
 import org.folio.scheduler.repository.SchedulerTimerRepository;
 import org.folio.scheduler.service.JobSchedulingService;
 import org.folio.scheduler.support.TestValues;
@@ -42,14 +44,15 @@ import org.springframework.context.ApplicationContext;
 
 @UnitTest
 @ExtendWith(MockitoExtension.class)
-class PopulateJobDetailTimerTypeMigrationTest {
+class PopulateTimerTypeAndUserIdMigrationTest {
 
   private static final String SELECT_ENABLED_TIMER_IDS =
     "SELECT id FROM timer WHERE timer_descriptor->'enabled' = 'true'";
 
-  private final PopulateJobDetailTimerTypeMigration unit = new PopulateJobDetailTimerTypeMigration();
+  private final PopulateTimerTypeAndUserIdMigration unit = new PopulateTimerTypeAndUserIdMigration();
 
   @Mock private ApplicationContext mockAppContext;
+  @Mock private TimerDescriptorMapper mapper;
   @Mock private SchedulerTimerRepository repository;
   @Mock private JobSchedulingService jobSchedulingService;
   @Mock private Scheduler scheduler;
@@ -68,36 +71,44 @@ class PopulateJobDetailTimerTypeMigrationTest {
 
     unit.execute(dbMock(resultSet));
 
-    verifyNoInteractions(jobSchedulingService, scheduler, repository);
+    verifyNoInteractions(jobSchedulingService, scheduler, repository, mapper);
   }
 
   @Test
-  void execute_positive_recreatesSystemTimerWithoutReadingUserId() throws Exception {
+  void execute_positive_recreatesSystemTimerWithoutReadingUserIdAndClearsColumn() throws Exception {
     stubBeans();
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
     var entity = TestValues.timerDescriptorEntity(TestValues.timerDescriptor().type(TimerType.SYSTEM));
+    var descriptor = TestValues.timerDescriptor().type(TimerType.SYSTEM);
     when(repository.findById(TIMER_UUID)).thenReturn(Optional.of(entity));
+    when(mapper.toDescriptor(entity)).thenReturn(descriptor);
 
     unit.execute(dbMock(singleIdResultSet()));
 
     verify(scheduler, never()).getJobDetail(any());
+    assertThat(entity.getUserId()).isNull();
+    verify(repository).save(entity);
     verify(scheduler).deleteJob(jobKey(TIMER_ID));
-    verify(jobSchedulingService).schedule(entity.getTimerDescriptor());
+    verify(jobSchedulingService).schedule(descriptor);
   }
 
   @Test
-  void execute_positive_recreatesUserTimerPreservingUserId() throws Exception {
+  void execute_positive_recreatesUserTimerBackfillingUserIdFromJobData() throws Exception {
     stubBeans();
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
     var entity = TestValues.timerDescriptorEntity(TestValues.timerDescriptor().type(TimerType.USER));
+    var descriptor = TestValues.timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID);
     when(repository.findById(TIMER_UUID)).thenReturn(Optional.of(entity));
     when(scheduler.getJobDetail(jobKey(TIMER_ID))).thenReturn(existingUserJobDetail());
+    when(mapper.toDescriptor(entity)).thenReturn(descriptor);
 
     unit.execute(dbMock(singleIdResultSet()));
 
+    assertThat(entity.getUserId()).isEqualTo(USER_ID_UUID);
+    verify(repository).save(entity);
     verify(scheduler).getJobDetail(jobKey(TIMER_ID));
     verify(scheduler).deleteJob(jobKey(TIMER_ID));
-    verify(jobSchedulingService).schedule(entity.getTimerDescriptor());
+    verify(jobSchedulingService).schedule(descriptor);
   }
 
   @Test
@@ -112,6 +123,7 @@ class PopulateJobDetailTimerTypeMigrationTest {
 
     verify(scheduler).getJobDetail(jobKey(TIMER_ID));
     verify(scheduler, never()).deleteJob(any());
+    verify(repository, never()).save(any());
     verifyNoInteractions(jobSchedulingService);
   }
 
@@ -145,6 +157,7 @@ class PopulateJobDetailTimerTypeMigrationTest {
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
     var entity = TestValues.timerDescriptorEntity(TestValues.timerDescriptor().type(TimerType.SYSTEM));
     when(repository.findById(TIMER_UUID)).thenReturn(Optional.of(entity));
+    when(mapper.toDescriptor(entity)).thenReturn(TestValues.timerDescriptor().type(TimerType.SYSTEM));
     when(scheduler.deleteJob(jobKey(TIMER_ID))).thenThrow(new SchedulerException("boom"));
 
     assertThatThrownBy(() -> unit.execute(dbMock(singleIdResultSet())))
@@ -167,10 +180,12 @@ class PopulateJobDetailTimerTypeMigrationTest {
       .hasMessageContaining("Failed to read existing job detail");
 
     verify(scheduler, never()).deleteJob(any());
+    verify(repository, never()).save(any());
     verifyNoInteractions(jobSchedulingService);
   }
 
   private void stubBeans() {
+    when(mockAppContext.getBean(TimerDescriptorMapper.class)).thenReturn(mapper);
     when(mockAppContext.getBean(SchedulerTimerRepository.class)).thenReturn(repository);
     when(mockAppContext.getBean(JobSchedulingService.class)).thenReturn(jobSchedulingService);
     when(mockAppContext.getBean(Scheduler.class)).thenReturn(scheduler);

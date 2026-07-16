@@ -1,0 +1,21 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.9.xsd">
+
+  <changeSet id="add-user-id-to-timer" author="dmtkachenko">
+    <comment>Add user_id column to timer table (populated for USER timers, empty for SYSTEM timers)</comment>
+    <addColumn tableName="timer">
+      <column name="user_id" type="uuid">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="populate-timer-type-and-user-id" author="dmtkachenko">
+    <comment>Recreate enabled timers to populate timer type in job details and backfill the user_id column</comment>
+    <customChange class="org.folio.scheduler.migration.PopulateTimerTypeAndUserIdMigration" />
+  </changeSet>
+
+</databaseChangeLog>

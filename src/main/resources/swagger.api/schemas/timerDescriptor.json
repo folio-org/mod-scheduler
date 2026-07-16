@@ -33,6 +33,12 @@
       "description": "Module id timer belongs to (if present module name is not needed)",
       "type": "string"
     },
+    "userId": {
+      "description": "Identifier of the user a USER timer runs as. Populated by the module for USER timers and empty for SYSTEM timers. Read-only: any value supplied in a request is ignored.",
+      "type": "string",
+      "format": "uuid",
+      "readOnly": true
+    },
     "metadata": {
       "$ref": "metadata.json",
       "readOnly": true

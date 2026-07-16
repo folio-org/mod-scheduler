@@ -75,10 +75,9 @@ class JobSchedulingServiceTest {
     throws SchedulerException {
     var cronSchedule = new RoutingEntrySchedule().cron(cron).zone(zone);
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
-    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
     when(scheduler.scheduleJob(any(JobDetail.class), triggerArgumentCaptor.capture())).thenReturn(new Date());
     var routingEntry = new RoutingEntry().schedule(cronSchedule);
-    var timerDescriptor = timerDescriptor().type(TimerType.USER).routingEntry(routingEntry);
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID).routingEntry(routingEntry);
 
     service.schedule(timerDescriptor);
 
@@ -91,10 +90,9 @@ class JobSchedulingServiceTest {
   void schedule_parameterized_simpleTrigger(String delay, TimerUnit unit, long expectedRepeatInterval)
     throws SchedulerException {
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
-    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
     when(scheduler.scheduleJob(any(JobDetail.class), triggerArgumentCaptor.capture())).thenReturn(new Date());
     var routingEntry = new RoutingEntry().delay(delay).unit(unit);
-    var timerDescriptor = timerDescriptor().type(TimerType.USER).routingEntry(routingEntry);
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID).routingEntry(routingEntry);
 
     assertThat(service.schedule(timerDescriptor)).isTrue();
 
@@ -141,10 +139,9 @@ class JobSchedulingServiceTest {
   @Test
   void schedule_positive_userTimerStoresUserIdInJobData() throws SchedulerException {
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
-    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
     when(scheduler.scheduleJob(jobDetailArgumentCaptor.capture(), any(Trigger.class))).thenReturn(new Date());
     var re = new RoutingEntry().delay("20").unit(SECOND);
-    var timerDescriptor = timerDescriptor().type(TimerType.USER).routingEntry(re);
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID).routingEntry(re);
 
     service.schedule(timerDescriptor);
 
@@ -157,7 +154,6 @@ class JobSchedulingServiceTest {
   @Test
   void schedule_negative_userTimerWithoutUserId() {
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
-    when(folioExecutionContext.getUserId()).thenReturn(null);
     var re = new RoutingEntry().delay("20").unit(SECOND);
     var timerDescriptor = timerDescriptor().type(TimerType.USER).routingEntry(re);
 
@@ -171,8 +167,7 @@ class JobSchedulingServiceTest {
   @Test
   void schedule_negative_duplicate() throws  Exception {
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
-    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
-    var timerDescriptor = timerDescriptor().type(TimerType.USER);
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID);
     when(scheduler.scheduleJob(any(), any())).thenThrow(new ObjectAlreadyExistsException("test"));
     assertThat(service.schedule(timerDescriptor)).isFalse();
     verify(scheduler, times(1)).scheduleJob(any(), any());
@@ -195,10 +190,9 @@ class JobSchedulingServiceTest {
   @Test
   void schedule_negative_repeatIntervalIsLowerThanExpected() {
     var re = new RoutingEntry().unit(MILLISECOND).delay("50");
-    var timerDescriptor = timerDescriptor().type(TimerType.USER).routingEntry(re);
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID).routingEntry(re);
 
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
-    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
 
     assertThatThrownBy(() -> service.schedule(timerDescriptor))
       .isInstanceOf(RequestValidationException.class)
@@ -210,10 +204,9 @@ class JobSchedulingServiceTest {
   void schedule_negative_cronAndRepeatIntervalSpecifiedAtTheSameTime() {
     var schedule = new RoutingEntrySchedule().cron("*/5 * * * * ?");
     var re = new RoutingEntry().unit(MILLISECOND).delay("50").schedule(schedule);
-    var timerDescriptor = timerDescriptor().type(TimerType.USER).routingEntry(re);
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID).routingEntry(re);
 
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
-    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
 
     assertThatThrownBy(() -> service.schedule(timerDescriptor))
       .isInstanceOf(RequestValidationException.class)
@@ -225,10 +218,9 @@ class JobSchedulingServiceTest {
   @MethodSource("invalidRoutingEntriesProvider")
   @DisplayName("schedule_parameterized_invalidRoutingEntries")
   void schedule_parameterized_invalidRoutingEntries(@SuppressWarnings("unused") String name, RoutingEntry re) {
-    var timerDescriptor = timerDescriptor().type(TimerType.USER).routingEntry(re);
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID).routingEntry(re);
 
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
-    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
 
     assertThatThrownBy(() -> service.schedule(timerDescriptor))
       .isInstanceOf(RequestValidationException.class)
@@ -240,11 +232,10 @@ class JobSchedulingServiceTest {
   @Test
   void schedule_negative_internalException() throws SchedulerException {
     var re = new RoutingEntry().unit(SECOND).delay("50");
-    var timerDescriptor = timerDescriptor().type(TimerType.USER).routingEntry(re);
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID).routingEntry(re);
     when(scheduler.scheduleJob(any(JobDetail.class), any(SimpleTrigger.class)))
       .thenThrow(new SchedulerException("Failed to schedule recurring job"));
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
-    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
 
     assertThatThrownBy(() -> service.schedule(timerDescriptor))
       .isInstanceOf(TimerSchedulingException.class)

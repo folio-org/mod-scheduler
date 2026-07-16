@@ -155,10 +155,10 @@ public class JobSchedulingService {
       .timerType(timerDescriptor.getType());
 
     if (timerDescriptor.getType() == TimerType.USER) {
-      if (folioExecutionContext.getUserId() == null) {
+      if (timerDescriptor.getUserId() == null) {
         throw new RequestValidationException("User timer cannot be scheduled without userId");
       }
-      jobDetailBuilder.userId(folioExecutionContext.getUserId());
+      jobDetailBuilder.userId(timerDescriptor.getUserId());
     }
     // For a system timer the userId is intentionally left unset; it is resolved at execution
     // time via the tenant's system user.
