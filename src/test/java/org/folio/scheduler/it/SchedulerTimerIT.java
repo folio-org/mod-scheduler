@@ -375,6 +375,33 @@ class SchedulerTimerIT extends BaseIntegrationTest {
       .andExpect(jsonPath("$.userId", is(USER_ID)));
   }
 
+  @Test
+  @WireMockStub("/wiremock/stubs/user-timer-endpoint.json")
+  @KeycloakRealms("/json/keycloak/test-realm.json")
+  void delete_positive_removesJobFromTenantModuleGroup() throws Exception {
+    var timerId = UUID.randomUUID();
+    doPost("/scheduler/timers", timerDescriptor(timerId));
+    assertThat(scheduler.checkExists(jobKey(timerId.toString(), JOB_GROUP))).isTrue();
+
+    doDelete("/scheduler/timers/{id}", timerId);
+
+    assertThat(scheduler.checkExists(jobKey(timerId.toString(), JOB_GROUP))).isFalse();
+  }
+
+  @Test
+  void update_negative_moduleNameCannotBeChanged() throws Exception {
+    var timerId = UUID.randomUUID();
+    doPost("/scheduler/timers", timerDescriptor(timerId).enabled(false));
+
+    var update = timerDescriptor(timerId).enabled(false).moduleId("mod-other-1.0.0");
+    attemptPut("/scheduler/timers/{id}", update, timerId)
+      .andExpect(status().isBadRequest())
+      .andExpect(jsonPath("$.errors[0].type", is("RequestValidationException")))
+      .andExpect(jsonPath("$.errors[0].message", is("Timer module name cannot be changed")))
+      .andExpect(jsonPath("$.errors[0].parameters[0].key", is("moduleName")))
+      .andExpect(jsonPath("$.errors[0].parameters[0].value", is("mod-other")));
+  }
+
   private static TimerDescriptor timerDescriptor(UUID timerId) {
     return new TimerDescriptor()
       .id(timerId)
