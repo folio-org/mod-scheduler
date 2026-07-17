@@ -1,7 +1,6 @@
 package org.folio.scheduler.service.jobs;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.folio.scheduler.support.TestConstants.MODULE_NAME;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.support.TestConstants.TIMER_UUID;
 import static org.folio.scheduler.support.TestConstants.USER_ID;

@@ -140,11 +140,12 @@ class PopulateTimerTypeAndUserIdMigrationTest {
   }
 
   @Test
-  void execute_negative_blankTenantId() {
+  void execute_negative_blankTenantId() throws Exception {
     stubBeans();
     when(folioExecutionContext.getTenantId()).thenReturn("  ");
 
-    assertThatThrownBy(() -> unit.execute(dbMock(singleIdResultSet())))
+    var dbMock = dbMock(singleIdResultSet());
+    assertThatThrownBy(() -> unit.execute(dbMock))
       .isInstanceOf(MigrationException.class)
       .hasMessageContaining("tenant id is missing");
 
@@ -160,7 +161,8 @@ class PopulateTimerTypeAndUserIdMigrationTest {
     when(mapper.toDescriptor(entity)).thenReturn(TestValues.timerDescriptor().type(TimerType.SYSTEM));
     when(scheduler.deleteJob(jobKey(TIMER_ID))).thenThrow(new SchedulerException("boom"));
 
-    assertThatThrownBy(() -> unit.execute(dbMock(singleIdResultSet())))
+    var dbMock = dbMock(singleIdResultSet());
+    assertThatThrownBy(() -> unit.execute(dbMock))
       .isInstanceOf(MigrationException.class)
       .hasMessageContaining("Failed to delete existing scheduled job");
 
@@ -175,7 +177,8 @@ class PopulateTimerTypeAndUserIdMigrationTest {
     when(repository.findById(TIMER_UUID)).thenReturn(Optional.of(entity));
     when(scheduler.getJobDetail(jobKey(TIMER_ID))).thenThrow(new SchedulerException("boom"));
 
-    assertThatThrownBy(() -> unit.execute(dbMock(singleIdResultSet())))
+    var dbMock = dbMock(singleIdResultSet());
+    assertThatThrownBy(() -> unit.execute(dbMock))
       .isInstanceOf(MigrationException.class)
       .hasMessageContaining("Failed to read existing job detail");
 
