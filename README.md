@@ -129,27 +129,28 @@ docker run \
 | TOKEN_CACHE_MAX_CAPACITY                   | 50                     | Token cache max capacity.                                                                                                                                             |
 | TOKEN_CACHE_REFRESH_PRIOR_EXPIRATION       | 25                     | Specifies the amount of seconds for a cache entry invalidation prior to the token expiration.                                                                         |
 | SCHEDULER_API_ALLOW_SYSTEM_TIMER_MUTATION  | false                  | Allow REST APIs to create, update, and delete SYSTEM timers.                                                                                                          |
+| SCHEDULER_API_ALLOW_USER_ID_UPDATE         | false                  | Allow a USER timer's `userId` to be refreshed to the updating user on update. When `false`, `userId` is set once on creation and preserved across updates.            |
 
 ### Kafka environment variables
 
-| Name                                              | Default value                                                           | Description                                                                                                                                                |
-|:--------------------------------------------------|:------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| KAFKA_HOST                                        | kafka                                                                   | Kafka broker hostname                                                                                                                                      |
-| KAFKA_PORT                                        | 9092                                                                    | Kafka broker port                                                                                                                                          |
-| KAFKA_SECURITY_PROTOCOL                           | PLAINTEXT                                                               | Kafka security protocol used to communicate with brokers (SSL or PLAINTEXT)                                                                                |
-| KAFKA_SSL_KEYSTORE_LOCATION                       | -                                                                       | The location of the Kafka key store file. This is optional for client and can be used for two-way authentication for client.                               |
-| KAFKA_SSL_KEYSTORE_PASSWORD                       | -                                                                       | The store password for the Kafka key store file. This is optional for client and only needed if 'ssl.keystore.location' is configured.                     |
-| KAFKA_SSL_TRUSTSTORE_LOCATION                     | -                                                                       | The location of the Kafka trust store file.                                                                                                                |
-| KAFKA_SSL_TRUSTSTORE_PASSWORD                     | -                                                                       | The password for the Kafka trust store file. If a password is not set, trust store file configured will still be used, but integrity checking is disabled. |
-| KAFKA_JOB_CONSUMER_PATTERN                        | (${folio.environment}\.)(.*\.)mgr-tenant-entitlements\.scheduled-job    | Custom subscription pattern for the scheduled-job Kafka consumer.                                                                                         |
-| KAFKA_JOB_CONCURRENCY                             | 1                                                                       | Number of concurrent threads for the scheduled-job Kafka consumer.                                                                                        |
-| KAFKA_ENTITLEMENT_CONSUMER_PATTERN                | (${folio.environment}\.)(.*\.)entitlement                               | Custom subscription pattern for the entitlement-events Kafka consumer.                                                                                    |
-| KAFKA_ENTITLEMENT_CONCURRENCY                     | 1                                                                       | Number of concurrent threads for the entitlement-events Kafka consumer.                                                                                   |
-| KAFKA_CONSUMER_MAX_POLL_RECORDS                   | 200                                                                     | Maximum number of records returned in a single call to poll().                                                                                             |
-| KAFKA_TENANT_FILTER_ENABLED                       | false                                                                   | Enables tenant-entitlement filtering for Kafka messages. When `true`, events for tenants not entitled to this module version are filtered.                 |
-| KAFKA_TENANT_FILTER_TENANT_DISABLED_STRATEGY      | skip                                                                    | Strategy when a message's tenant is not in the entitled set. `skip` silently discards the record; `fail` throws an exception and retries with backoff.     |
-| KAFKA_TENANT_FILTER_ALL_TENANTS_DISABLED_STRATEGY | fail                                                                    | Strategy when no tenants at all are entitled (e.g. during startup). `skip` discards the record; `fail` retries with backoff until tenants become entitled. |
-| MODULE_VERSION                                    | -                                                                       | Module version used for tenant-entitlement filter queries (e.g. `1.0.0`). Typically injected by the deployment pipeline.                                  |
+| Name                                              | Default value                                                        | Description                                                                                                                                                |
+|:--------------------------------------------------|:---------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| KAFKA_HOST                                        | kafka                                                                | Kafka broker hostname                                                                                                                                      |
+| KAFKA_PORT                                        | 9092                                                                 | Kafka broker port                                                                                                                                          |
+| KAFKA_SECURITY_PROTOCOL                           | PLAINTEXT                                                            | Kafka security protocol used to communicate with brokers (SSL or PLAINTEXT)                                                                                |
+| KAFKA_SSL_KEYSTORE_LOCATION                       | -                                                                    | The location of the Kafka key store file. This is optional for client and can be used for two-way authentication for client.                               |
+| KAFKA_SSL_KEYSTORE_PASSWORD                       | -                                                                    | The store password for the Kafka key store file. This is optional for client and only needed if 'ssl.keystore.location' is configured.                     |
+| KAFKA_SSL_TRUSTSTORE_LOCATION                     | -                                                                    | The location of the Kafka trust store file.                                                                                                                |
+| KAFKA_SSL_TRUSTSTORE_PASSWORD                     | -                                                                    | The password for the Kafka trust store file. If a password is not set, trust store file configured will still be used, but integrity checking is disabled. |
+| KAFKA_JOB_CONSUMER_PATTERN                        | (${folio.environment}\.)(.*\.)mgr-tenant-entitlements\.scheduled-job | Custom subscription pattern for the scheduled-job Kafka consumer.                                                                                          |
+| KAFKA_JOB_CONCURRENCY                             | 1                                                                    | Number of concurrent threads for the scheduled-job Kafka consumer.                                                                                         |
+| KAFKA_ENTITLEMENT_CONSUMER_PATTERN                | (${folio.environment}\.)(.*\.)entitlement                            | Custom subscription pattern for the entitlement-events Kafka consumer.                                                                                     |
+| KAFKA_ENTITLEMENT_CONCURRENCY                     | 1                                                                    | Number of concurrent threads for the entitlement-events Kafka consumer.                                                                                    |
+| KAFKA_CONSUMER_MAX_POLL_RECORDS                   | 200                                                                  | Maximum number of records returned in a single call to poll().                                                                                             |
+| KAFKA_TENANT_FILTER_ENABLED                       | false                                                                | Enables tenant-entitlement filtering for Kafka messages. When `true`, events for tenants not entitled to this module version are filtered.                 |
+| KAFKA_TENANT_FILTER_TENANT_DISABLED_STRATEGY      | skip                                                                 | Strategy when a message's tenant is not in the entitled set. `skip` silently discards the record; `fail` throws an exception and retries with backoff.     |
+| KAFKA_TENANT_FILTER_ALL_TENANTS_DISABLED_STRATEGY | fail                                                                 | Strategy when no tenants at all are entitled (e.g. during startup). `skip` discards the record; `fail` retries with backoff until tenants become entitled. |
+| MODULE_VERSION                                    | -                                                                    | Module version used for tenant-entitlement filter queries (e.g. `1.0.0`). Typically injected by the deployment pipeline.                                   |
 
 #### Kafka tenant filtering
 
@@ -168,18 +169,18 @@ Two independent strategies control the behaviour:
 
 ### Retry environment variables
 
-| Name                              | Default value | Description                                                                                                                             |
-|:----------------------------------|:--------------|:----------------------------------------------------------------------------------------------------------------------------------------|
-| SYSTEM_USER_RETRY_DELAY           | 1s            | Retry delay between attempts to retrieve system user                                                                                    |
-| SYSTEM_USER_MAX_DELAY             | 1m            | Maximum delay between attempts to retrieve system user                                                                                  |
-| SYSTEM_USER_RETRY_ATTEMPTS        | 2147483647    | Number of retry attempts to retrieve system user (default value is Long.MAX_VALUE ~= infinite amount of retries)                        |
-| SYSTEM_USER_RETRY_MULTIPLIER      | 1.5           | Retry attempts delay multiplier to retrieve system user                                                                                 |
-| USER_IMPERSONATION_RETRY_DELAY    | 1s            | Retry delay between attempts to obtain a user impersonation token for scheduled job execution                                           |
-| USER_IMPERSONATION_MAX_DELAY      | 30s           | Maximum delay between attempts to obtain a user impersonation token                                                                     |
-| USER_IMPERSONATION_RETRY_ATTEMPTS | 3             | Number of retry attempts to obtain a user impersonation token                                                                           |
+| Name                                | Default value | Description                                                                                                                             |
+|:------------------------------------|:--------------|:----------------------------------------------------------------------------------------------------------------------------------------|
+| SYSTEM_USER_RETRY_DELAY             | 1s            | Retry delay between attempts to retrieve system user                                                                                    |
+| SYSTEM_USER_MAX_DELAY               | 1m            | Maximum delay between attempts to retrieve system user                                                                                  |
+| SYSTEM_USER_RETRY_ATTEMPTS          | 2147483647    | Number of retry attempts to retrieve system user (default value is Long.MAX_VALUE ~= infinite amount of retries)                        |
+| SYSTEM_USER_RETRY_MULTIPLIER        | 1.5           | Retry attempts delay multiplier to retrieve system user                                                                                 |
+| USER_IMPERSONATION_RETRY_DELAY      | 1s            | Retry delay between attempts to obtain a user impersonation token for scheduled job execution                                           |
+| USER_IMPERSONATION_MAX_DELAY        | 30s           | Maximum delay between attempts to obtain a user impersonation token                                                                     |
+| USER_IMPERSONATION_RETRY_ATTEMPTS   | 3             | Number of retry attempts to obtain a user impersonation token                                                                           |
 | USER_IMPERSONATION_RETRY_MULTIPLIER | 1.5           | Retry attempts delay multiplier to obtain a user impersonation token                                                                    |
-| SCHEDULED_TIMER_EVENT_RETRY_DELAY | 1s            | Retry delay between attempts to process event from `scheduled-job` Kafka topic                                                          |
-| SCHEDULED_TIMER_EVENT_ATTEMPTS    | 2147483647    | Number of attempts to process event from `scheduled-job` Kafka topic (default value is Integer.MAX_VALUE ~= infinite amount of retries) |
+| SCHEDULED_TIMER_EVENT_RETRY_DELAY   | 1s            | Retry delay between attempts to process event from `scheduled-job` Kafka topic                                                          |
+| SCHEDULED_TIMER_EVENT_ATTEMPTS      | 2147483647    | Number of attempts to process event from `scheduled-job` Kafka topic (default value is Integer.MAX_VALUE ~= infinite amount of retries) |
 
 Timer execution uses a Keycloak user impersonation token as `X-Okapi-Token`. If token exchange returns a blank,
 missing, or literal `null` token, the response is not cached and the impersonation request is retried according to
@@ -236,6 +237,9 @@ in [application.yml](./src/main/resources/application.yml) under `spring.quartz`
 
 In addition, Quartz can be tuned
 using [Quart configuration properties](http://www.quartz-scheduler.org/documentation/2.4.0-SNAPSHOT/configuration.html)
+
+Each timer's Quartz job and trigger are placed in the group `<tenant>#<moduleName>` (rather than the default group),
+so scheduled jobs are isolated per tenant and module in the shared cluster.
 
 
 ### Cron format for timers

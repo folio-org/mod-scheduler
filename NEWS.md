@@ -2,6 +2,7 @@
 ### Changes:
 * Upgrade dependencies for Kafka 4.2 compatibility in mod-scheduler (MODSCHED-84)
 * Add CQL filtering support for scheduler timers (MODSCHED-88)
+* Enforce system-user execution for SYSTEM timers (MODSCHED-72)
 ---
 
 ## Version `v4.0.0` (17.04.2026)
