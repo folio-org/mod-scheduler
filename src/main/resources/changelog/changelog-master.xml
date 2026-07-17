@@ -15,4 +15,5 @@
   <include file="changes/08_mark_cron_based_timers_as_outdated.xml" relativeToChangelogFile="true"/>
   <include file="changes/09_add_audit_fields_to_timer.xml" relativeToChangelogFile="true"/>
   <include file="changes/10_populate_timer_type_and_user_id.xml" relativeToChangelogFile="true"/>
+  <include file="changes/11_regroup_timer_jobs.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

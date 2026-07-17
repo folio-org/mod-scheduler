@@ -6,12 +6,15 @@ import static org.awaitility.Durations.ONE_SECOND;
 import static org.awaitility.Durations.TEN_SECONDS;
 import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
 import static org.folio.scheduler.support.TestConstants.MODULE_ID;
+import static org.folio.scheduler.support.TestConstants.MODULE_NAME;
+import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.support.TestConstants.USER_ID;
 import static org.folio.scheduler.support.TestConstants.USER_ID_UUID;
 import static org.folio.test.TestUtils.parseResponse;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.quartz.JobKey.jobKey;
 import static org.quartz.TriggerKey.triggerKey;
 import static org.quartz.impl.matchers.GroupMatcher.anyJobGroup;
 import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.AFTER_TEST_METHOD;
@@ -56,6 +59,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   private static final String TIMER_ID_TO_DELETE = "123e4567-e89b-12d3-a456-426614174002";
   private static final String SYSTEM_TIMER_ID = "123e4567-e89b-12d3-a456-426614174003";
   private static final String USER_B_ID = "5d07750b-22ce-4f42-864a-3e476e6992e8";
+  private static final String JOB_GROUP = TENANT_ID + "#" + MODULE_NAME;
 
   @Autowired private Scheduler scheduler;
 
@@ -140,7 +144,8 @@ class SchedulerTimerIT extends BaseIntegrationTest {
       .andExpect(jsonPath("$.enabled", is(true)));
     var timestampAfterSavingDesc = Instant.now();
 
-    var nextFireTime = scheduler.getTrigger(triggerKey(timerId.toString())).getNextFireTime().toInstant();
+    assertThat(scheduler.checkExists(jobKey(timerId.toString(), JOB_GROUP))).isTrue();
+    var nextFireTime = scheduler.getTrigger(triggerKey(timerId.toString(), JOB_GROUP)).getNextFireTime().toInstant();
     assertThat(nextFireTime).isAfter(timestampBeforeSavingDesc).isBefore(timestampAfterSavingDesc.plusSeconds(1));
 
     await().atMost(TEN_SECONDS).pollDelay(ONE_SECOND)
@@ -166,7 +171,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
       .andExpect(jsonPath("$.id", notNullValue()))
       .andExpect(jsonPath("$.enabled", is(true)));
 
-    var nextFireTime = scheduler.getTrigger(triggerKey(timerId)).getNextFireTime().toInstant();
+    var nextFireTime = scheduler.getTrigger(triggerKey(timerId, JOB_GROUP)).getNextFireTime().toInstant();
     assertThat(nextFireTime).isBefore(timestampBeforeSavingDesc.plusSeconds(1));
 
     await().atMost(TEN_SECONDS).pollDelay(ONE_SECOND)

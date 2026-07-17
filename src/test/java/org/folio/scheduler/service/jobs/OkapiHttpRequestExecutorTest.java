@@ -1,6 +1,7 @@
 package org.folio.scheduler.service.jobs;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.folio.scheduler.support.TestConstants.MODULE_NAME;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.support.TestConstants.TIMER_UUID;
 import static org.folio.scheduler.support.TestConstants.USER_ID;
@@ -223,25 +224,26 @@ class OkapiHttpRequestExecutorTest {
 
   private static JobDetail systemJobDetail() {
     return ScheduledJobDetail.builder()
-      .id(TIMER_UUID).tenantId(TENANT_ID).timerType(TimerType.SYSTEM).build()
+      .id(TIMER_UUID).tenantId(TENANT_ID).moduleName(MODULE_NAME).timerType(TimerType.SYSTEM).build()
       .toQuartzJobDetail();
   }
 
   private static JobDetail systemJobDetailWithStaleUserId() {
     return ScheduledJobDetail.builder()
-      .id(TIMER_UUID).tenantId(TENANT_ID).timerType(TimerType.SYSTEM).userId(USER_ID_UUID).build()
+      .id(TIMER_UUID).tenantId(TENANT_ID).moduleName(MODULE_NAME).timerType(TimerType.SYSTEM)
+      .userId(USER_ID_UUID).build()
       .toQuartzJobDetail();
   }
 
   private static JobDetail userJobDetail() {
     return ScheduledJobDetail.builder()
-      .id(TIMER_UUID).tenantId(TENANT_ID).timerType(TimerType.USER).userId(USER_ID_UUID).build()
+      .id(TIMER_UUID).tenantId(TENANT_ID).moduleName(MODULE_NAME).timerType(TimerType.USER).userId(USER_ID_UUID).build()
       .toQuartzJobDetail();
   }
 
   private static JobDetail userJobDetailWithoutUserId() {
     return ScheduledJobDetail.builder()
-      .id(TIMER_UUID).tenantId(TENANT_ID).timerType(TimerType.USER).build()
+      .id(TIMER_UUID).tenantId(TENANT_ID).moduleName(MODULE_NAME).timerType(TimerType.USER).build()
       .toQuartzJobDetail();
   }
 

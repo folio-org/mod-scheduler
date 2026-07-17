@@ -267,6 +267,15 @@ public class SchedulerTimerService {
     }
   }
 
+  // The module name is part of a timer's identity: it drives the natural key and the Quartz job/trigger group
+  // (<tenant>#<moduleName>). Allowing it to change on update would orphan the existing Quartz job, so it is immutable.
+  private static void rejectModuleNameChange(TimerDescriptor oldDescriptor, TimerDescriptor newDescriptor) {
+    if (!Objects.equals(oldDescriptor.getModuleName(), newDescriptor.getModuleName())) {
+      throw new RequestValidationException(
+        "Timer module name cannot be changed", "moduleName", newDescriptor.getModuleName());
+    }
+  }
+
   private boolean shouldEnforceSystemTimerProtection(RequestOrigin requestOrigin) {
     return requestOrigin == RequestOrigin.API && !timerApiConfigurationProperties.isAllowSystemTimerMutation();
   }
@@ -287,6 +296,7 @@ public class SchedulerTimerService {
     var id = inputDescriptor.getId();
 
     var oldTimerDescriptor = getByIdInternal(id);
+    rejectModuleNameChange(oldTimerDescriptor, inputDescriptor);
 
     inputDescriptor.modified(true);
 

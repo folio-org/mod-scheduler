@@ -8,6 +8,7 @@ import static org.folio.scheduler.domain.dto.TimerUnit.HOUR;
 import static org.folio.scheduler.domain.dto.TimerUnit.MILLISECOND;
 import static org.folio.scheduler.domain.dto.TimerUnit.MINUTE;
 import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
+import static org.folio.scheduler.support.TestConstants.MODULE_NAME;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.support.TestConstants.TIMER_ID;
 import static org.folio.scheduler.support.TestConstants.USER_ID_UUID;
@@ -60,6 +61,8 @@ import org.quartz.Trigger;
 @UnitTest
 @ExtendWith(MockitoExtension.class)
 class JobSchedulingServiceTest {
+
+  private static final String JOB_GROUP = TENANT_ID + "#" + MODULE_NAME;
 
   @InjectMocks private JobSchedulingService service;
   @Mock private Scheduler scheduler;
@@ -248,7 +251,9 @@ class JobSchedulingServiceTest {
     var oldTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().unit(SECOND).delay("10"));
     var newTimerDesc = timerDescriptor().routingEntry(re);
 
-    when(scheduler.rescheduleJob(eq(triggerKey(TIMER_ID)), triggerArgumentCaptor.capture())).thenReturn(new Date());
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    when(scheduler.rescheduleJob(eq(triggerKey(TIMER_ID, JOB_GROUP)), triggerArgumentCaptor.capture()))
+      .thenReturn(new Date());
 
     service.reschedule(oldTimerDesc, newTimerDesc);
 
@@ -268,7 +273,9 @@ class JobSchedulingServiceTest {
     var oldTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().schedule(oldSchedule));
     var newTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().schedule(newSchedule));
 
-    when(scheduler.rescheduleJob(eq(triggerKey(TIMER_ID)), triggerArgumentCaptor.capture())).thenReturn(new Date());
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    when(scheduler.rescheduleJob(eq(triggerKey(TIMER_ID, JOB_GROUP)), triggerArgumentCaptor.capture()))
+      .thenReturn(new Date());
 
     service.reschedule(oldTimerDesc, newTimerDesc);
 
@@ -294,9 +301,11 @@ class JobSchedulingServiceTest {
     var oldTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().unit(SECOND).delay("10"));
     var newTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().unit(SECOND).delay("0"));
 
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+
     service.reschedule(oldTimerDesc, newTimerDesc);
 
-    verify(scheduler).deleteJob(jobKey(TIMER_ID));
+    verify(scheduler).deleteJob(jobKey(TIMER_ID, JOB_GROUP));
   }
 
   @Test
@@ -304,9 +313,11 @@ class JobSchedulingServiceTest {
     var oldTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().unit(SECOND).delay("10"));
     var newTimerDesc = timerDescriptor().routingEntry(null);
 
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+
     service.reschedule(oldTimerDesc, newTimerDesc);
 
-    verify(scheduler).deleteJob(jobKey(TIMER_ID));
+    verify(scheduler).deleteJob(jobKey(TIMER_ID, JOB_GROUP));
   }
 
   @ParameterizedTest(name = "[{index}] test case: {index}")
@@ -324,7 +335,8 @@ class JobSchedulingServiceTest {
   void reschedule_negative_internalError() throws SchedulerException {
     var oldTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().unit(SECOND).delay("10"));
     var newTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().unit(SECOND).delay("25"));
-    when(scheduler.rescheduleJob(eq(triggerKey(TIMER_ID)), triggerArgumentCaptor.capture())).thenThrow(
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    when(scheduler.rescheduleJob(eq(triggerKey(TIMER_ID, JOB_GROUP)), triggerArgumentCaptor.capture())).thenThrow(
       new SchedulerException("Failed to reschedule job"));
 
     assertThatThrownBy(() -> service.reschedule(oldTimerDesc, newTimerDesc))
@@ -334,19 +346,22 @@ class JobSchedulingServiceTest {
 
   @Test
   void delete_positive() throws SchedulerException {
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
     service.delete(timerDescriptor());
-    verify(scheduler).deleteJob(new JobKey(TIMER_ID));
+    verify(scheduler).deleteJob(jobKey(TIMER_ID, JOB_GROUP));
   }
 
   @Test
   void delete_positive_disabled() throws SchedulerException {
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
     service.delete(timerDescriptor().enabled(false));
-    verify(scheduler).deleteJob(new JobKey(TIMER_ID));
+    verify(scheduler).deleteJob(jobKey(TIMER_ID, JOB_GROUP));
   }
 
   @Test
   void delete_negative() throws SchedulerException {
-    var jobKey = new JobKey(TIMER_ID);
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    var jobKey = new JobKey(TIMER_ID, JOB_GROUP);
     var timerDescriptor = timerDescriptor();
     when(scheduler.deleteJob(jobKey)).thenThrow(new SchedulerException("Failed to delete job"));
     assertThatThrownBy(() -> service.delete(timerDescriptor))
@@ -367,14 +382,14 @@ class JobSchedulingServiceTest {
 
   private static CronTrigger cronTrigger(String cronExpression, String timezone) {
     return newTrigger()
-      .withIdentity(TIMER_ID)
+      .withIdentity(triggerKey(TIMER_ID, JOB_GROUP))
       .withSchedule(cronSchedule(cronExpression).inTimeZone(getTimeZone(timezone)))
       .build();
   }
 
   private static SimpleTrigger simpleTrigger(long repeatInterval) {
     return newTrigger()
-      .withIdentity(TIMER_ID)
+      .withIdentity(triggerKey(TIMER_ID, JOB_GROUP))
       .withSchedule(simpleSchedule().repeatForever().withIntervalInMilliseconds(repeatInterval))
       .build();
   }

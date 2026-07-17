@@ -45,6 +45,7 @@ import org.springframework.test.context.jdbc.Sql;
 class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
 
   private static final String ENTITLEMENT_EVENTS_TOPIC = "it.test.entitlement";
+  private static final String MOD_BAR_JOB_GROUP = TENANT_ID + "#mod-bar";
 
   @Autowired
   private KafkaTemplate<String, String> kafkaTemplate;
@@ -130,12 +131,12 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
     // the USER timer that carries a user id is enabled and scheduled
     await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
       .untilAsserted(() -> checkTimerEnabled(timerWithUserId, true));
-    assertThat(scheduler.checkExists(jobKey(timerWithUserId))).isTrue();
+    assertThat(scheduler.checkExists(jobKey(timerWithUserId, MOD_BAR_JOB_GROUP))).isTrue();
 
     // the USER timer without a user id is skipped: it is not scheduled and stays disabled
     var timerWithoutUserId = "123e4567-e89b-12d3-a456-4266141740a1";
     checkTimerEnabled(timerWithoutUserId, false);
-    assertThat(scheduler.checkExists(jobKey(timerWithoutUserId))).isFalse();
+    assertThat(scheduler.checkExists(jobKey(timerWithoutUserId, MOD_BAR_JOB_GROUP))).isFalse();
   }
 
   private static void checkTimerEnabled(String id, boolean enabled) throws Exception {

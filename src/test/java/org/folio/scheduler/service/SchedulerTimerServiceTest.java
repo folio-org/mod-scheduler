@@ -476,6 +476,24 @@ class SchedulerTimerServiceTest {
   }
 
   @Test
+  void update_negative_moduleNameCannotBeChanged() {
+    var inputDescriptor = timerDescriptorWithPath("/modified").moduleId("mod-other-1.0.0");
+    var inputDescriptorCopy = timerDescriptorWithPath("/modified").moduleId("mod-other-1.0.0");
+    var existingDescriptor = timerDescriptor().moduleId(MODULE_ID);
+    var existingEntity = timerDescriptorEntity(existingDescriptor);
+
+    when(mapper.deepCopy(inputDescriptor)).thenReturn(inputDescriptorCopy);
+    when(repository.findById(TIMER_UUID)).thenReturn(Optional.of(existingEntity));
+    when(mapper.toDescriptor(existingEntity)).thenReturn(existingDescriptor);
+
+    assertThatThrownBy(() -> service.update(TIMER_UUID, inputDescriptor, RequestOrigin.KAFKA))
+      .isInstanceOfSatisfying(RequestValidationException.class, ex -> {
+        assertThat(ex.getErrorParameter().getKey()).isEqualTo("moduleName");
+        assertThat(ex.getErrorParameter().getValue()).isEqualTo("mod-other");
+      });
+  }
+
+  @Test
   void delete_positive() {
     var timerDescriptorEntity = timerDescriptorEntity();
     var timerDescriptor = timerDescriptorEntity.getTimerDescriptor();

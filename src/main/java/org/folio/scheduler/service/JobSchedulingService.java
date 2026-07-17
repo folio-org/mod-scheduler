@@ -17,6 +17,7 @@ import static org.folio.scheduler.domain.dto.TimerUnit.MILLISECOND;
 import static org.folio.scheduler.domain.dto.TimerUnit.MINUTE;
 import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
 import static org.folio.scheduler.utils.CronUtils.convertToQuartz;
+import static org.folio.scheduler.utils.TimerDescriptorUtils.evalModuleName;
 import static org.quartz.CronScheduleBuilder.cronSchedule;
 import static org.quartz.JobKey.jobKey;
 import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
@@ -115,7 +116,7 @@ public class JobSchedulingService {
     requireNonNull(timerDescriptor.getId(), "Timer descriptor id cannot be null");
 
     try {
-      scheduler.deleteJob(jobKey(timerDescriptor.getId().toString()));
+      scheduler.deleteJob(jobKey(timerDescriptor.getId().toString(), jobGroup(timerDescriptor)));
     } catch (SchedulerException exception) {
       log.error("Failed to delete job [jobId: {}] : {}", timerDescriptor.getId(), exception.getMessage());
       throw new TimerSchedulingException("Failed to delete job", exception);
@@ -134,7 +135,7 @@ public class JobSchedulingService {
       return;
     }
 
-    scheduler.rescheduleJob(triggerKey(timerId), getTrigger(newDesc));
+    scheduler.rescheduleJob(triggerKey(timerId, jobGroup(newDesc)), getTrigger(newDesc));
   }
 
   private void deleteRecurringJobIfPresent(TimerDescriptor prevTimerDesc) throws SchedulerException {
@@ -144,7 +145,7 @@ public class JobSchedulingService {
       return;
     }
 
-    scheduler.deleteJob(jobKey(timerId.toString()));
+    scheduler.deleteJob(jobKey(timerId.toString(), jobGroup(prevTimerDesc)));
     log.info("Recurring job be deleted, timer is disabled [timerId: {}]", timerId);
   }
 
@@ -152,6 +153,7 @@ public class JobSchedulingService {
     var jobDetailBuilder = ScheduledJobDetail.builder()
       .id(timerDescriptor.getId())
       .tenantId(folioExecutionContext.getTenantId())
+      .moduleName(evalModuleName(timerDescriptor))
       .timerType(timerDescriptor.getType());
 
     if (timerDescriptor.getType() == TimerType.USER) {
@@ -164,6 +166,10 @@ public class JobSchedulingService {
     // time via the tenant's system user.
 
     return jobDetailBuilder.build().toQuartzJobDetail();
+  }
+
+  private String jobGroup(TimerDescriptor timerDescriptor) {
+    return ScheduledJobDetail.jobGroup(folioExecutionContext.getTenantId(), evalModuleName(timerDescriptor));
   }
 
   private Trigger getTrigger(TimerDescriptor timerDescriptor) {
@@ -183,25 +189,27 @@ public class JobSchedulingService {
   private Trigger getForeverRepeatingTrigger(TimerDescriptor timerDescriptor) {
     var re = timerDescriptor.getRoutingEntry();
     var timerId = timerDescriptor.getId().toString();
+    var group = jobGroup(timerDescriptor);
     var repeatInterval = timerUnitFactorMap.get(re.getUnit()) * Long.parseLong(re.getDelay());
     Validate.isTrue(repeatInterval >= 1000L, () -> "Repeat interval must be greater than 1 second.");
     return newTrigger()
-      .withIdentity(triggerKey(timerId))
+      .withIdentity(triggerKey(timerId, group))
       .withSchedule(simpleSchedule().repeatForever().withIntervalInMilliseconds(repeatInterval))
-      .forJob(jobKey(timerId))
+      .forJob(jobKey(timerId, group))
       .build();
   }
 
   private CronTrigger getCronTrigger(TimerDescriptor timerDescriptor) {
     var timerId = timerDescriptor.getId().toString();
+    var group = jobGroup(timerDescriptor);
     var schedule = timerDescriptor.getRoutingEntry().getSchedule();
     var timeZone = getIfNull(schedule.getZone(), "UTC");
     var cron = schedule.getCron();
     var cronExpression = convertToQuartz(cron);
     return newTrigger()
-      .withIdentity(triggerKey(timerId))
+      .withIdentity(triggerKey(timerId, group))
       .withSchedule(cronSchedule(cronExpression).inTimeZone(getTimeZone(timeZone)))
-      .forJob(jobKey(timerId))
+      .forJob(jobKey(timerId, group))
       .build();
   }
 
