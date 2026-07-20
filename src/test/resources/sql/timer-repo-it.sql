@@ -1,6 +1,6 @@
-insert into test_mod_scheduler.timer(id, module_id, module_name, type, timer_descriptor)
+insert into test_mod_scheduler.timer(id, module_id, module_name, type, user_id, timer_descriptor)
 values
-    ('123e4567-e89b-12d3-a456-426614174000', 'mod-foo-1.0.0', 'mod-foo', 'USER', '{
+    ('123e4567-e89b-12d3-a456-426614174000', 'mod-foo-1.0.0', 'mod-foo', 'USER', '00000000-0000-0000-0000-000000000000', '{
         "id":"123e4567-e89b-12d3-a456-426614174000",
         "modified": "false",
         "enabled": "true",
@@ -17,7 +17,7 @@ values
         }
        }'
     ),
-    ('123e4567-e89b-12d3-a456-426614174001', 'mod-foo-1.0.0', 'mod-foo', 'USER', '{
+    ('123e4567-e89b-12d3-a456-426614174001', 'mod-foo-1.0.0', 'mod-foo', 'USER', '00000000-0000-0000-0000-000000000000', '{
         "id": "123e4567-e89b-12d3-a456-426614174001",
         "enabled": "false",
         "modified": "false",
@@ -35,7 +35,7 @@ values
         }
        }'
     ),
-    ('123e4567-e89b-12d3-a456-426614174002', 'mod-foo-1.0.0', 'mod-foo', 'USER', '{
+    ('123e4567-e89b-12d3-a456-426614174002', 'mod-foo-1.0.0', 'mod-foo', 'USER', '00000000-0000-0000-0000-000000000000', '{
         "id": "123e4567-e89b-12d3-a456-426614174002",
         "modified": "false",
         "moduleId": "mod-foo-1.0.0",
@@ -52,7 +52,7 @@ values
         }
        }'
     ),
-    ('123e4567-e89b-12d3-a456-426614174003', 'mod-foo-1.0.0', 'mod-foo', 'SYSTEM', '{
+    ('123e4567-e89b-12d3-a456-426614174003', 'mod-foo-1.0.0', 'mod-foo', 'SYSTEM', null, '{
         "id": "123e4567-e89b-12d3-a456-426614174003",
         "modified": "false",
         "enabled": "false",

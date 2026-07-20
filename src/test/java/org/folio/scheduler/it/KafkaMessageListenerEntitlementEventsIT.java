@@ -12,6 +12,7 @@ import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.quartz.JobKey.jobKey;
 import static org.quartz.impl.matchers.GroupMatcher.anyJobGroup;
 import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.AFTER_TEST_METHOD;
 import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TEST_METHOD;
@@ -26,6 +27,7 @@ import org.folio.test.extensions.KeycloakRealms;
 import org.folio.test.extensions.WireMockStub;
 import org.folio.test.types.IntegrationTest;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.quartz.Scheduler;
@@ -43,6 +45,7 @@ import org.springframework.test.context.jdbc.Sql;
 class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
 
   private static final String ENTITLEMENT_EVENTS_TOPIC = "it.test.entitlement";
+  private static final String MOD_BAR_JOB_GROUP = TENANT_ID + "#mod-bar";
 
   @Autowired
   private KafkaTemplate<String, String> kafkaTemplate;
@@ -62,6 +65,11 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
     removeTenant();
     deleteAllQuartzJobs(scheduler);
     assertThat(scheduler.getJobKeys(anyJobGroup())).isEmpty();
+  }
+
+  @AfterEach
+  void clearScheduler() throws Exception {
+    scheduler.clear();
   }
 
   @Test
@@ -109,6 +117,26 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
         checkTimerEnabled("123e4567-e89b-12d3-a456-426614174003", true);
       });
     await().untilAsserted(() -> verify(liquibaseMigrationLockService, atLeast(2)).isMigrationRunning());
+  }
+
+  @Test
+  @KeycloakRealms("/json/keycloak/test-realm.json")
+  @WireMockStub("/wiremock/stubs/timer-call-targets.json")
+  @Sql(scripts = "classpath:/sql/entitle-skip-it.sql", executionPhase = BEFORE_TEST_METHOD)
+  void handleEntitleEvent_positive_skipsUserTimerWithoutUserId() throws Exception {
+    var timerWithUserId = "123e4567-e89b-12d3-a456-4266141740a0";
+
+    kafkaTemplate.send(ENTITLEMENT_EVENTS_TOPIC, asJsonString(entitlementEvent().setModuleId("mod-bar-1.0.0")));
+
+    // the USER timer that carries a user id is enabled and scheduled
+    await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
+      .untilAsserted(() -> checkTimerEnabled(timerWithUserId, true));
+    assertThat(scheduler.checkExists(jobKey(timerWithUserId, MOD_BAR_JOB_GROUP))).isTrue();
+
+    // the USER timer without a user id is skipped: it is not scheduled and stays disabled
+    var timerWithoutUserId = "123e4567-e89b-12d3-a456-4266141740a1";
+    checkTimerEnabled(timerWithoutUserId, false);
+    assertThat(scheduler.checkExists(jobKey(timerWithoutUserId, MOD_BAR_JOB_GROUP))).isFalse();
   }
 
   private static void checkTimerEnabled(String id, boolean enabled) throws Exception {

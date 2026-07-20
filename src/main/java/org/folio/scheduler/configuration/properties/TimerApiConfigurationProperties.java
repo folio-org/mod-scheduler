@@ -13,4 +13,10 @@ public class TimerApiConfigurationProperties {
    * Allows SYSTEM timers to be created, updated, or deleted via the public REST API.
    */
   private boolean allowSystemTimerMutation = false;
+
+  /**
+   * Allows a USER timer's userId to be refreshed to the current context user on update. When {@code false} (default)
+   * the userId is set once on creation and preserved across updates.
+   */
+  private boolean allowUserIdUpdate = false;
 }

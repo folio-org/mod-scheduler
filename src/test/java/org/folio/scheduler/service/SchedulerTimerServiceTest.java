@@ -5,11 +5,13 @@ import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.folio.scheduler.support.TestConstants.TIMER_UUID;
+import static org.folio.scheduler.support.TestConstants.USER_ID_UUID;
 import static org.folio.scheduler.support.TestValues.timerDescriptor;
 import static org.folio.scheduler.support.TestValues.timerDescriptorEntity;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -29,6 +31,7 @@ import org.folio.scheduler.domain.model.SearchResult;
 import org.folio.scheduler.exception.RequestValidationException;
 import org.folio.scheduler.mapper.TimerDescriptorMapper;
 import org.folio.scheduler.repository.SchedulerTimerRepository;
+import org.folio.spring.FolioExecutionContext;
 import org.folio.spring.data.OffsetRequest;
 import org.folio.test.types.UnitTest;
 import org.junit.jupiter.api.Test;
@@ -52,6 +55,7 @@ class SchedulerTimerServiceTest {
   @Mock private JobSchedulingService jobSchedulingService;
   @Mock private EntityManager entityManager;
   @Mock private TimerApiConfigurationProperties timerApiConfigurationProperties;
+  @Mock private FolioExecutionContext folioExecutionContext;
 
   @Captor private ArgumentCaptor<TimerDescriptor> timerDescriptorCaptor;
 
@@ -129,6 +133,7 @@ class SchedulerTimerServiceTest {
     when(repository.saveAndFlush(entity)).thenReturn(entity);
     when(mapper.toDescriptor(entity)).thenReturn(descriptorCopy);
     when(jobSchedulingService.schedule(descriptorCopy)).thenReturn(true);
+    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
 
     var actual = service.create(descriptor, RequestOrigin.KAFKA);
     assertThat(actual).isEqualTo(descriptorCopy);
@@ -180,6 +185,7 @@ class SchedulerTimerServiceTest {
     when(mapper.toDescriptor(any(TimerDescriptorEntity.class)))
       .thenAnswer(inv -> ((TimerDescriptorEntity) inv.getArgument(0)).getTimerDescriptor());
     when(jobSchedulingService.schedule(any(TimerDescriptor.class))).thenReturn(true);
+    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
 
     var actual = service.create(descriptor, RequestOrigin.KAFKA);
 
@@ -249,10 +255,119 @@ class SchedulerTimerServiceTest {
     when(repository.saveAndFlush(entityToUpdate)).thenReturn(entityToUpdate);
     doNothing().when(entityManager).refresh(entityToUpdate);
     doNothing().when(jobSchedulingService).reschedule(existingDescriptor, expectedDescriptor);
+    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
 
     var actual = service.update(TIMER_UUID, inputDescriptor, RequestOrigin.KAFKA);
 
     assertThat(actual).isEqualTo(expectedDescriptor);
+  }
+
+  @Test
+  void create_positive_userTimerPopulatesUserIdFromContext() {
+    var descriptor = timerDescriptor().moduleId(MODULE_ID);
+    var descriptorCopy = timerDescriptor().moduleId(MODULE_ID);
+    var entity = timerDescriptorEntity(descriptorCopy);
+
+    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
+    when(mapper.deepCopy(descriptor)).thenReturn(descriptorCopy);
+    when(repository.findByNaturalKey(TimerDescriptorEntity.toNaturalKey(descriptorCopy))).thenReturn(Optional.empty());
+    when(mapper.toDescriptorEntity(descriptorCopy)).thenReturn(entity);
+    when(repository.saveAndFlush(entity)).thenReturn(entity);
+    when(mapper.toDescriptor(entity)).thenReturn(descriptorCopy);
+    when(jobSchedulingService.schedule(descriptorCopy)).thenReturn(true);
+
+    service.create(descriptor, RequestOrigin.KAFKA);
+
+    assertThat(entity.getUserId()).isEqualTo(USER_ID_UUID);
+  }
+
+  @Test
+  void create_positive_systemTimerLeavesUserIdEmpty() {
+    var descriptor = timerDescriptor().moduleId(MODULE_ID).type(TimerType.SYSTEM);
+    var descriptorCopy = timerDescriptor().moduleId(MODULE_ID).type(TimerType.SYSTEM);
+    var entity = timerDescriptorEntity(descriptorCopy);
+    entity.setUserId(randomUUID()); // must be cleared for a SYSTEM timer
+
+    when(mapper.deepCopy(descriptor)).thenReturn(descriptorCopy);
+    when(repository.findByNaturalKey(TimerDescriptorEntity.toNaturalKey(descriptorCopy))).thenReturn(Optional.empty());
+    when(mapper.toDescriptorEntity(descriptorCopy)).thenReturn(entity);
+    when(repository.saveAndFlush(entity)).thenReturn(entity);
+    when(mapper.toDescriptor(entity)).thenReturn(descriptorCopy);
+    when(jobSchedulingService.schedule(descriptorCopy)).thenReturn(true);
+
+    service.create(descriptor, RequestOrigin.KAFKA);
+
+    assertThat(entity.getUserId()).isNull();
+  }
+
+  @Test
+  void create_negative_userTimerWithoutContextUser() {
+    var descriptor = timerDescriptor().moduleId(MODULE_ID);
+    var descriptorCopy = timerDescriptor().moduleId(MODULE_ID);
+    var entity = timerDescriptorEntity(descriptorCopy);
+
+    when(folioExecutionContext.getUserId()).thenReturn(null);
+    when(mapper.deepCopy(descriptor)).thenReturn(descriptorCopy);
+    when(repository.findByNaturalKey(TimerDescriptorEntity.toNaturalKey(descriptorCopy))).thenReturn(Optional.empty());
+    when(mapper.toDescriptorEntity(descriptorCopy)).thenReturn(entity);
+
+    assertThatThrownBy(() -> service.create(descriptor, RequestOrigin.KAFKA))
+      .isInstanceOf(RequestValidationException.class)
+      .hasMessage("User timer requires a userId");
+  }
+
+  @Test
+  void update_positive_preservesUserIdByDefault() {
+    var existingUserId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    var inputDescriptor = timerDescriptorWithPath("/modified");
+    var inputDescriptorCopy = timerDescriptorWithPath("/modified");
+    var existingDescriptor = timerDescriptor().moduleId(MODULE_ID).modified(null).userId(existingUserId);
+    var existingEntity = timerDescriptorEntity(existingDescriptor);
+    var expectedDescriptor = timerDescriptorWithPath("/modified").modified(true);
+    var entityToUpdate = timerDescriptorEntity(expectedDescriptor);
+
+    when(mapper.deepCopy(inputDescriptor)).thenReturn(inputDescriptorCopy);
+    when(repository.findById(TIMER_UUID)).thenReturn(Optional.of(existingEntity));
+    when(mapper.toDescriptor(any(TimerDescriptorEntity.class))).thenAnswer(inv -> {
+      var entity = (TimerDescriptorEntity) inv.getArgument(0);
+      return entity.getTimerDescriptor().getModified() == null ? existingDescriptor : expectedDescriptor;
+    });
+    when(mapper.toDescriptorEntity(any(TimerDescriptor.class))).thenReturn(entityToUpdate);
+    when(repository.saveAndFlush(entityToUpdate)).thenReturn(entityToUpdate);
+    doNothing().when(entityManager).refresh(entityToUpdate);
+    doNothing().when(jobSchedulingService).reschedule(existingDescriptor, expectedDescriptor);
+
+    service.update(TIMER_UUID, inputDescriptor, RequestOrigin.KAFKA);
+
+    assertThat(entityToUpdate.getUserId()).isEqualTo(existingUserId);
+  }
+
+  @Test
+  void update_positive_refreshesUserIdWhenAllowUserIdUpdateEnabled() {
+    var existingUserId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    var inputDescriptor = timerDescriptorWithPath("/modified");
+    var inputDescriptorCopy = timerDescriptorWithPath("/modified");
+    var existingDescriptor = timerDescriptor().moduleId(MODULE_ID).modified(null).userId(existingUserId);
+    var existingEntity = timerDescriptorEntity(existingDescriptor);
+    var expectedDescriptor = timerDescriptorWithPath("/modified").modified(true);
+    var entityToUpdate = timerDescriptorEntity(expectedDescriptor);
+
+    when(timerApiConfigurationProperties.isAllowUserIdUpdate()).thenReturn(true);
+    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
+    when(mapper.deepCopy(inputDescriptor)).thenReturn(inputDescriptorCopy);
+    when(repository.findById(TIMER_UUID)).thenReturn(Optional.of(existingEntity));
+    when(mapper.toDescriptor(any(TimerDescriptorEntity.class))).thenAnswer(inv -> {
+      var entity = (TimerDescriptorEntity) inv.getArgument(0);
+      return entity.getTimerDescriptor().getModified() == null ? existingDescriptor : expectedDescriptor;
+    });
+    when(mapper.toDescriptorEntity(any(TimerDescriptor.class))).thenReturn(entityToUpdate);
+    when(repository.saveAndFlush(entityToUpdate)).thenReturn(entityToUpdate);
+    doNothing().when(entityManager).refresh(entityToUpdate);
+    doNothing().when(jobSchedulingService).reschedule(existingDescriptor, expectedDescriptor);
+
+    service.update(TIMER_UUID, inputDescriptor, RequestOrigin.KAFKA);
+
+    assertThat(entityToUpdate.getUserId()).isEqualTo(USER_ID_UUID);
   }
 
   @Test
@@ -361,6 +476,24 @@ class SchedulerTimerServiceTest {
   }
 
   @Test
+  void update_negative_moduleNameCannotBeChanged() {
+    var inputDescriptor = timerDescriptorWithPath("/modified").moduleId("mod-other-1.0.0");
+    var inputDescriptorCopy = timerDescriptorWithPath("/modified").moduleId("mod-other-1.0.0");
+    var existingDescriptor = timerDescriptor().moduleId(MODULE_ID);
+    var existingEntity = timerDescriptorEntity(existingDescriptor);
+
+    when(mapper.deepCopy(inputDescriptor)).thenReturn(inputDescriptorCopy);
+    when(repository.findById(TIMER_UUID)).thenReturn(Optional.of(existingEntity));
+    when(mapper.toDescriptor(existingEntity)).thenReturn(existingDescriptor);
+
+    assertThatThrownBy(() -> service.update(TIMER_UUID, inputDescriptor, RequestOrigin.KAFKA))
+      .isInstanceOfSatisfying(RequestValidationException.class, ex -> {
+        assertThat(ex.getErrorParameter().getKey()).isEqualTo("moduleName");
+        assertThat(ex.getErrorParameter().getValue()).isEqualTo("mod-other");
+      });
+  }
+
+  @Test
   void delete_positive() {
     var timerDescriptorEntity = timerDescriptorEntity();
     var timerDescriptor = timerDescriptorEntity.getTimerDescriptor();
@@ -439,6 +572,7 @@ class SchedulerTimerServiceTest {
     when(repository.findById(entity.getId())).thenReturn(Optional.of(entity));
     when(mapper.toDescriptor(entity)).thenReturn(existingDescriptor, updatedDescriptor);
     doNothing().when(jobSchedulingService).reschedule(any(TimerDescriptor.class), any(TimerDescriptor.class));
+    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
 
     var actual = service.create(descriptor, RequestOrigin.KAFKA);
     assertThat(actual).isEqualTo(updatedDescriptor);
@@ -456,6 +590,7 @@ class SchedulerTimerServiceTest {
     doReturn(
       List.of(mockTimerDescriptorEntity(id1), mockTimerDescriptorEntity(id2), mockTimerDescriptorEntity(id3))).when(
       repository).findByModuleNameAndEnabledState(module, enabled);
+    when(mapper.toDescriptor(any(TimerDescriptorEntity.class))).thenReturn(timerDescriptor());
 
     int result = service.switchModuleTimers(module, enabled);
 
@@ -464,11 +599,36 @@ class SchedulerTimerServiceTest {
     verify(repository, times(1)).switchTimersByIds(List.of(id1, id2, id3), enabled);
   }
 
+  @Test
+  void switchModuleTimers_positive_skipsUserTimerWithoutUserId() {
+    var module = "mod-foo";
+    var withUserId = userTimerEntity(randomUUID(), USER_ID_UUID);
+    var withoutUserId = userTimerEntity(randomUUID(), null);
+
+    doReturn(List.of(withUserId, withoutUserId)).when(repository).findByModuleNameAndEnabledState(module, true);
+    when(mapper.toDescriptor(withUserId)).thenReturn(timerDescriptor());
+
+    var result = service.switchModuleTimers(module, true);
+
+    assertThat(result).isEqualTo(1);
+    verify(repository).switchTimersByIds(List.of(withUserId.getId()), true);
+    verify(jobSchedulingService).schedule(any(TimerDescriptor.class));
+    verify(mapper, never()).toDescriptor(withoutUserId);
+  }
+
   private static TimerDescriptorEntity mockTimerDescriptorEntity(UUID id) {
     var result = new TimerDescriptorEntity();
     result.setId(id);
     result.setTimerDescriptor(new TimerDescriptor());
     return result;
+  }
+
+  private static TimerDescriptorEntity userTimerEntity(UUID id, UUID userId) {
+    var entity = new TimerDescriptorEntity();
+    entity.setId(id);
+    entity.setType(org.folio.scheduler.domain.model.TimerType.USER);
+    entity.setUserId(userId);
+    return entity;
   }
 
   private static TimerDescriptor timerDescriptorWithPath(String path) {

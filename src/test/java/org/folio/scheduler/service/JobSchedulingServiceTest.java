@@ -8,10 +8,13 @@ import static org.folio.scheduler.domain.dto.TimerUnit.HOUR;
 import static org.folio.scheduler.domain.dto.TimerUnit.MILLISECOND;
 import static org.folio.scheduler.domain.dto.TimerUnit.MINUTE;
 import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
+import static org.folio.scheduler.support.TestConstants.MODULE_NAME;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.support.TestConstants.TIMER_ID;
 import static org.folio.scheduler.support.TestConstants.USER_ID_UUID;
 import static org.folio.scheduler.support.TestValues.timerDescriptor;
+import static org.folio.spring.integration.XOkapiHeaders.TENANT;
+import static org.folio.spring.integration.XOkapiHeaders.USER_ID;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -29,6 +32,7 @@ import java.util.Date;
 import java.util.stream.Stream;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.RoutingEntrySchedule;
+import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.domain.dto.TimerUnit;
 import org.folio.scheduler.exception.RequestValidationException;
 import org.folio.scheduler.exception.TimerSchedulingException;
@@ -58,11 +62,14 @@ import org.quartz.Trigger;
 @ExtendWith(MockitoExtension.class)
 class JobSchedulingServiceTest {
 
+  private static final String JOB_GROUP = TENANT_ID + "#" + MODULE_NAME;
+
   @InjectMocks private JobSchedulingService service;
   @Mock private Scheduler scheduler;
   @Mock private FolioExecutionContext folioExecutionContext;
 
   @Captor private ArgumentCaptor<Trigger> triggerArgumentCaptor;
+  @Captor private ArgumentCaptor<JobDetail> jobDetailArgumentCaptor;
 
   @ParameterizedTest
   @MethodSource("cronBasedTimerDataProvider")
@@ -71,9 +78,9 @@ class JobSchedulingServiceTest {
     throws SchedulerException {
     var cronSchedule = new RoutingEntrySchedule().cron(cron).zone(zone);
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
-    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
     when(scheduler.scheduleJob(any(JobDetail.class), triggerArgumentCaptor.capture())).thenReturn(new Date());
-    var timerDescriptor = timerDescriptor().routingEntry(new RoutingEntry().schedule(cronSchedule));
+    var routingEntry = new RoutingEntry().schedule(cronSchedule);
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID).routingEntry(routingEntry);
 
     service.schedule(timerDescriptor);
 
@@ -86,9 +93,9 @@ class JobSchedulingServiceTest {
   void schedule_parameterized_simpleTrigger(String delay, TimerUnit unit, long expectedRepeatInterval)
     throws SchedulerException {
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
-    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
     when(scheduler.scheduleJob(any(JobDetail.class), triggerArgumentCaptor.capture())).thenReturn(new Date());
-    var timerDescriptor = timerDescriptor().routingEntry(new RoutingEntry().delay(delay).unit(unit));
+    var routingEntry = new RoutingEntry().delay(delay).unit(unit);
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID).routingEntry(routingEntry);
 
     assertThat(service.schedule(timerDescriptor)).isTrue();
 
@@ -106,11 +113,11 @@ class JobSchedulingServiceTest {
   }
 
   @Test
-  void schedule_positive_withNullUserId() throws SchedulerException {
+  void schedule_positive_systemTimerWithoutUserId() throws SchedulerException {
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
-    when(folioExecutionContext.getUserId()).thenReturn(null);
     when(scheduler.scheduleJob(any(JobDetail.class), triggerArgumentCaptor.capture())).thenReturn(new Date());
-    var timerDescriptor = timerDescriptor().routingEntry(new RoutingEntry().delay("10").unit(SECOND));
+    var re = new RoutingEntry().delay("10").unit(SECOND);
+    var timerDescriptor = timerDescriptor().type(TimerType.SYSTEM).routingEntry(re);
 
     assertThat(service.schedule(timerDescriptor)).isTrue();
 
@@ -118,10 +125,52 @@ class JobSchedulingServiceTest {
   }
 
   @Test
+  void schedule_positive_systemTimerOmitsUserIdInJobData() throws SchedulerException {
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    when(scheduler.scheduleJob(jobDetailArgumentCaptor.capture(), any(Trigger.class))).thenReturn(new Date());
+    var re = new RoutingEntry().delay("20").unit(SECOND);
+    var timerDescriptor = timerDescriptor().type(TimerType.SYSTEM).routingEntry(re);
+
+    service.schedule(timerDescriptor);
+
+    var jobDataMap = jobDetailArgumentCaptor.getValue().getJobDataMap();
+    assertThat(jobDataMap.getString(TENANT)).isEqualTo(TENANT_ID);
+    assertThat(jobDataMap.getString("timer-type")).isEqualTo("system");
+    assertThat(jobDataMap.containsKey(USER_ID)).isFalse();
+  }
+
+  @Test
+  void schedule_positive_userTimerStoresUserIdInJobData() throws SchedulerException {
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    when(scheduler.scheduleJob(jobDetailArgumentCaptor.capture(), any(Trigger.class))).thenReturn(new Date());
+    var re = new RoutingEntry().delay("20").unit(SECOND);
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID).routingEntry(re);
+
+    service.schedule(timerDescriptor);
+
+    var jobDataMap = jobDetailArgumentCaptor.getValue().getJobDataMap();
+    assertThat(jobDataMap.getString(TENANT)).isEqualTo(TENANT_ID);
+    assertThat(jobDataMap.getString("timer-type")).isEqualTo("user");
+    assertThat(jobDataMap.getString(USER_ID)).isEqualTo(USER_ID_UUID.toString());
+  }
+
+  @Test
+  void schedule_negative_userTimerWithoutUserId() {
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    var re = new RoutingEntry().delay("20").unit(SECOND);
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).routingEntry(re);
+
+    assertThatThrownBy(() -> service.schedule(timerDescriptor))
+      .isInstanceOf(RequestValidationException.class)
+      .hasMessage("User timer cannot be scheduled without userId");
+
+    verifyNoInteractions(scheduler);
+  }
+
+  @Test
   void schedule_negative_duplicate() throws  Exception {
     when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
-    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
-    var timerDescriptor = timerDescriptor();
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID);
     when(scheduler.scheduleJob(any(), any())).thenThrow(new ObjectAlreadyExistsException("test"));
     assertThat(service.schedule(timerDescriptor)).isFalse();
     verify(scheduler, times(1)).scheduleJob(any(), any());
@@ -143,9 +192,10 @@ class JobSchedulingServiceTest {
 
   @Test
   void schedule_negative_repeatIntervalIsLowerThanExpected() {
-    var timerDescriptor = timerDescriptor().routingEntry(new RoutingEntry().unit(MILLISECOND).delay("50"));
+    var re = new RoutingEntry().unit(MILLISECOND).delay("50");
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID).routingEntry(re);
 
-    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
 
     assertThatThrownBy(() -> service.schedule(timerDescriptor))
       .isInstanceOf(RequestValidationException.class)
@@ -157,9 +207,9 @@ class JobSchedulingServiceTest {
   void schedule_negative_cronAndRepeatIntervalSpecifiedAtTheSameTime() {
     var schedule = new RoutingEntrySchedule().cron("*/5 * * * * ?");
     var re = new RoutingEntry().unit(MILLISECOND).delay("50").schedule(schedule);
-    var timerDescriptor = timerDescriptor().routingEntry(re);
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID).routingEntry(re);
 
-    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
 
     assertThatThrownBy(() -> service.schedule(timerDescriptor))
       .isInstanceOf(RequestValidationException.class)
@@ -171,9 +221,9 @@ class JobSchedulingServiceTest {
   @MethodSource("invalidRoutingEntriesProvider")
   @DisplayName("schedule_parameterized_invalidRoutingEntries")
   void schedule_parameterized_invalidRoutingEntries(@SuppressWarnings("unused") String name, RoutingEntry re) {
-    var timerDescriptor = timerDescriptor().routingEntry(re);
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID).routingEntry(re);
 
-    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
 
     assertThatThrownBy(() -> service.schedule(timerDescriptor))
       .isInstanceOf(RequestValidationException.class)
@@ -184,10 +234,11 @@ class JobSchedulingServiceTest {
 
   @Test
   void schedule_negative_internalException() throws SchedulerException {
-    var timerDescriptor = timerDescriptor().routingEntry(new RoutingEntry().unit(SECOND).delay("50"));
+    var re = new RoutingEntry().unit(SECOND).delay("50");
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID).routingEntry(re);
     when(scheduler.scheduleJob(any(JobDetail.class), any(SimpleTrigger.class)))
       .thenThrow(new SchedulerException("Failed to schedule recurring job"));
-    when(folioExecutionContext.getUserId()).thenReturn(USER_ID_UUID);
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
 
     assertThatThrownBy(() -> service.schedule(timerDescriptor))
       .isInstanceOf(TimerSchedulingException.class)
@@ -200,7 +251,9 @@ class JobSchedulingServiceTest {
     var oldTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().unit(SECOND).delay("10"));
     var newTimerDesc = timerDescriptor().routingEntry(re);
 
-    when(scheduler.rescheduleJob(eq(triggerKey(TIMER_ID)), triggerArgumentCaptor.capture())).thenReturn(new Date());
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    when(scheduler.rescheduleJob(eq(triggerKey(TIMER_ID, JOB_GROUP)), triggerArgumentCaptor.capture()))
+      .thenReturn(new Date());
 
     service.reschedule(oldTimerDesc, newTimerDesc);
 
@@ -220,7 +273,9 @@ class JobSchedulingServiceTest {
     var oldTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().schedule(oldSchedule));
     var newTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().schedule(newSchedule));
 
-    when(scheduler.rescheduleJob(eq(triggerKey(TIMER_ID)), triggerArgumentCaptor.capture())).thenReturn(new Date());
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    when(scheduler.rescheduleJob(eq(triggerKey(TIMER_ID, JOB_GROUP)), triggerArgumentCaptor.capture()))
+      .thenReturn(new Date());
 
     service.reschedule(oldTimerDesc, newTimerDesc);
 
@@ -246,9 +301,11 @@ class JobSchedulingServiceTest {
     var oldTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().unit(SECOND).delay("10"));
     var newTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().unit(SECOND).delay("0"));
 
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+
     service.reschedule(oldTimerDesc, newTimerDesc);
 
-    verify(scheduler).deleteJob(jobKey(TIMER_ID));
+    verify(scheduler).deleteJob(jobKey(TIMER_ID, JOB_GROUP));
   }
 
   @Test
@@ -256,9 +313,11 @@ class JobSchedulingServiceTest {
     var oldTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().unit(SECOND).delay("10"));
     var newTimerDesc = timerDescriptor().routingEntry(null);
 
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+
     service.reschedule(oldTimerDesc, newTimerDesc);
 
-    verify(scheduler).deleteJob(jobKey(TIMER_ID));
+    verify(scheduler).deleteJob(jobKey(TIMER_ID, JOB_GROUP));
   }
 
   @ParameterizedTest(name = "[{index}] test case: {index}")
@@ -276,7 +335,8 @@ class JobSchedulingServiceTest {
   void reschedule_negative_internalError() throws SchedulerException {
     var oldTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().unit(SECOND).delay("10"));
     var newTimerDesc = timerDescriptor().routingEntry(new RoutingEntry().unit(SECOND).delay("25"));
-    when(scheduler.rescheduleJob(eq(triggerKey(TIMER_ID)), triggerArgumentCaptor.capture())).thenThrow(
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    when(scheduler.rescheduleJob(eq(triggerKey(TIMER_ID, JOB_GROUP)), triggerArgumentCaptor.capture())).thenThrow(
       new SchedulerException("Failed to reschedule job"));
 
     assertThatThrownBy(() -> service.reschedule(oldTimerDesc, newTimerDesc))
@@ -286,19 +346,22 @@ class JobSchedulingServiceTest {
 
   @Test
   void delete_positive() throws SchedulerException {
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
     service.delete(timerDescriptor());
-    verify(scheduler).deleteJob(new JobKey(TIMER_ID));
+    verify(scheduler).deleteJob(jobKey(TIMER_ID, JOB_GROUP));
   }
 
   @Test
   void delete_positive_disabled() throws SchedulerException {
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
     service.delete(timerDescriptor().enabled(false));
-    verify(scheduler).deleteJob(new JobKey(TIMER_ID));
+    verify(scheduler).deleteJob(jobKey(TIMER_ID, JOB_GROUP));
   }
 
   @Test
   void delete_negative() throws SchedulerException {
-    var jobKey = new JobKey(TIMER_ID);
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    var jobKey = new JobKey(TIMER_ID, JOB_GROUP);
     var timerDescriptor = timerDescriptor();
     when(scheduler.deleteJob(jobKey)).thenThrow(new SchedulerException("Failed to delete job"));
     assertThatThrownBy(() -> service.delete(timerDescriptor))
@@ -319,14 +382,14 @@ class JobSchedulingServiceTest {
 
   private static CronTrigger cronTrigger(String cronExpression, String timezone) {
     return newTrigger()
-      .withIdentity(TIMER_ID)
+      .withIdentity(triggerKey(TIMER_ID, JOB_GROUP))
       .withSchedule(cronSchedule(cronExpression).inTimeZone(getTimeZone(timezone)))
       .build();
   }
 
   private static SimpleTrigger simpleTrigger(long repeatInterval) {
     return newTrigger()
-      .withIdentity(TIMER_ID)
+      .withIdentity(triggerKey(TIMER_ID, JOB_GROUP))
       .withSchedule(simpleSchedule().repeatForever().withIntervalInMilliseconds(repeatInterval))
       .build();
   }

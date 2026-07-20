@@ -48,6 +48,8 @@ public class TimerDescriptorEntity extends Auditable {
   @Column(columnDefinition = "jsonb", name = "timer_descriptor")
   private TimerDescriptor timerDescriptor;
 
+  private UUID userId; // user id for timers of USER type, will be empty fo SYSTEM timers
+
   public void setTimerDescriptor(TimerDescriptor timerDescriptor) {
     this.timerDescriptor = timerDescriptor;
     this.naturalKey = toNaturalKey(timerDescriptor);

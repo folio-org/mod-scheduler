@@ -79,6 +79,30 @@ public abstract class BaseIntegrationTest extends BaseBackendIntegrationTest {
       .contentType(APPLICATION_JSON));
   }
 
+  protected static ResultActions attemptPostAsUser(String uri, String userId, Object body, Object... args)
+    throws Exception {
+    var request = post(uri, args)
+      .header(TENANT, TENANT_ID)
+      .content(asJsonString(body))
+      .contentType(APPLICATION_JSON);
+    if (userId != null) {
+      request.header(USER_ID, userId);
+    }
+    return mockMvc.perform(request);
+  }
+
+  protected static ResultActions attemptPutAsUser(String uri, String userId, Object body, Object... args)
+    throws Exception {
+    var request = put(uri, args)
+      .header(TENANT, TENANT_ID)
+      .content(asJsonString(body))
+      .contentType(APPLICATION_JSON);
+    if (userId != null) {
+      request.header(USER_ID, userId);
+    }
+    return mockMvc.perform(request);
+  }
+
   protected static ResultActions attemptDelete(String uri, Object... args) throws Exception {
     return mockMvc.perform(delete(uri, args)
       .header(TENANT, TENANT_ID)

@@ -109,10 +109,14 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
   @Test
   @WireMockStub("/wiremock/stubs/timer-endpoint.json")
   @KeycloakRealms("/json/keycloak/test-realm.json")
-  void handleScheduledJobEvent_positive_createsSystemTimerViaKafka() {
+  void handleScheduledJobEvent_positive_createsSystemTimerViaKafka() throws Exception {
     kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, asJsonString(resourceEvent()));
     await().untilAsserted(() -> getScheduledTimers(timerDescriptorList(timerDescriptor()))
       .andExpect(jsonPath("$.timerDescriptors[0].id").hasJsonPath()));
+
+    var timerId = parse(doGet("/scheduler/timers").andReturn().getResponse().getContentAsString(),
+      TimerDescriptorList.class).getTimerDescriptors().getFirst().getId().toString();
+    assertThat(scheduler.checkExists(JobKey.jobKey(timerId, TENANT_ID + "#" + MODULE_NAME))).isTrue();
 
     await().atMost(TWO_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
       .untilAsserted(BaseIntegrationTest::verifyTimerRequestCallsCount);

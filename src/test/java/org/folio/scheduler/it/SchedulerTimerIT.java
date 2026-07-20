@@ -6,12 +6,15 @@ import static org.awaitility.Durations.ONE_SECOND;
 import static org.awaitility.Durations.TEN_SECONDS;
 import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
 import static org.folio.scheduler.support.TestConstants.MODULE_ID;
+import static org.folio.scheduler.support.TestConstants.MODULE_NAME;
+import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.support.TestConstants.USER_ID;
 import static org.folio.scheduler.support.TestConstants.USER_ID_UUID;
 import static org.folio.test.TestUtils.parseResponse;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.quartz.JobKey.jobKey;
 import static org.quartz.TriggerKey.triggerKey;
 import static org.quartz.impl.matchers.GroupMatcher.anyJobGroup;
 import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.AFTER_TEST_METHOD;
@@ -55,6 +58,8 @@ class SchedulerTimerIT extends BaseIntegrationTest {
   private static final UUID TIMER_ID_TO_UPDATE = UUID.fromString("123e4567-e89b-12d3-a456-426614174001");
   private static final String TIMER_ID_TO_DELETE = "123e4567-e89b-12d3-a456-426614174002";
   private static final String SYSTEM_TIMER_ID = "123e4567-e89b-12d3-a456-426614174003";
+  private static final String USER_B_ID = "5d07750b-22ce-4f42-864a-3e476e6992e8";
+  private static final String JOB_GROUP = TENANT_ID + "#" + MODULE_NAME;
 
   @Autowired private Scheduler scheduler;
 
@@ -139,7 +144,8 @@ class SchedulerTimerIT extends BaseIntegrationTest {
       .andExpect(jsonPath("$.enabled", is(true)));
     var timestampAfterSavingDesc = Instant.now();
 
-    var nextFireTime = scheduler.getTrigger(triggerKey(timerId.toString())).getNextFireTime().toInstant();
+    assertThat(scheduler.checkExists(jobKey(timerId.toString(), JOB_GROUP))).isTrue();
+    var nextFireTime = scheduler.getTrigger(triggerKey(timerId.toString(), JOB_GROUP)).getNextFireTime().toInstant();
     assertThat(nextFireTime).isAfter(timestampBeforeSavingDesc).isBefore(timestampAfterSavingDesc.plusSeconds(1));
 
     await().atMost(TEN_SECONDS).pollDelay(ONE_SECOND)
@@ -165,7 +171,7 @@ class SchedulerTimerIT extends BaseIntegrationTest {
       .andExpect(jsonPath("$.id", notNullValue()))
       .andExpect(jsonPath("$.enabled", is(true)));
 
-    var nextFireTime = scheduler.getTrigger(triggerKey(timerId)).getNextFireTime().toInstant();
+    var nextFireTime = scheduler.getTrigger(triggerKey(timerId, JOB_GROUP)).getNextFireTime().toInstant();
     assertThat(nextFireTime).isBefore(timestampBeforeSavingDesc.plusSeconds(1));
 
     await().atMost(TEN_SECONDS).pollDelay(ONE_SECOND)
@@ -313,6 +319,87 @@ class SchedulerTimerIT extends BaseIntegrationTest {
     assertThat(updatedMetadata.getCreatedDate()).isEqualTo(originalCreatedDate);
     assertThat(updatedMetadata.getUpdatedDate()).isAfter(originalCreatedDate);
     assertThat(updatedMetadata.getUpdatedByUserId()).isEqualTo(USER_ID_UUID);
+  }
+
+  @Test
+  void getById_positive_userTimerHasUserId() throws Exception {
+    doGet("/scheduler/timers/{id}", TIMER_ID)
+      .andExpect(jsonPath("$.type", is("user")))
+      .andExpect(jsonPath("$.userId", is(USER_ID)));
+  }
+
+  @Test
+  void getById_positive_systemTimerHasNoUserId() throws Exception {
+    doGet("/scheduler/timers/{id}", SYSTEM_TIMER_ID)
+      .andExpect(jsonPath("$.type", is("system")))
+      .andExpect(jsonPath("$.userId").doesNotExist());
+  }
+
+  @Test
+  void create_positive_populatesUserIdFromContext() throws Exception {
+    var timerDescriptor = timerDescriptor(UUID.randomUUID()).enabled(false);
+
+    doPost("/scheduler/timers", timerDescriptor)
+      .andExpect(jsonPath("$.type", is("user")))
+      .andExpect(jsonPath("$.userId", is(USER_ID)));
+  }
+
+  @Test
+  void create_positive_userIdInRequestBodyIsIgnored() throws Exception {
+    var timerDescriptor = timerDescriptor(UUID.randomUUID()).enabled(false)
+      .userId(UUID.fromString("99999999-9999-9999-9999-999999999999"));
+
+    doPost("/scheduler/timers", timerDescriptor)
+      .andExpect(jsonPath("$.userId", is(USER_ID)));
+  }
+
+  @Test
+  void create_negative_userTimerWithoutUserContext() throws Exception {
+    var timerDescriptor = timerDescriptor(UUID.randomUUID()).enabled(false);
+
+    attemptPostAsUser("/scheduler/timers", null, timerDescriptor)
+      .andExpect(status().isBadRequest())
+      .andExpect(jsonPath("$.total_records", is(1)))
+      .andExpect(jsonPath("$.errors[0].type", is("RequestValidationException")))
+      .andExpect(jsonPath("$.errors[0].message", is("User timer requires a userId")));
+  }
+
+  @Test
+  void update_positive_preservesUserIdByDefault() throws Exception {
+    var timerId = UUID.randomUUID();
+    doPost("/scheduler/timers", timerDescriptor(timerId).enabled(false))
+      .andExpect(jsonPath("$.userId", is(USER_ID)));
+
+    attemptPutAsUser("/scheduler/timers/{id}", USER_B_ID, timerDescriptor(timerId).enabled(false), timerId.toString())
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.userId", is(USER_ID)));
+  }
+
+  @Test
+  @WireMockStub("/wiremock/stubs/user-timer-endpoint.json")
+  @KeycloakRealms("/json/keycloak/test-realm.json")
+  void delete_positive_removesJobFromTenantModuleGroup() throws Exception {
+    var timerId = UUID.randomUUID();
+    doPost("/scheduler/timers", timerDescriptor(timerId));
+    assertThat(scheduler.checkExists(jobKey(timerId.toString(), JOB_GROUP))).isTrue();
+
+    doDelete("/scheduler/timers/{id}", timerId);
+
+    assertThat(scheduler.checkExists(jobKey(timerId.toString(), JOB_GROUP))).isFalse();
+  }
+
+  @Test
+  void update_negative_moduleNameCannotBeChanged() throws Exception {
+    var timerId = UUID.randomUUID();
+    doPost("/scheduler/timers", timerDescriptor(timerId).enabled(false));
+
+    var update = timerDescriptor(timerId).enabled(false).moduleId("mod-other-1.0.0");
+    attemptPut("/scheduler/timers/{id}", update, timerId)
+      .andExpect(status().isBadRequest())
+      .andExpect(jsonPath("$.errors[0].type", is("RequestValidationException")))
+      .andExpect(jsonPath("$.errors[0].message", is("Timer module name cannot be changed")))
+      .andExpect(jsonPath("$.errors[0].parameters[0].key", is("moduleName")))
+      .andExpect(jsonPath("$.errors[0].parameters[0].value", is("mod-other")));
   }
 
   private static TimerDescriptor timerDescriptor(UUID timerId) {

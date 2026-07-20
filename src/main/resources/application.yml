@@ -92,6 +92,7 @@ application:
   timer:
     api:
       allow-system-timer-mutation: ${SCHEDULER_API_ALLOW_SYSTEM_TIMER_MUTATION:false}
+      allow-user-id-update: ${SCHEDULER_API_ALLOW_USER_ID_UPDATE:false}
   kafka:
     consumer:
       listener:

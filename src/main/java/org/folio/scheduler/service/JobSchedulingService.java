@@ -9,7 +9,7 @@ import static java.util.Map.entry;
 import static java.util.Objects.requireNonNull;
 import static java.util.TimeZone.getTimeZone;
 import static org.apache.commons.lang3.BooleanUtils.isFalse;
-import static org.apache.commons.lang3.ObjectUtils.defaultIfNull;
+import static org.apache.commons.lang3.ObjectUtils.getIfNull;
 import static org.apache.commons.lang3.math.NumberUtils.createLong;
 import static org.folio.scheduler.domain.dto.TimerUnit.DAY;
 import static org.folio.scheduler.domain.dto.TimerUnit.HOUR;
@@ -17,10 +17,8 @@ import static org.folio.scheduler.domain.dto.TimerUnit.MILLISECOND;
 import static org.folio.scheduler.domain.dto.TimerUnit.MINUTE;
 import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
 import static org.folio.scheduler.utils.CronUtils.convertToQuartz;
-import static org.folio.spring.integration.XOkapiHeaders.TENANT;
-import static org.folio.spring.integration.XOkapiHeaders.USER_ID;
+import static org.folio.scheduler.utils.TimerDescriptorUtils.evalModuleName;
 import static org.quartz.CronScheduleBuilder.cronSchedule;
-import static org.quartz.JobBuilder.newJob;
 import static org.quartz.JobKey.jobKey;
 import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
 import static org.quartz.TriggerBuilder.newTrigger;
@@ -31,9 +29,10 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
+import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.domain.dto.TimerUnit;
+import org.folio.scheduler.exception.RequestValidationException;
 import org.folio.scheduler.exception.TimerSchedulingException;
-import org.folio.scheduler.service.jobs.OkapiHttpRequestExecutor;
 import org.folio.scheduler.utils.Validate;
 import org.folio.spring.FolioExecutionContext;
 import org.quartz.CronTrigger;
@@ -117,7 +116,7 @@ public class JobSchedulingService {
     requireNonNull(timerDescriptor.getId(), "Timer descriptor id cannot be null");
 
     try {
-      scheduler.deleteJob(jobKey(timerDescriptor.getId().toString()));
+      scheduler.deleteJob(jobKey(timerDescriptor.getId().toString(), jobGroup(timerDescriptor)));
     } catch (SchedulerException exception) {
       log.error("Failed to delete job [jobId: {}] : {}", timerDescriptor.getId(), exception.getMessage());
       throw new TimerSchedulingException("Failed to delete job", exception);
@@ -136,7 +135,7 @@ public class JobSchedulingService {
       return;
     }
 
-    scheduler.rescheduleJob(triggerKey(timerId), getTrigger(newDesc));
+    scheduler.rescheduleJob(triggerKey(timerId, jobGroup(newDesc)), getTrigger(newDesc));
   }
 
   private void deleteRecurringJobIfPresent(TimerDescriptor prevTimerDesc) throws SchedulerException {
@@ -146,18 +145,31 @@ public class JobSchedulingService {
       return;
     }
 
-    scheduler.deleteJob(jobKey(timerId.toString()));
+    scheduler.deleteJob(jobKey(timerId.toString(), jobGroup(prevTimerDesc)));
     log.info("Recurring job be deleted, timer is disabled [timerId: {}]", timerId);
   }
 
   private JobDetail getJobDetail(TimerDescriptor timerDescriptor) {
-    var task = newJob(OkapiHttpRequestExecutor.class)
-      .withIdentity(timerDescriptor.getId().toString())
-      .usingJobData(TENANT, folioExecutionContext.getTenantId());
-    if (folioExecutionContext.getUserId() != null) {
-      task.usingJobData(USER_ID, folioExecutionContext.getUserId().toString());
+    var jobDetailBuilder = ScheduledJobDetail.builder()
+      .id(timerDescriptor.getId())
+      .tenantId(folioExecutionContext.getTenantId())
+      .moduleName(evalModuleName(timerDescriptor))
+      .timerType(timerDescriptor.getType());
+
+    if (timerDescriptor.getType() == TimerType.USER) {
+      if (timerDescriptor.getUserId() == null) {
+        throw new RequestValidationException("User timer cannot be scheduled without userId");
+      }
+      jobDetailBuilder.userId(timerDescriptor.getUserId());
     }
-    return task.build();
+    // For a system timer the userId is intentionally left unset; it is resolved at execution
+    // time via the tenant's system user.
+
+    return jobDetailBuilder.build().toQuartzJobDetail();
+  }
+
+  private String jobGroup(TimerDescriptor timerDescriptor) {
+    return ScheduledJobDetail.jobGroup(folioExecutionContext.getTenantId(), evalModuleName(timerDescriptor));
   }
 
   private Trigger getTrigger(TimerDescriptor timerDescriptor) {
@@ -177,25 +189,27 @@ public class JobSchedulingService {
   private Trigger getForeverRepeatingTrigger(TimerDescriptor timerDescriptor) {
     var re = timerDescriptor.getRoutingEntry();
     var timerId = timerDescriptor.getId().toString();
+    var group = jobGroup(timerDescriptor);
     var repeatInterval = timerUnitFactorMap.get(re.getUnit()) * Long.parseLong(re.getDelay());
     Validate.isTrue(repeatInterval >= 1000L, () -> "Repeat interval must be greater than 1 second.");
     return newTrigger()
-      .withIdentity(triggerKey(timerId))
+      .withIdentity(triggerKey(timerId, group))
       .withSchedule(simpleSchedule().repeatForever().withIntervalInMilliseconds(repeatInterval))
-      .forJob(jobKey(timerId))
+      .forJob(jobKey(timerId, group))
       .build();
   }
 
   private CronTrigger getCronTrigger(TimerDescriptor timerDescriptor) {
     var timerId = timerDescriptor.getId().toString();
+    var group = jobGroup(timerDescriptor);
     var schedule = timerDescriptor.getRoutingEntry().getSchedule();
-    var timeZone = defaultIfNull(schedule.getZone(), "UTC");
+    var timeZone = getIfNull(schedule.getZone(), "UTC");
     var cron = schedule.getCron();
     var cronExpression = convertToQuartz(cron);
     return newTrigger()
-      .withIdentity(triggerKey(timerId))
+      .withIdentity(triggerKey(timerId, group))
       .withSchedule(cronSchedule(cronExpression).inTimeZone(getTimeZone(timeZone)))
-      .forJob(jobKey(timerId))
+      .forJob(jobKey(timerId, group))
       .build();
   }
 

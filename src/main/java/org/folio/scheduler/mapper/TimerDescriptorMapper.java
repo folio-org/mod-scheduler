@@ -20,6 +20,7 @@ public interface TimerDescriptorMapper {
    * @param descriptor - {@link TimerDescriptor} object
    * @return converted {@link TimerDescriptorEntity} object
    */
+  @Mapping(target = "userId", ignore = true)
   @Mapping(target = "naturalKey", ignore = true)
   @Mapping(target = "timerDescriptor", source = "descriptor")
   @Mapping(target = "createdDate", ignore = true)
@@ -34,6 +35,7 @@ public interface TimerDescriptorMapper {
   @Mapping(target = "enabled", ignore = true)
   @Mapping(target = "moduleName", ignore = true)
   @Mapping(target = "moduleId", ignore = true)
+  @Mapping(target = "userId", source = "userId")
   TimerDescriptor toDescriptor(TimerDescriptorEntity entity);
 
   /**
