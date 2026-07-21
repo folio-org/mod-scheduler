@@ -43,6 +43,7 @@ import org.quartz.JobExecutionContext;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestClientException;
 
 @Log4j2
 @Component
@@ -110,7 +111,7 @@ public class OkapiHttpRequestExecutor implements Job {
     try {
       okapiCallExecutor.accept(fromUriString("http:/" + staticPath).build().toUri(), moduleHint);
       logSuccess(logContext, startNanos);
-    } catch (HttpStatusCodeException e) {
+    } catch (RestClientException e) {
       logFailure(logContext, startNanos, e);
     }
   }
@@ -131,14 +132,22 @@ public class OkapiHttpRequestExecutor implements Job {
       .with("durationMs", durationMs(startNanos)));
   }
 
-  private void logFailure(TimerExecutionLogContext logContext, long startNanos,
-    HttpStatusCodeException exception) {
-    var status = exception.getStatusCode().value();
-    log.warn(timerExecutionMessage("timer.execution.failure", logContext)
-      .with("status", status)
+  private void logFailure(TimerExecutionLogContext logContext, long startNanos, RestClientException exception) {
+    var message = timerExecutionMessage("timer.execution.failure", logContext)
       .with("outcome", "FAILURE")
       .with("durationMs", durationMs(startNanos))
-      .with("errorClass", exception.getClass().getSimpleName()));
+      .with("errorClass", exception.getClass().getSimpleName());
+
+    if (exception instanceof HttpStatusCodeException statusException) {
+      message.with("status", statusException.getStatusCode().value());
+    }
+
+    var rootCause = exception.getRootCause();
+    if (rootCause != null) {
+      message.with("rootCauseClass", rootCause.getClass().getSimpleName());
+    }
+
+    log.warn(message);
   }
 
   private StringMapMessage timerExecutionMessage(String event, TimerExecutionLogContext context) {

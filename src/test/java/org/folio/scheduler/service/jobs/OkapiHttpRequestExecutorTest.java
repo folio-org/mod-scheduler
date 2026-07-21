@@ -16,6 +16,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.web.util.UriComponentsBuilder.fromUriString;
 
 import jakarta.persistence.EntityNotFoundException;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +55,7 @@ import org.quartz.JobExecutionContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.ResourceAccessException;
 
 @UnitTest
 @ExtendWith(MockitoExtension.class)
@@ -226,8 +228,31 @@ class OkapiHttpRequestExecutorTest {
     job.execute(jobExecutionContext);
 
     verify(okapiClient).doDelete(expectedUri, TEST_MODULE_ID);
-    assertFailureLog(assertSystemTimerEvent("timer.execution.failure", "DELETE", "/test-endpoint", "test-endpoint"));
+    assertHttpStatusFailureLog(assertSystemTimerEvent("timer.execution.failure", "DELETE", "/test-endpoint",
+      "test-endpoint"));
     assertLoggedMessagesDoNotContain(USER_TOKEN, SYSTEM_USER_ID, "downstream-secret", "body-secret");
+  }
+
+  @Test
+  void execute_negative_restClientException() {
+    var re = new RoutingEntry().path("test-endpoint").methods(List.of("POST"));
+    var expectedUri = fromUriString("http://test-endpoint").build().toUri();
+    when(folioModuleMetadata.getModuleName()).thenReturn(MODULE_NAME);
+    when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
+    when(jobExecutionContext.getJobDetail()).thenReturn(systemJobDetail());
+    when(systemUserService.findSystemUserId(TENANT_ID)).thenReturn(SYSTEM_USER_ID);
+    when(userImpersonationService.impersonate(TENANT_ID, SYSTEM_USER_ID)).thenReturn(USER_TOKEN);
+    when(schedulerTimerService.getById(TIMER_UUID)).thenReturn(systemTimerDescriptor(re));
+    doThrow(new ResourceAccessException("I/O error token=transport-secret",
+      new SocketTimeoutException("Read timed out token=transport-secret")))
+      .when(okapiClient).doPost(expectedUri, TEST_MODULE_ID);
+
+    job.execute(jobExecutionContext);
+
+    verify(okapiClient).doPost(expectedUri, TEST_MODULE_ID);
+    assertRestClientFailureLog(assertSystemTimerEvent("timer.execution.failure", "POST", "/test-endpoint",
+      "test-endpoint"));
+    assertLoggedMessagesDoNotContain(USER_TOKEN, SYSTEM_USER_ID, "transport-secret");
   }
 
   @Test
@@ -354,12 +379,22 @@ class OkapiHttpRequestExecutorTest {
     assertThat(event.get("durationMs").toString()).matches("\\d+");
   }
 
-  private static void assertFailureLog(Map<String, Object> event) {
+  private static void assertHttpStatusFailureLog(Map<String, Object> event) {
     assertThat(event)
       .containsEntry("status", 404)
       .containsEntry("outcome", "FAILURE")
       .containsKey("durationMs")
-      .containsKey("errorClass");
+      .containsKey("errorClass")
+      .doesNotContainKey("errorMessage");
+  }
+
+  private static void assertRestClientFailureLog(Map<String, Object> event) {
+    assertThat(event)
+      .containsEntry("outcome", "FAILURE")
+      .containsEntry("rootCauseClass", "SocketTimeoutException")
+      .containsKey("durationMs")
+      .containsKey("errorClass")
+      .doesNotContainKeys("status", "errorMessage", "rootCauseMessage");
   }
 
   private static void assertUnsupportedMethodLog(Map<String, Object> event) {
