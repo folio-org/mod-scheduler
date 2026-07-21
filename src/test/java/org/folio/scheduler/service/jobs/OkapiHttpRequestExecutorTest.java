@@ -1,5 +1,7 @@
 package org.folio.scheduler.service.jobs;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.support.TestConstants.TIMER_UUID;
@@ -14,7 +16,17 @@ import static org.mockito.Mockito.when;
 import static org.springframework.web.util.UriComponentsBuilder.fromUriString;
 
 import jakarta.persistence.EntityNotFoundException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.Logger;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.Property;
+import org.apache.logging.log4j.core.layout.PatternLayout;
+import org.apache.logging.log4j.message.StringMapMessage;
 import org.folio.scheduler.configuration.properties.OkapiConfigurationProperties;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
@@ -28,6 +40,7 @@ import org.folio.scheduler.support.TestValues;
 import org.folio.spring.FolioModuleMetadata;
 import org.folio.test.types.UnitTest;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -61,8 +74,25 @@ class OkapiHttpRequestExecutorTest {
   @Mock private UserImpersonationService userImpersonationService;
   @Mock private SystemUserService systemUserService;
 
+  private TestLogAppender logAppender;
+  private Level originalLogLevel;
+
+  @BeforeEach
+  void setUp() {
+    var logger = executorLogger();
+    originalLogLevel = logger.getLevel();
+    logAppender = new TestLogAppender();
+    logAppender.start();
+    logger.addAppender(logAppender);
+    logger.setLevel(Level.INFO);
+  }
+
   @AfterEach
   void tearDown() {
+    var logger = executorLogger();
+    logger.removeAppender(logAppender);
+    logger.setLevel(originalLogLevel);
+    logAppender.stop();
     verifyNoMoreInteractions(okapiClient, jobExecutionContext, schedulerTimerService, okapiConfigurationProperties);
   }
 
@@ -97,6 +127,9 @@ class OkapiHttpRequestExecutorTest {
 
     verify(systemUserService).findSystemUserId(TENANT_ID);
     verify(okapiClient).doGet(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_ID);
+    assertStartedLog(assertSystemTimerEvent("timer.execution.start", "GET", "/test-endpoint"));
+    assertSuccessLog(assertSystemTimerEvent("timer.execution.success", "GET", "/test-endpoint"));
+    assertLoggedMessagesDoNotContain(USER_TOKEN, SYSTEM_USER_ID);
   }
 
   @Test
@@ -113,6 +146,8 @@ class OkapiHttpRequestExecutorTest {
     verify(userImpersonationService).impersonate(TENANT_ID, USER_ID);
     verify(okapiClient).doGet(fromUriString("http://test-endpoint").build().toUri(), TEST_MODULE_NAME);
     verifyNoInteractions(systemUserService);
+    assertSuccessLog(assertUserTimerEvent("timer.execution.success", "GET", "/test-endpoint"));
+    assertLoggedMessagesDoNotContain(USER_TOKEN, USER_ID);
   }
 
   @Test
@@ -177,18 +212,22 @@ class OkapiHttpRequestExecutorTest {
   void execute_negative_httpException() {
     var re = new RoutingEntry().path("test-endpoint").methods(List.of("DELETE"));
     var expectedUri = fromUriString("http://test-endpoint").build().toUri();
+    var responseBody = "downstream body token=body-secret".getBytes(UTF_8);
     when(folioModuleMetadata.getModuleName()).thenReturn(MODULE_NAME);
     when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
     when(jobExecutionContext.getJobDetail()).thenReturn(systemJobDetail());
     when(systemUserService.findSystemUserId(TENANT_ID)).thenReturn(SYSTEM_USER_ID);
     when(userImpersonationService.impersonate(TENANT_ID, SYSTEM_USER_ID)).thenReturn(USER_TOKEN);
     when(schedulerTimerService.getById(TIMER_UUID)).thenReturn(systemTimerDescriptor(re));
-    doThrow(HttpClientErrorException.create(HttpStatus.NOT_FOUND, "Not Found", new HttpHeaders(), null, null))
+    doThrow(HttpClientErrorException.create(HttpStatus.NOT_FOUND, "Not Found token=downstream-secret",
+      new HttpHeaders(), responseBody, UTF_8))
       .when(okapiClient).doDelete(expectedUri, TEST_MODULE_ID);
 
     job.execute(jobExecutionContext);
 
     verify(okapiClient).doDelete(expectedUri, TEST_MODULE_ID);
+    assertFailureLog(assertSystemTimerEvent("timer.execution.failure", "DELETE", "/test-endpoint", "test-endpoint"));
+    assertLoggedMessagesDoNotContain(USER_TOKEN, SYSTEM_USER_ID, "downstream-secret", "body-secret");
   }
 
   @Test
@@ -204,6 +243,9 @@ class OkapiHttpRequestExecutorTest {
     job.execute(jobExecutionContext);
 
     verifyNoInteractions(okapiClient);
+    assertUnsupportedMethodLog(assertSystemTimerEvent("timer.execution.failure", "PATCH", "/test-endpoint"));
+    assertThat(logAppender.timerEvents())
+      .noneMatch(event -> "timer.execution.start".equals(event.get("event")));
   }
 
   @Test
@@ -247,10 +289,116 @@ class OkapiHttpRequestExecutorTest {
   }
 
   private static TimerDescriptor systemTimerDescriptor(RoutingEntry re) {
-    return TestValues.timerDescriptor().type(TimerType.SYSTEM).routingEntry(re).moduleId(TEST_MODULE_ID);
+    return TestValues.timerDescriptor().type(TimerType.SYSTEM).routingEntry(re)
+      .moduleName(TEST_MODULE_NAME).moduleId(TEST_MODULE_ID);
   }
 
   private static TimerDescriptor userTimerDescriptor(RoutingEntry re) {
     return TestValues.timerDescriptor().type(TimerType.USER).routingEntry(re).moduleName(TEST_MODULE_NAME);
+  }
+
+  private Map<String, Object> timerEvent(String eventName) {
+    return logAppender.timerEvents().stream()
+      .filter(event -> eventName.equals(event.get("event")))
+      .findFirst()
+      .orElseThrow(() -> new AssertionError("Expected timer log event: " + eventName));
+  }
+
+  private void assertLoggedMessagesDoNotContain(String... values) {
+    var messages = logAppender.messages();
+    for (var value : values) {
+      assertThat(messages).noneMatch(message -> message.contains(value));
+    }
+  }
+
+  private Map<String, Object> assertSystemTimerEvent(String eventName, String method, String path) {
+    return assertSystemTimerEvent(eventName, method, path, path);
+  }
+
+  private Map<String, Object> assertSystemTimerEvent(String eventName, String method, String path,
+    String naturalKeyPath) {
+    return assertTimerEvent(eventName, TimerType.SYSTEM, TEST_MODULE_NAME, TEST_MODULE_ID, method, path,
+      naturalKeyPath);
+  }
+
+  private Map<String, Object> assertUserTimerEvent(String eventName, String method, String path) {
+    return assertTimerEvent(eventName, TimerType.USER, TEST_MODULE_NAME, "", method, path, path);
+  }
+
+  private Map<String, Object> assertTimerEvent(String eventName, TimerType type, String moduleName, String moduleId,
+    String method, String path, String naturalKeyPath) {
+    var event = timerEvent(eventName);
+    assertThat(event)
+      .containsEntry("timerId", TIMER_UUID.toString())
+      .containsEntry("naturalKey", type + "#" + moduleName + "#" + method + "#" + naturalKeyPath)
+      .containsEntry("type", type)
+      .containsEntry("moduleName", moduleName)
+      .containsEntry("moduleId", moduleId)
+      .containsEntry("tenant", TENANT_ID)
+      .containsEntry("method", method)
+      .containsEntry("path", path);
+    return event;
+  }
+
+  private static void assertStartedLog(Map<String, Object> event) {
+    assertThat(event)
+      .containsEntry("outcome", "STARTED")
+      .doesNotContainKeys("status", "durationMs");
+  }
+
+  private static void assertSuccessLog(Map<String, Object> event) {
+    assertThat(event)
+      .containsEntry("outcome", "SUCCESS")
+      .doesNotContainKey("status")
+      .containsKey("durationMs");
+    assertThat(event.get("durationMs").toString()).matches("\\d+");
+  }
+
+  private static void assertFailureLog(Map<String, Object> event) {
+    assertThat(event)
+      .containsEntry("status", 404)
+      .containsEntry("outcome", "FAILURE")
+      .containsKey("durationMs")
+      .containsKey("errorClass");
+  }
+
+  private static void assertUnsupportedMethodLog(Map<String, Object> event) {
+    assertThat(event)
+      .containsEntry("outcome", "UNSUPPORTED_METHOD")
+      .doesNotContainKeys("status", "durationMs", "errorClass", "errorMessage");
+  }
+
+  private static Logger executorLogger() {
+    return (Logger) LogManager.getLogger(OkapiHttpRequestExecutor.class);
+  }
+
+  private static final class TestLogAppender extends AbstractAppender {
+
+    private final List<LogEvent> events = new ArrayList<>();
+
+    private TestLogAppender() {
+      super("test-log-appender", null, PatternLayout.createDefaultLayout(), false, Property.EMPTY_ARRAY);
+    }
+
+    @Override
+    public void append(LogEvent event) {
+      events.add(event.toImmutable());
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> timerEvents() {
+      return events.stream()
+        .map(LogEvent::getMessage)
+        .filter(StringMapMessage.class::isInstance)
+        .map(StringMapMessage.class::cast)
+        .map(message -> (Map<String, Object>) (Map<?, ?>) message.getData())
+        .toList();
+    }
+
+    private List<String> messages() {
+      return events.stream()
+        .map(event -> event.getMessage().getFormattedMessage())
+        .toList();
+    }
   }
 }

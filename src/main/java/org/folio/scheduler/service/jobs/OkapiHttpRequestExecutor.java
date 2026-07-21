@@ -3,6 +3,7 @@ package org.folio.scheduler.service.jobs;
 import static java.util.Collections.singletonList;
 import static java.util.Map.entry;
 import static java.util.concurrent.ThreadLocalRandom.current;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
@@ -20,13 +21,16 @@ import java.net.URI;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.message.StringMapMessage;
 import org.folio.scheduler.configuration.properties.OkapiConfigurationProperties;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
+import org.folio.scheduler.domain.entity.TimerDescriptorEntity;
 import org.folio.scheduler.integration.OkapiClient;
 import org.folio.scheduler.integration.keycloak.SystemUserService;
 import org.folio.scheduler.service.ScheduledJobDetail;
@@ -84,31 +88,74 @@ public class OkapiHttpRequestExecutor implements Job {
     try (var ignored = new FolioExecutionContextSetter(folioModuleMetadata, allHeaders)) {
       var timerDescriptor = schedulerTimerService.getById(jobDetail.getId());
 
-      callHttpMethod(timerDescriptor);
+      callHttpMethod(timerDescriptor, jobDetail.getTenantId());
     }
   }
 
-  private void callHttpMethod(TimerDescriptor timerDescriptor) {
-    var timerId = timerDescriptor.getId();
+  private void callHttpMethod(TimerDescriptor timerDescriptor, String tenant) {
     var re = timerDescriptor.getRoutingEntry();
-    var methods = re.getMethods();
-    var httpMethod = isNotEmpty(methods) ? HttpMethod.valueOf(methods.getFirst().toUpperCase()) : POST;
+    var httpMethod = isNotEmpty(re.getMethods()) ? HttpMethod.valueOf(re.getMethods().getFirst().toUpperCase()) : POST;
+    var staticPath = getStaticPath(re);
+    var moduleHint = moduleHint(timerDescriptor);
+    var logContext = TimerExecutionLogContext.from(timerDescriptor, tenant, httpMethod, staticPath);
 
     var okapiCallExecutor = okapiCallMap.get(httpMethod);
     if (okapiCallExecutor == null) {
-      log.warn("Unsupported HTTP method for timer [id: {}, method: {}]", timerId, httpMethod);
+      logUnsupportedMethod(logContext);
       return;
     }
 
-    var staticPath = getStaticPath(re);
-    var moduleHint = moduleHint(timerDescriptor);
-    log.info("Calling specified HTTP method [timerId: {}, method: {}, path: {}, moduleHint: {}]",
-      timerId, httpMethod, staticPath, moduleHint);
+    logStart(logContext);
+    var startNanos = System.nanoTime();
     try {
       okapiCallExecutor.accept(fromUriString("http:/" + staticPath).build().toUri(), moduleHint);
+      logSuccess(logContext, startNanos);
     } catch (HttpStatusCodeException e) {
-      log.warn("Failed to perform HTTP request [id: {}, method: {}, path: /{}]", timerId, httpMethod, staticPath, e);
+      logFailure(logContext, startNanos, e);
     }
+  }
+
+  private void logUnsupportedMethod(TimerExecutionLogContext logContext) {
+    log.warn(timerExecutionMessage("timer.execution.failure", logContext)
+      .with("outcome", "UNSUPPORTED_METHOD"));
+  }
+
+  private void logStart(TimerExecutionLogContext logContext) {
+    log.info(timerExecutionMessage("timer.execution.start", logContext)
+      .with("outcome", "STARTED"));
+  }
+
+  private void logSuccess(TimerExecutionLogContext logContext, long startNanos) {
+    log.info(timerExecutionMessage("timer.execution.success", logContext)
+      .with("outcome", "SUCCESS")
+      .with("durationMs", durationMs(startNanos)));
+  }
+
+  private void logFailure(TimerExecutionLogContext logContext, long startNanos,
+    HttpStatusCodeException exception) {
+    var status = exception.getStatusCode().value();
+    log.warn(timerExecutionMessage("timer.execution.failure", logContext)
+      .with("status", status)
+      .with("outcome", "FAILURE")
+      .with("durationMs", durationMs(startNanos))
+      .with("errorClass", exception.getClass().getSimpleName()));
+  }
+
+  private StringMapMessage timerExecutionMessage(String event, TimerExecutionLogContext context) {
+    return new StringMapMessage()
+      .with("event", event)
+      .with("timerId", context.timerId())
+      .with("naturalKey", context.naturalKey())
+      .with("type", context.type())
+      .with("moduleName", context.moduleName())
+      .with("moduleId", context.moduleId())
+      .with("tenant", context.tenant())
+      .with("method", context.method().name())
+      .with("path", context.path());
+  }
+
+  private String durationMs(long startNanos) {
+    return String.valueOf(NANOSECONDS.toMillis(System.nanoTime() - startNanos));
   }
 
   private static String moduleHint(TimerDescriptor td) {
@@ -157,5 +204,30 @@ public class OkapiHttpRequestExecutor implements Job {
       }
       case SYSTEM -> systemUserService.findSystemUserId(jobDetail.getTenantId());
     };
+  }
+
+  private record TimerExecutionLogContext(String timerId, String naturalKey, TimerType type, String moduleName,
+                                          String moduleId, String tenant, HttpMethod method, String path) {
+
+    private static TimerExecutionLogContext from(TimerDescriptor descriptor, String tenant, HttpMethod method,
+      String path) {
+      return new TimerExecutionLogContext(
+        Objects.toString(descriptor.getId(), ""),
+        naturalKey(descriptor),
+        descriptor.getType(),
+        Objects.toString(descriptor.getModuleName(), ""),
+        Objects.toString(descriptor.getModuleId(), ""),
+        Objects.toString(tenant, ""),
+        method,
+        Objects.toString(path, ""));
+    }
+
+    private static String naturalKey(TimerDescriptor descriptor) {
+      try {
+        return Objects.toString(TimerDescriptorEntity.toNaturalKey(descriptor), "");
+      } catch (IllegalArgumentException exception) {
+        return "";
+      }
+    }
   }
 }
