@@ -28,8 +28,11 @@ import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
 import static org.quartz.TriggerBuilder.newTrigger;
 import static org.quartz.TriggerKey.triggerKey;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Date;
 import java.util.stream.Stream;
+import org.folio.scheduler.configuration.properties.SystemTimerConfigurationProperties;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.RoutingEntrySchedule;
 import org.folio.scheduler.domain.dto.TimerType;
@@ -67,6 +70,7 @@ class JobSchedulingServiceTest {
   @InjectMocks private JobSchedulingService service;
   @Mock private Scheduler scheduler;
   @Mock private FolioExecutionContext folioExecutionContext;
+  @Mock private SystemTimerConfigurationProperties systemTimerConfigurationProperties;
 
   @Captor private ArgumentCaptor<Trigger> triggerArgumentCaptor;
   @Captor private ArgumentCaptor<JobDetail> jobDetailArgumentCaptor;
@@ -103,6 +107,71 @@ class JobSchedulingServiceTest {
     assertThat(actualTrigger).isEqualTo(simpleTrigger(expectedRepeatInterval));
     assertThat(actualTrigger.getRepeatInterval()).isEqualTo(expectedRepeatInterval);
     assertThat(actualTrigger.getRepeatCount()).isEqualTo(-1);
+  }
+
+  @Test
+  void schedule_positive_systemSimpleTimerAppliesInitialDelay() throws SchedulerException {
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    when(systemTimerConfigurationProperties.getInitialDelay()).thenReturn(Duration.ofSeconds(5));
+    when(scheduler.scheduleJob(any(JobDetail.class), triggerArgumentCaptor.capture())).thenReturn(new Date());
+    var routingEntry = new RoutingEntry().delay("20").unit(SECOND);
+    var timerDescriptor = timerDescriptor().type(TimerType.SYSTEM).routingEntry(routingEntry);
+
+    var beforeSchedule = Instant.now();
+    var scheduled = service.schedule(timerDescriptor);
+    var afterSchedule = Instant.now();
+
+    assertThat(scheduled).isTrue();
+    var actualTrigger = (SimpleTrigger) triggerArgumentCaptor.getValue();
+    assertThat(actualTrigger.getRepeatInterval()).isEqualTo(20_000L);
+    assertThat(actualTrigger.getRepeatCount()).isEqualTo(-1);
+    assertThat(actualTrigger.getStartTime())
+      .isBetween(Date.from(beforeSchedule.plusSeconds(5)), Date.from(afterSchedule.plusSeconds(5).plusMillis(250)));
+  }
+
+  @Test
+  void schedule_positive_userSimpleTimerDoesNotApplySystemInitialDelay() throws SchedulerException {
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    when(scheduler.scheduleJob(any(JobDetail.class), triggerArgumentCaptor.capture())).thenReturn(new Date());
+    var routingEntry = new RoutingEntry().delay("20").unit(SECOND);
+    var timerDescriptor = timerDescriptor().type(TimerType.USER).userId(USER_ID_UUID).routingEntry(routingEntry);
+
+    var beforeSchedule = Instant.now();
+    service.schedule(timerDescriptor);
+
+    var actualTrigger = (SimpleTrigger) triggerArgumentCaptor.getValue();
+    assertThat(actualTrigger.getStartTime()).isBefore(Date.from(beforeSchedule.plusSeconds(5)));
+    verifyNoInteractions(systemTimerConfigurationProperties);
+  }
+
+  @Test
+  void schedule_positive_systemSimpleTimerSkipsInitialDelayWhenDelayMatchesInterval()
+    throws SchedulerException {
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    when(systemTimerConfigurationProperties.getInitialDelay()).thenReturn(Duration.ofSeconds(20));
+    when(scheduler.scheduleJob(any(JobDetail.class), triggerArgumentCaptor.capture())).thenReturn(new Date());
+    var routingEntry = new RoutingEntry().delay("20").unit(SECOND);
+    var timerDescriptor = timerDescriptor().type(TimerType.SYSTEM).routingEntry(routingEntry);
+
+    var beforeSchedule = Instant.now();
+    service.schedule(timerDescriptor);
+
+    var actualTrigger = (SimpleTrigger) triggerArgumentCaptor.getValue();
+    assertThat(actualTrigger.getStartTime()).isBefore(Date.from(beforeSchedule.plusSeconds(20)));
+  }
+
+  @Test
+  void schedule_positive_systemCronTimerDoesNotApplySystemInitialDelay() throws SchedulerException {
+    var cronSchedule = new RoutingEntrySchedule().cron("*/5 * * * * ?").zone("UTC");
+    when(folioExecutionContext.getTenantId()).thenReturn(TENANT_ID);
+    when(scheduler.scheduleJob(any(JobDetail.class), triggerArgumentCaptor.capture())).thenReturn(new Date());
+    var routingEntry = new RoutingEntry().schedule(cronSchedule);
+    var timerDescriptor = timerDescriptor().type(TimerType.SYSTEM).routingEntry(routingEntry);
+
+    service.schedule(timerDescriptor);
+
+    assertThat(triggerArgumentCaptor.getValue()).isEqualTo(cronTrigger("*/5 * * * * ?", "UTC"));
+    verifyNoInteractions(systemTimerConfigurationProperties);
   }
 
   @Test

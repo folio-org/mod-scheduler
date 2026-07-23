@@ -5,6 +5,7 @@
 * Enforce system-user execution for SYSTEM timers (MODSCHED-72)
 * Improve structured logging for timer execution (MODSCHED-92)
 * Retry transient timer execution failures with backoff and prevent timers overlapping themselves (MODSCHED-70)
+* Delay first invocation of SYSTEM timers (MODSCHED-76)
 ---
 
 ## Version `v4.0.0` (17.04.2026)

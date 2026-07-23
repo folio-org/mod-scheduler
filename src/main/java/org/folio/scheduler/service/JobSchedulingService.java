@@ -24,10 +24,14 @@ import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
 import static org.quartz.TriggerBuilder.newTrigger;
 import static org.quartz.TriggerKey.triggerKey;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Date;
 import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.folio.scheduler.configuration.properties.SystemTimerConfigurationProperties;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.domain.dto.TimerUnit;
@@ -51,6 +55,7 @@ public class JobSchedulingService {
 
   private final Scheduler scheduler;
   private final FolioExecutionContext folioExecutionContext;
+  private final SystemTimerConfigurationProperties systemTimerConfigurationProperties;
 
   /**
    * Contains multiplication value to convert request delay to milliseconds.
@@ -94,7 +99,8 @@ public class JobSchedulingService {
    * This method only changes the trigger for existing task.
    * </p>
    *
-   * @param timerDescriptor - recurring job descriptor
+   * @param oldTimerDescriptor - previous recurring job descriptor
+   * @param timerDescriptor    - new recurring job descriptor
    */
   @Transactional
   public void reschedule(TimerDescriptor oldTimerDescriptor, TimerDescriptor timerDescriptor) {
@@ -192,11 +198,18 @@ public class JobSchedulingService {
     var group = jobGroup(timerDescriptor);
     var repeatInterval = timerUnitFactorMap.get(re.getUnit()) * Long.parseLong(re.getDelay());
     Validate.isTrue(repeatInterval >= 1000L, () -> "Repeat interval must be greater than 1 second.");
-    return newTrigger()
+
+    var triggerBuilder = newTrigger()
       .withIdentity(triggerKey(timerId, group))
       .withSchedule(simpleSchedule().repeatForever().withIntervalInMilliseconds(repeatInterval))
-      .forJob(jobKey(timerId, group))
-      .build();
+      .forJob(jobKey(timerId, group));
+
+    var initialDelay = getSystemTimerInitialDelay(timerDescriptor, repeatInterval);
+    if (!initialDelay.isZero()) {
+      triggerBuilder.startAt(Date.from(Instant.now().plus(initialDelay)));
+    }
+
+    return triggerBuilder.build();
   }
 
   private CronTrigger getCronTrigger(TimerDescriptor timerDescriptor) {
@@ -211,6 +224,31 @@ public class JobSchedulingService {
       .withSchedule(cronSchedule(cronExpression).inTimeZone(getTimeZone(timeZone)))
       .forJob(jobKey(timerId, group))
       .build();
+  }
+
+  private Duration getSystemTimerInitialDelay(TimerDescriptor timerDescriptor, long repeatInterval) {
+    if (timerDescriptor.getType() != TimerType.SYSTEM) {
+      return Duration.ZERO;
+    }
+
+    var configuredDelay = systemTimerConfigurationProperties.getInitialDelay();
+    if (configuredDelay == null || configuredDelay.isZero() || configuredDelay.isNegative()) {
+      return Duration.ZERO;
+    }
+
+    var configuredDelayMillis = configuredDelay.toMillis();
+    if (configuredDelayMillis <= 0L) {
+      return Duration.ZERO;
+    }
+
+    if (configuredDelayMillis >= repeatInterval) {
+      log.info("Skipping SYSTEM timer initial delay because it is greater than or equal to the repeat interval. "
+          + "[timerId: {}, initialDelay: {}, repeatIntervalMs: {}]",
+        timerDescriptor.getId(), configuredDelay, repeatInterval);
+      return Duration.ZERO;
+    }
+
+    return configuredDelay;
   }
 
   private static boolean isTriggerDisabled(TimerDescriptor desc) {
