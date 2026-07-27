@@ -23,7 +23,7 @@ public class TimerExecutionRetryConfiguration {
    */
   @Bean(name = "timerExecutionRetryTemplate")
   public RetryTemplate timerExecutionRetryTemplate(RetryConfigurationProperties properties,
-    TimerExecutionRetryClassifier classifier) {
+                                                   TimerExecutionRetryClassifier classifier) {
     var config = properties.getConfig().get("timer-execution");
     return RetryTemplate.builder()
       .maxAttempts((int) config.getRetryAttempts())

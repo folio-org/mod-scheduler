@@ -1,5 +1,11 @@
 package org.folio.scheduler.service.jobs;
 
+import static org.folio.scheduler.service.jobs.TimerExecutionRetryClassifier.RetryReason.AUTHORIZATION_SERVICE_UNAVAILABLE;
+import static org.folio.scheduler.service.jobs.TimerExecutionRetryClassifier.RetryReason.CONNECTION_POOL_TIMEOUT;
+import static org.folio.scheduler.service.jobs.TimerExecutionRetryClassifier.RetryReason.CONNECTION_REFUSED;
+import static org.folio.scheduler.service.jobs.TimerExecutionRetryClassifier.RetryReason.CONNECT_TIMEOUT;
+
+import java.net.ConnectException;
 import lombok.RequiredArgsConstructor;
 import org.apache.hc.client5.http.ConnectTimeoutException;
 import org.apache.hc.core5.http.ConnectionRequestTimeoutException;
@@ -8,10 +14,6 @@ import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
-
-import java.net.ConnectException;
-
-import static org.folio.scheduler.service.jobs.TimerExecutionRetryClassifier.RetryReason.*;
 
 /**
  * Decides whether a failed timer HTTP call may be retried.
