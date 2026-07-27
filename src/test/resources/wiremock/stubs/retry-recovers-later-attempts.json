@@ -1,0 +1,17 @@
+{
+  "scenarioName": "timer-retry-recovers",
+  "requiredScenarioState": "downstream-recovered",
+  "request": {
+    "method": "POST",
+    "urlPattern": "/test/retry-recovers"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "message": "success!"
+    }
+  }
+}

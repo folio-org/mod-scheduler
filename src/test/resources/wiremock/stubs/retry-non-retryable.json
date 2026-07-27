@@ -1,0 +1,23 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPattern": "/test/retry-non-retryable"
+  },
+  "response": {
+    "status": 503,
+    "headers": {
+      "Content-Type": "application/json",
+      "Retry-After": "1"
+    },
+    "jsonBody": {
+      "errors": [
+        {
+          "type": "ServiceUnavailableException",
+          "code": "service_unavailable",
+          "message": "Generic service failure"
+        }
+      ],
+      "total_records": 1
+    }
+  }
+}

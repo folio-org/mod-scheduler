@@ -1,6 +1,7 @@
 package org.folio.scheduler.service.jobs;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.time.Duration.ofMillis;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
@@ -8,7 +9,9 @@ import static org.folio.scheduler.support.TestConstants.TIMER_UUID;
 import static org.folio.scheduler.support.TestConstants.USER_ID;
 import static org.folio.scheduler.support.TestConstants.USER_ID_UUID;
 import static org.folio.scheduler.support.TestConstants.USER_TOKEN;
+import static org.folio.scheduler.utils.TestUtils.OBJECT_MAPPER;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -28,7 +31,10 @@ import org.apache.logging.log4j.core.appender.AbstractAppender;
 import org.apache.logging.log4j.core.config.Property;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.apache.logging.log4j.message.StringMapMessage;
+import org.folio.scheduler.configuration.TimerExecutionRetryConfiguration;
 import org.folio.scheduler.configuration.properties.OkapiConfigurationProperties;
+import org.folio.scheduler.configuration.properties.RetryConfigurationProperties;
+import org.folio.scheduler.configuration.properties.RetryConfigurationProperties.RetryProperties;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
@@ -47,7 +53,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.quartz.JobDetail;
@@ -55,6 +60,8 @@ import org.quartz.JobExecutionContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 
 @UnitTest
@@ -67,7 +74,9 @@ class OkapiHttpRequestExecutorTest {
   private static final String MODULE_NAME = "mod-scheduler";
   private static final String SYSTEM_USER_ID = "99999999-9999-9999-9999-999999999999";
 
-  @InjectMocks private OkapiHttpRequestExecutor job;
+  private static final int RETRY_ATTEMPTS = 3;
+
+  private OkapiHttpRequestExecutor job;
   @Mock private OkapiClient okapiClient;
   @Mock private JobExecutionContext jobExecutionContext;
   @Mock private FolioModuleMetadata folioModuleMetadata;
@@ -87,6 +96,21 @@ class OkapiHttpRequestExecutorTest {
     logAppender.start();
     logger.addAppender(logAppender);
     logger.setLevel(Level.INFO);
+    job = newExecutor(RETRY_ATTEMPTS);
+  }
+
+  /**
+   * Builds the executor with the production retry assembly, only with negligible backoff so tests stay fast.
+   */
+  private OkapiHttpRequestExecutor newExecutor(int retryAttempts) {
+    var properties = new RetryConfigurationProperties();
+    properties.setConfig(Map.of("timer-execution", RetryProperties.of(ofMillis(1), ofMillis(2), retryAttempts, 2)));
+    var classifier = new TimerExecutionRetryClassifier(OBJECT_MAPPER);
+    var retryTemplate = new TimerExecutionRetryConfiguration()
+      .timerExecutionRetryTemplate(properties, classifier);
+
+    return new OkapiHttpRequestExecutor(okapiClient, folioModuleMetadata, schedulerTimerService,
+      okapiConfigurationProperties, userImpersonationService, systemUserService, retryTemplate, classifier);
   }
 
   @AfterEach
@@ -228,8 +252,8 @@ class OkapiHttpRequestExecutorTest {
     job.execute(jobExecutionContext);
 
     verify(okapiClient).doDelete(expectedUri, TEST_MODULE_ID);
-    assertHttpStatusFailureLog(assertSystemTimerEvent("timer.execution.failure", "DELETE", "/test-endpoint",
-      "test-endpoint"));
+    var event = assertSystemTimerEvent("timer.execution.failure", "DELETE", "/test-endpoint", "test-endpoint");
+    assertHttpStatusFailureLog(event);
     assertLoggedMessagesDoNotContain(USER_TOKEN, SYSTEM_USER_ID, "downstream-secret", "body-secret");
   }
 
@@ -249,9 +273,10 @@ class OkapiHttpRequestExecutorTest {
 
     job.execute(jobExecutionContext);
 
+    // a read timeout is deliberately not retried: the first request is most likely still running
     verify(okapiClient).doPost(expectedUri, TEST_MODULE_ID);
-    assertRestClientFailureLog(assertSystemTimerEvent("timer.execution.failure", "POST", "/test-endpoint",
-      "test-endpoint"));
+    var event = assertSystemTimerEvent("timer.execution.failure", "POST", "/test-endpoint", "test-endpoint");
+    assertRestClientFailureLog(event);
     assertLoggedMessagesDoNotContain(USER_TOKEN, SYSTEM_USER_ID, "transport-secret");
   }
 
@@ -274,6 +299,76 @@ class OkapiHttpRequestExecutorTest {
   }
 
   @Test
+  void execute_positive_retriesWithStructuredLogAfterTransientFailure() {
+    var re = new RoutingEntry().path("test-endpoint").methods(List.of("POST"));
+    var expectedUri = fromUriString("http://test-endpoint").build().toUri();
+    stubSystemTimer(re);
+    doThrow(serverError(HttpStatus.SERVICE_UNAVAILABLE, authorizationErrorBody())).doNothing()
+      .when(okapiClient).doPost(expectedUri, TEST_MODULE_ID);
+
+    job.execute(jobExecutionContext);
+
+    verify(okapiClient, times(2)).doPost(expectedUri, TEST_MODULE_ID);
+    verify(userImpersonationService).impersonate(TENANT_ID, SYSTEM_USER_ID);
+    assertSuccessLog(assertSystemTimerEvent("timer.execution.success", "POST", "/test-endpoint", "test-endpoint"));
+    assertThat(assertSystemTimerEvent("timer.execution.retry", "POST", "/test-endpoint", "test-endpoint"))
+      .containsEntry("outcome", "RETRY")
+      .containsEntry("retryNumber", 1)
+      .containsEntry("reason", "AUTHORIZATION_SERVICE_UNAVAILABLE");
+    assertLoggedMessagesDoNotContain("authorization-secret");
+  }
+
+  @Test
+  void execute_negative_doesNotRetryGenericServerFailure() {
+    var re = new RoutingEntry().path("test-endpoint").methods(List.of("POST"));
+    var expectedUri = fromUriString("http://test-endpoint").build().toUri();
+    stubSystemTimer(re);
+    doThrow(serverError(HttpStatus.SERVICE_UNAVAILABLE, "")).when(okapiClient)
+      .doPost(expectedUri, TEST_MODULE_ID);
+
+    job.execute(jobExecutionContext);
+
+    verify(okapiClient).doPost(expectedUri, TEST_MODULE_ID);
+    assertThat(assertSystemTimerEvent("timer.execution.failure", "POST", "/test-endpoint", "test-endpoint"))
+      .containsEntry("outcome", "FAILURE");
+    assertThat(logAppender.timerEvents()).noneMatch(event -> "timer.execution.retry".equals(event.get("event")));
+  }
+
+  @Test
+  void execute_negative_doesNotRetryForbiddenResponse() {
+    var re = new RoutingEntry().path("test-endpoint").methods(List.of("POST"));
+    var expectedUri = fromUriString("http://test-endpoint").build().toUri();
+    stubSystemTimer(re);
+    doThrow(clientError(HttpStatus.FORBIDDEN)).when(okapiClient).doPost(expectedUri, TEST_MODULE_ID);
+
+    job.execute(jobExecutionContext);
+
+    verify(okapiClient).doPost(expectedUri, TEST_MODULE_ID);
+    assertThat(logAppender.timerEvents()).noneMatch(event -> "timer.execution.retry".equals(event.get("event")));
+  }
+
+  @Test
+  void execute_negative_logsEachRetryAndOneFailureWhenRetriesAreExhausted() {
+    var re = new RoutingEntry().path("test-endpoint").methods(List.of("POST"));
+    var expectedUri = fromUriString("http://test-endpoint").build().toUri();
+    stubSystemTimer(re);
+    doThrow(serverError(HttpStatus.SERVICE_UNAVAILABLE, authorizationErrorBody())).when(okapiClient)
+      .doPost(expectedUri, TEST_MODULE_ID);
+
+    job.execute(jobExecutionContext);
+
+    verify(okapiClient, times(RETRY_ATTEMPTS)).doPost(expectedUri, TEST_MODULE_ID);
+    assertThat(logAppender.timerEvents())
+      .filteredOn(event -> "timer.execution.retry".equals(event.get("event")))
+      .extracting(event -> event.get("retryNumber"))
+      .containsExactly(1, 2);
+    assertThat(logAppender.timerEvents())
+      .filteredOn(event -> "timer.execution.failure".equals(event.get("event")))
+      .singleElement()
+      .satisfies(event -> assertThat(event).containsEntry("outcome", "FAILURE"));
+  }
+
+  @Test
   void execute_negative_timerDescriptorNotFound() {
     when(folioModuleMetadata.getModuleName()).thenReturn(MODULE_NAME);
     when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
@@ -286,6 +381,35 @@ class OkapiHttpRequestExecutorTest {
       .isInstanceOf(EntityNotFoundException.class);
 
     verifyNoInteractions(okapiClient);
+  }
+
+  private void stubSystemTimer(RoutingEntry re) {
+    when(folioModuleMetadata.getModuleName()).thenReturn(MODULE_NAME);
+    when(okapiConfigurationProperties.getUrl()).thenReturn(OKAPI_URL);
+    when(jobExecutionContext.getJobDetail()).thenReturn(systemJobDetail());
+    when(systemUserService.findSystemUserId(TENANT_ID)).thenReturn(SYSTEM_USER_ID);
+    when(userImpersonationService.impersonate(TENANT_ID, SYSTEM_USER_ID)).thenReturn(USER_TOKEN);
+    when(schedulerTimerService.getById(TIMER_UUID)).thenReturn(systemTimerDescriptor(re));
+  }
+
+  private static HttpStatusCodeException clientError(HttpStatus status) {
+    return clientError(status, "");
+  }
+
+  private static HttpStatusCodeException clientError(HttpStatus status, String body) {
+    return HttpClientErrorException.create(status, status.getReasonPhrase(), new HttpHeaders(), body.getBytes(UTF_8),
+      UTF_8);
+  }
+
+  private static HttpStatusCodeException serverError(HttpStatus status, String body) {
+    return HttpServerErrorException.create(status, status.getReasonPhrase(), new HttpHeaders(), body.getBytes(UTF_8),
+      UTF_8);
+  }
+
+  private static String authorizationErrorBody() {
+    return """
+      {"errors":[{"code":"authorization_error","message":"authorization-secret"}],"total_records":1}
+      """;
   }
 
   private static JobDetail systemJobDetail() {

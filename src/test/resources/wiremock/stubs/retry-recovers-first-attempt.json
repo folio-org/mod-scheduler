@@ -1,0 +1,25 @@
+{
+  "scenarioName": "timer-retry-recovers",
+  "requiredScenarioState": "Started",
+  "newScenarioState": "downstream-recovered",
+  "request": {
+    "method": "POST",
+    "urlPattern": "/test/retry-recovers"
+  },
+  "response": {
+    "status": 503,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "errors": [
+        {
+          "type": "AuthorizationException",
+          "code": "authorization_error",
+          "message": "Authorization service is unavailable"
+        }
+      ],
+      "total_records": 1
+    }
+  }
+}

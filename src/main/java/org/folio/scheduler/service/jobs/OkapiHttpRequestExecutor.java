@@ -38,15 +38,19 @@ import org.folio.scheduler.service.SchedulerTimerService;
 import org.folio.scheduler.service.UserImpersonationService;
 import org.folio.spring.FolioModuleMetadata;
 import org.folio.spring.scope.FolioExecutionContextSetter;
+import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.springframework.http.HttpMethod;
+import org.springframework.retry.RetryContext;
+import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 
 @Log4j2
 @Component
+@DisallowConcurrentExecution
 public class OkapiHttpRequestExecutor implements Job {
 
   private final FolioModuleMetadata folioModuleMetadata;
@@ -55,23 +59,30 @@ public class OkapiHttpRequestExecutor implements Job {
   private final Map<HttpMethod, BiConsumer<URI, String>> okapiCallMap;
   private final UserImpersonationService userImpersonationService;
   private final SystemUserService systemUserService;
+  private final RetryTemplate retryTemplate;
+  private final TimerExecutionRetryClassifier retryClassifier;
 
   /**
    * Injects required spring components into {@link OkapiHttpRequestExecutor} bean.
    *
-   * @param okapiClient - {@link OkapiClient} feign client
+   * @param okapiClient - {@link OkapiClient} http client
    * @param folioModuleMetadata - {@link FolioModuleMetadata} component
    * @param schedulerTimerService - {@link SchedulerTimerService} service
    * @param okapiConfigurationProperties - {@link OkapiConfigurationProperties} component
+   * @param retryTemplate - retry policy applied to the module http call
+   * @param retryClassifier - decides which module http failures are retryable
    */
   public OkapiHttpRequestExecutor(OkapiClient okapiClient, FolioModuleMetadata folioModuleMetadata,
     SchedulerTimerService schedulerTimerService, OkapiConfigurationProperties okapiConfigurationProperties,
-    UserImpersonationService userImpersonationService, SystemUserService systemUserService) {
+    UserImpersonationService userImpersonationService, SystemUserService systemUserService,
+    RetryTemplate retryTemplate, TimerExecutionRetryClassifier retryClassifier) {
     this.folioModuleMetadata = folioModuleMetadata;
     this.schedulerTimerService = schedulerTimerService;
     this.okapiConfigurationProperties = okapiConfigurationProperties;
     this.userImpersonationService = userImpersonationService;
     this.systemUserService = systemUserService;
+    this.retryTemplate = retryTemplate;
+    this.retryClassifier = retryClassifier;
 
     this.okapiCallMap = Map.ofEntries(
       entry(GET, okapiClient::doGet),
@@ -106,14 +117,39 @@ public class OkapiHttpRequestExecutor implements Job {
       return;
     }
 
+    invokeModule(okapiCallExecutor, staticPath, moduleHint, logContext);
+  }
+
+  private void invokeModule(BiConsumer<URI, String> okapiCallExecutor, String staticPath, String moduleHint,
+    TimerExecutionLogContext logContext) {
     logStart(logContext);
     var startNanos = System.nanoTime();
+    var uri = fromUriString("http:/" + staticPath).build().toUri();
+
     try {
-      okapiCallExecutor.accept(fromUriString("http:/" + staticPath).build().toUri(), moduleHint);
+      executeWithRetry(okapiCallExecutor, uri, moduleHint, logContext);
       logSuccess(logContext, startNanos);
     } catch (RestClientException e) {
       logFailure(logContext, startNanos, e);
     }
+  }
+
+  /**
+   * Runs the module call under the retry policy.
+   *
+   * <p>Only the call itself is retried: header preparation and the timer lookup stay outside the loop, so a retry
+   * neither re-impersonates the user nor re-reads the timer. {@code X-Okapi-Request-Id} therefore stays stable
+   * across attempts, and per-retry correlation is carried by the {@code retryNumber} log field instead.</p>
+   */
+  private void executeWithRetry(BiConsumer<URI, String> okapiCallExecutor, URI uri, String moduleHint,
+    TimerExecutionLogContext logContext) {
+    retryTemplate.execute(retryContext -> {
+      if (retryContext.getRetryCount() > 0) {
+        logRetryAttempt(logContext, retryContext);
+      }
+      okapiCallExecutor.accept(uri, moduleHint);
+      return null;
+    });
   }
 
   private void logUnsupportedMethod(TimerExecutionLogContext logContext) {
@@ -132,6 +168,19 @@ public class OkapiHttpRequestExecutor implements Job {
       .with("durationMs", durationMs(startNanos)));
   }
 
+  /**
+   * Logged when each retry starts, naming the classified cause of the previous failure.
+   */
+  private void logRetryAttempt(TimerExecutionLogContext logContext, RetryContext retryContext) {
+    log.warn(timerExecutionMessage("timer.execution.retry", logContext)
+      .with("outcome", "RETRY")
+      .with("retryNumber", retryContext.getRetryCount())
+      .with("reason", retryClassifier.classify(retryContext.getLastThrowable()).name()));
+  }
+
+  /**
+   * Logged once per execution, after the retry sequence ends.
+   */
   private void logFailure(TimerExecutionLogContext logContext, long startNanos, RestClientException exception) {
     var message = timerExecutionMessage("timer.execution.failure", logContext)
       .with("outcome", "FAILURE")

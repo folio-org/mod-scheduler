@@ -169,6 +169,16 @@ public abstract class BaseIntegrationTest extends BaseBackendIntegrationTest {
     kafkaAdmin.createOrModifyTopics(new NewTopic(topicName, 1, (short) 1));
   }
 
+  /**
+   * Exact number of timer POSTs WireMock has seen for the given path.
+   */
+  protected static int timerCallCount(String urlPath) {
+    return wmAdminClient.requestCount(RequestCriteria.builder()
+      .urlPath(urlPath)
+      .method(HttpMethod.POST)
+      .build());
+  }
+
   protected static void verifyTimerRequestCallsCount() {
     var count = wmAdminClient.requestCount(RequestCriteria.builder()
       .urlPath("/test")

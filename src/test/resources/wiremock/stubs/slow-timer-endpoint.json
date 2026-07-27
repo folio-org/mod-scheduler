@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPattern": "/test/slow-timer"
+  },
+  "response": {
+    "status": 200,
+    "fixedDelayMilliseconds": 3000,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "message": "success!"
+    }
+  }
+}
