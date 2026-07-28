@@ -128,6 +128,11 @@ application:
       entitlement-event:
         retry-delay: ${ENTITLEMENT_EVENT_RETRY_DELAY:1s}
         retry-attempts: ${ENTITLEMENT_EVENT_ATTEMPTS:2147483647}
+      timer-execution:
+        retry-delay: ${TIMER_EXECUTION_RETRY_DELAY:3s}
+        max-delay: ${TIMER_EXECUTION_RETRY_MAX_DELAY:10s}
+        retry-attempts: ${TIMER_EXECUTION_RETRY_ATTEMPTS:4}
+        retry-multiplier: ${TIMER_EXECUTION_RETRY_MULTIPLIER:2}
   token-cache:
     capacity:
       initial: ${TOKEN_CACHE_INITIAL_CAPACITY:10}

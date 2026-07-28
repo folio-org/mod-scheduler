@@ -52,6 +52,11 @@ application:
         max-delay: 250ms
         retry-attempts: 3
         retry-multiplier: 1.5
+      timer-execution:
+        retry-delay: 50ms
+        max-delay: 100ms
+        retry-attempts: 4
+        retry-multiplier: 2
   keycloak:
     admin:
       client-id: folio-backend-admin-client

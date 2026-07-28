@@ -181,10 +181,34 @@ Two independent strategies control the behaviour:
 | USER_IMPERSONATION_RETRY_MULTIPLIER | 1.5           | Retry attempts delay multiplier to obtain a user impersonation token                                                                    |
 | SCHEDULED_TIMER_EVENT_RETRY_DELAY   | 1s            | Retry delay between attempts to process event from `scheduled-job` Kafka topic                                                          |
 | SCHEDULED_TIMER_EVENT_ATTEMPTS      | 2147483647    | Number of attempts to process event from `scheduled-job` Kafka topic (default value is Integer.MAX_VALUE ~= infinite amount of retries) |
+| TIMER_EXECUTION_RETRY_DELAY         | 3s            | Initial backoff before the first retry of a timer HTTP call                                                                             |
+| TIMER_EXECUTION_RETRY_MAX_DELAY     | 10s           | Ceiling for the backoff between retries                                                                                                 |
+| TIMER_EXECUTION_RETRY_ATTEMPTS      | 4             | Number of attempts for a timer HTTP call, including the initial one; `1` disables retries                                               |
+| TIMER_EXECUTION_RETRY_MULTIPLIER    | 2             | Exponential multiplier applied to the backoff between retries                                                                           |
 
 Timer execution uses a Keycloak user impersonation token as `X-Okapi-Token`. If token exchange returns a blank,
 missing, or literal `null` token, the response is not cached and the impersonation request is retried according to
 the `USER_IMPERSONATION_*` settings. If a valid token still cannot be obtained, the timer request is not sent.
+
+#### Timer-execution retry behaviour
+
+When a scheduled timer's HTTP call to a module fails with a transient error, mod-scheduler retries it with
+exponential backoff before giving up. The set of failures treated as transient is an **allowlist** — everything
+not listed is treated as permanent and not retried:
+
+- any `5xx` with sidecar error code `authorization_error`;
+- connection refused, connect timeout, or connection-pool timeout before the request is sent.
+
+Notably **not** retried: generic `5xx`, any `4xx` including `400`, `401`, `403`, `404`, `408` and `429`, read
+timeouts, other I/O failures, DNS failures, and TLS failures. A read timeout is excluded because the target may
+still be processing the first request.
+
+The allowlist deliberately excludes failures that may occur after the target module started processing the request.
+Each retry emits a structured `timer.execution.retry` log with its retry number and reason; response bodies and
+exception messages are not logged.
+
+A single timer never overlaps itself: `@DisallowConcurrentExecution` holds the next fire until the running
+execution completes, per timer and cluster-wide. This applies to **every** timer, not only ones that retry.
 
 ### Secure storage environment variables
 

@@ -215,6 +215,12 @@
       <version>${spring-retry.version}</version>
     </dependency>
 
+    <!-- Explicit compile-scope dependency: OkapiClient disables HttpClient's transport-level retries directly. -->
+    <dependency>
+      <groupId>org.apache.httpcomponents.client5</groupId>
+      <artifactId>httpclient5</artifactId>
+    </dependency>
+
     <dependency>
       <groupId>io.hypersistence</groupId>
       <artifactId>hypersistence-utils-hibernate-73</artifactId>
