@@ -93,6 +93,8 @@ application:
     api:
       allow-system-timer-mutation: ${SCHEDULER_API_ALLOW_SYSTEM_TIMER_MUTATION:false}
       allow-user-id-update: ${SCHEDULER_API_ALLOW_USER_ID_UPDATE:false}
+    system:
+      initial-delay: ${SCHEDULER_SYSTEM_TIMER_INITIAL_DELAY:0s}
   kafka:
     consumer:
       listener:

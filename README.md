@@ -130,6 +130,7 @@ docker run \
 | TOKEN_CACHE_REFRESH_PRIOR_EXPIRATION       | 25                     | Specifies the amount of seconds for a cache entry invalidation prior to the token expiration.                                                                         |
 | SCHEDULER_API_ALLOW_SYSTEM_TIMER_MUTATION  | false                  | Allow REST APIs to create, update, and delete SYSTEM timers.                                                                                                          |
 | SCHEDULER_API_ALLOW_USER_ID_UPDATE         | false                  | Allow a USER timer's `userId` to be refreshed to the updating user on update. When `false`, `userId` is set once on creation and preserved across updates.            |
+| SCHEDULER_SYSTEM_TIMER_INITIAL_DELAY       | 0s                     | Initial delay for SYSTEM delay-based timers. The delay is skipped for USER timers, cron timers, and SYSTEM timers whose interval is less than or equal to the configured delay.              |
 
 ### Kafka environment variables
 
