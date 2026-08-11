@@ -206,7 +206,10 @@ public class JobSchedulingService {
 
     var initialDelay = getSystemTimerInitialDelay(timerDescriptor, repeatInterval);
     if (!initialDelay.isZero()) {
-      triggerBuilder.startAt(Date.from(Instant.now().plus(initialDelay)));
+      var startAt = Instant.now().plus(initialDelay);
+      log.info("Applying SYSTEM timer initial delay [timerId: {}, initialDelay: {}, startAt: {}]",
+        timerDescriptor.getId(), initialDelay, startAt);
+      triggerBuilder.startAt(Date.from(startAt));
     }
 
     return triggerBuilder.build();
