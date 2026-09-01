@@ -3,6 +3,7 @@ package org.folio.scheduler.integration.kafka;
 import static java.lang.Boolean.TRUE;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.folio.integration.kafka.model.ResourceResultStatus.SUCCESS;
 import static org.folio.scheduler.domain.dto.TimerUnit.MINUTE;
 import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
@@ -21,6 +22,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.folio.integration.kafka.model.ResourceEvent;
+import org.folio.integration.kafka.model.ResourceResultEvent;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
@@ -41,6 +43,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import tools.jackson.databind.ObjectMapper;
 
 @UnitTest
@@ -50,16 +53,19 @@ class KafkaEventServiceTest {
   private static final String MODULE_ID = "mod-foo-1.0.0";
   private static final String MODULE_NAME = "mod-foo";
   private static final String APPLICATION_ID = "app-foo-1.0.0";
+  private static final String EVENT_ID = "5f26fe20-d7bc-11ef-9cd2-0242ac120002";
+  private static final String RESOURCE_NAME = "Scheduled Job";
 
   @Mock private SchedulerTimerService schedulerTimerService;
   @Mock private TimerTableCheckService timerTableCheckService;
   @Spy private ObjectMapper objectMapper = TestUtils.OBJECT_MAPPER;
+  @Mock private ApplicationEventPublisher eventPublisher;
   @InjectMocks
   private KafkaEventService kafkaEventService;
 
   @AfterEach
   void tearDown() {
-    verifyNoMoreInteractions(schedulerTimerService, timerTableCheckService);
+    verifyNoMoreInteractions(schedulerTimerService, timerTableCheckService, eventPublisher);
   }
 
   private static ResourceEvent<ScheduledTimers> createResourceEvent(List<RoutingEntry> routingEntries) {
@@ -69,7 +75,9 @@ class KafkaEventServiceTest {
       .timers(routingEntries);
 
     return ResourceEvent.<ScheduledTimers>baseBuilder()
+      .id(EVENT_ID)
       .tenant(TENANT_ID)
+      .resourceName(RESOURCE_NAME)
       .newValue(scheduledTimers)
       .build();
   }
@@ -90,6 +98,16 @@ class KafkaEventServiceTest {
       .delay("5");
   }
 
+  private static boolean isSuccessConfirmation(Object event) {
+    if (!(event instanceof ResourceResultEvent r)) {
+      return false;
+    }
+    return EVENT_ID.equals(r.getId())
+      && TENANT_ID.equals(r.getTenant())
+      && MODULE_ID.equals(r.getModuleId())
+      && r.getStatus() == SUCCESS;
+  }
+
   @Nested
   class CreateTimers {
 
@@ -106,6 +124,7 @@ class KafkaEventServiceTest {
           && Objects.equals(descriptor.getModuleId(), MODULE_ID)
           && descriptor.getRoutingEntry().equals(routingEntry1())
       ), eq(RequestOrigin.KAFKA));
+      verify(eventPublisher).publishEvent((Object) argThat(KafkaEventServiceTest::isSuccessConfirmation));
     }
 
     @Test
@@ -123,6 +142,7 @@ class KafkaEventServiceTest {
       verify(schedulerTimerService).create(argThat(descriptor ->
         descriptor.getRoutingEntry().equals(routingEntry2)
       ), eq(RequestOrigin.KAFKA));
+      verify(eventPublisher).publishEvent((Object) argThat(KafkaEventServiceTest::isSuccessConfirmation));
     }
 
     @Test
@@ -132,6 +152,7 @@ class KafkaEventServiceTest {
       kafkaEventService.createTimers(event);
 
       verify(schedulerTimerService, never()).create(any(TimerDescriptor.class), eq(RequestOrigin.KAFKA));
+      verify(eventPublisher).publishEvent((Object) argThat(KafkaEventServiceTest::isSuccessConfirmation));
     }
 
     @Test
@@ -150,6 +171,7 @@ class KafkaEventServiceTest {
         && descriptor.getRoutingEntry().getMethods().contains("POST")
         && descriptor.getRoutingEntry().getUnit() == MINUTE
         && Objects.equals(descriptor.getRoutingEntry().getDelay(), "1")), eq(RequestOrigin.KAFKA));
+      verify(eventPublisher).publishEvent((Object) argThat(KafkaEventServiceTest::isSuccessConfirmation));
     }
 
     @Test
@@ -238,6 +260,7 @@ class KafkaEventServiceTest {
         .applicationId(APPLICATION_ID)
         .timers(List.of(newRoutingEntry));
       var event = ResourceEvent.<ScheduledTimers>baseBuilder()
+        .id(EVENT_ID)
         .tenant(TENANT_ID)
         .oldValue(oldTimers)
         .newValue(newTimers)
@@ -265,6 +288,7 @@ class KafkaEventServiceTest {
           && Objects.equals(descriptor.getModuleId(), MODULE_ID)
           && descriptor.getRoutingEntry().equals(newRoutingEntry)
       ), eq(RequestOrigin.KAFKA));
+      verify(eventPublisher).publishEvent((Object) argThat(KafkaEventServiceTest::isSuccessConfirmation));
     }
 
     @Test
@@ -275,6 +299,7 @@ class KafkaEventServiceTest {
         .applicationId(APPLICATION_ID)
         .timers(List.of(newRoutingEntry));
       var event = ResourceEvent.<ScheduledTimers>baseBuilder()
+        .id(EVENT_ID)
         .tenant(TENANT_ID)
         .newValue(newTimers)
         .build();
@@ -289,6 +314,7 @@ class KafkaEventServiceTest {
       verify(schedulerTimerService).create(argThat(descriptor ->
         descriptor.getRoutingEntry().equals(newRoutingEntry)
       ), eq(RequestOrigin.KAFKA));
+      verify(eventPublisher).publishEvent((Object) argThat(KafkaEventServiceTest::isSuccessConfirmation));
     }
 
     @Test
@@ -301,6 +327,7 @@ class KafkaEventServiceTest {
         .applicationId(APPLICATION_ID)
         .timers(List.of(newRoutingEntry));
       var event = ResourceEvent.<ScheduledTimers>baseBuilder()
+        .id(EVENT_ID)
         .tenant(TENANT_ID)
         .newValue(newTimers)
         .build();
@@ -321,6 +348,7 @@ class KafkaEventServiceTest {
       verify(schedulerTimerService).delete(existingTimer1.getId(), RequestOrigin.KAFKA);
       verify(schedulerTimerService).delete(existingTimer2.getId(), RequestOrigin.KAFKA);
       verify(schedulerTimerService).create(any(TimerDescriptor.class), eq(RequestOrigin.KAFKA));
+      verify(eventPublisher).publishEvent((Object) argThat(KafkaEventServiceTest::isSuccessConfirmation));
     }
 
     @Test
@@ -331,6 +359,7 @@ class KafkaEventServiceTest {
         .applicationId(APPLICATION_ID)
         .timers(emptyList());
       var event = ResourceEvent.<ScheduledTimers>baseBuilder()
+        .id(EVENT_ID)
         .tenant(TENANT_ID)
         .newValue(newTimers)
         .build();
@@ -347,6 +376,7 @@ class KafkaEventServiceTest {
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
       verify(schedulerTimerService).delete(existingTimer.getId(), RequestOrigin.KAFKA);
       verify(schedulerTimerService, never()).create(any(TimerDescriptor.class), eq(RequestOrigin.KAFKA));
+      verify(eventPublisher).publishEvent((Object) argThat(KafkaEventServiceTest::isSuccessConfirmation));
     }
 
     @Test
@@ -400,6 +430,7 @@ class KafkaEventServiceTest {
         .applicationId(APPLICATION_ID)
         .timers(List.of(routingEntry1()));
       var event = ResourceEvent.<ScheduledTimers>baseBuilder()
+        .id(EVENT_ID)
         .tenant(TENANT_ID)
         .oldValue(oldTimers)
         .build();
@@ -421,6 +452,7 @@ class KafkaEventServiceTest {
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
       verify(schedulerTimerService).delete(existingTimer1.getId(), RequestOrigin.KAFKA);
       verify(schedulerTimerService).delete(existingTimer2.getId(), RequestOrigin.KAFKA);
+      verify(eventPublisher).publishEvent((Object) argThat(KafkaEventServiceTest::isSuccessConfirmation));
     }
 
     @Test
@@ -430,6 +462,7 @@ class KafkaEventServiceTest {
         .applicationId(APPLICATION_ID)
         .timers(List.of(routingEntry1()));
       var event = ResourceEvent.<ScheduledTimers>baseBuilder()
+        .id(EVENT_ID)
         .tenant(TENANT_ID)
         .oldValue(oldTimers)
         .build();
@@ -447,6 +480,7 @@ class KafkaEventServiceTest {
       verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
       verify(schedulerTimerService).delete(existingTimer.getId(), RequestOrigin.KAFKA);
+      verify(eventPublisher).publishEvent((Object) argThat(KafkaEventServiceTest::isSuccessConfirmation));
     }
 
     @Test
@@ -456,6 +490,7 @@ class KafkaEventServiceTest {
         .applicationId(APPLICATION_ID)
         .timers(List.of(routingEntry1()));
       var event = ResourceEvent.<ScheduledTimers>baseBuilder()
+        .id(EVENT_ID)
         .tenant(TENANT_ID)
         .oldValue(oldTimers)
         .build();
@@ -469,6 +504,7 @@ class KafkaEventServiceTest {
       verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService).findByModuleNameAndType(MODULE_NAME, SYSTEM);
       verify(schedulerTimerService, never()).delete(any(UUID.class), eq(RequestOrigin.KAFKA));
+      verify(eventPublisher).publishEvent((Object) argThat(KafkaEventServiceTest::isSuccessConfirmation));
     }
 
     @Test
@@ -541,6 +577,7 @@ class KafkaEventServiceTest {
         .applicationId(APPLICATION_ID)
         .timers(List.of(routingEntry1()));
       var event = ResourceEvent.<ScheduledTimers>baseBuilder()
+        .id(EVENT_ID)
         .tenant(TENANT_ID)
         .oldValue(oldTimers)
         .build();
@@ -552,6 +589,7 @@ class KafkaEventServiceTest {
       verify(timerTableCheckService).tableExists();
       verify(schedulerTimerService, never()).findByModuleNameAndType(any(), any());
       verify(schedulerTimerService, never()).delete(any(UUID.class), eq(RequestOrigin.KAFKA));
+      verify(eventPublisher).publishEvent((Object) argThat(KafkaEventServiceTest::isSuccessConfirmation));
     }
   }
 
