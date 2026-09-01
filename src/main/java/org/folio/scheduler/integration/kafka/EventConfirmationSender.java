@@ -1,30 +1,37 @@
 package org.folio.scheduler.integration.kafka;
 
+import static org.springframework.transaction.event.TransactionPhase.AFTER_COMMIT;
+
 import lombok.extern.log4j.Log4j2;
-import org.folio.scheduler.integration.kafka.model.TimerProcessingResultEvent;
+import org.folio.integration.kafka.model.ResourceResultEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 public interface EventConfirmationSender {
 
-  void onTimerSuccessEvent(TimerProcessingResultEvent.Success event);
+  @TransactionalEventListener(condition = "#event.status == 'SUCCESS'", phase = AFTER_COMMIT)
+  void onSuccessfulResourceResult(ResourceResultEvent event);
 
-  void onTimerFailureEvent(TimerProcessingResultEvent.Failure event);
+  @EventListener(condition = "#event.status == 'FAILURE'")
+  void onFailedResourceResult(ResourceResultEvent event);
 
   @Log4j2
   class NoOp implements EventConfirmationSender {
+
     @Override
-    public void onTimerSuccessEvent(TimerProcessingResultEvent.Success event) {
+    public void onSuccessfulResourceResult(ResourceResultEvent event) {
       debug(event);
     }
 
     @Override
-    public void onTimerFailureEvent(TimerProcessingResultEvent.Failure event) {
+    public void onFailedResourceResult(ResourceResultEvent event) {
       debug(event);
     }
 
-    private void debug(TimerProcessingResultEvent event) {
-      log.debug("Event confirmation is disabled. Skipping sending confirmation for timer event: "
+    private void debug(ResourceResultEvent event) {
+      log.debug("Event confirmation is disabled. Skipping sending confirmation for resource result event: "
           + "eventId = {}, tenant ={}, moduleId = {}",
-        event.getResourceEventId(), event.getTenant(), event.getTimerModuleId());
+        event.getId(), event.getTenant(), event.getModuleId());
     }
   }
 }

@@ -1,24 +1,52 @@
 package org.folio.scheduler.integration.kafka.configuration;
 
+import java.util.concurrent.Executor;
 import lombok.extern.log4j.Log4j2;
 import org.folio.integration.kafka.model.ResourceResultEvent;
 import org.folio.scheduler.integration.kafka.EventConfirmationSender;
 import org.folio.scheduler.integration.kafka.KafkaEventConfirmationSender;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Log4j2
-@Configuration
 public class EventConfirmationConfiguration {
 
-  @Bean
-  public EventConfirmationSender eventConfirmationSender(EventConfirmationProperties properties,
-    KafkaTemplate<String, ResourceResultEvent> kafkaTemplate) {
-    log.info("Event confirmation is {}.", properties.isEnabled() ? "enabled" : "disabled");
+  @Configuration
+  @ConditionalOnBooleanProperty(prefix = "application.event-confirmation", name = "enabled")
+  public static class Enabled {
 
-    return properties.isEnabled()
-      ? new KafkaEventConfirmationSender(properties.getTopic(), kafkaTemplate)
-      : new EventConfirmationSender.NoOp();
+    @Bean
+    public EventConfirmationSender eventConfirmationSender(EventConfirmationProperties properties,
+      KafkaTemplate<String, ResourceResultEvent> kafkaTemplate) {
+      log.info("Event confirmation is enabled.");
+
+      return new KafkaEventConfirmationSender(properties.getTopic(), kafkaTemplate);
+    }
+
+    @Bean
+    public Executor taskExecutor() {
+      ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+      executor.setCorePoolSize(3);
+      executor.setMaxPoolSize(10);
+      executor.setQueueCapacity(50);
+      executor.setThreadNamePrefix("AsyncEvt-");
+      executor.initialize();
+      return executor;
+    }
+  }
+
+  @Configuration
+  @ConditionalOnBooleanProperty(prefix = "application.event-confirmation", name = "enabled",
+    havingValue = false, matchIfMissing = true)
+  public static class Disabled {
+
+    @Bean
+    public EventConfirmationSender eventConfirmationSender() {
+      log.info("Event confirmation is disabled.");
+      return new EventConfirmationSender.NoOp();
+    }
   }
 }

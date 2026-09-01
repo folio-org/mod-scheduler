@@ -3,6 +3,7 @@ package org.folio.scheduler.integration.kafka;
 import static java.lang.Boolean.TRUE;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.folio.common.utils.CollectionUtils.mapItems;
+import static org.folio.integration.kafka.model.ResourceResultStatus.SUCCESS;
 import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
 import static org.folio.scheduler.utils.OkapiRequestUtils.getStaticPath;
 
@@ -11,12 +12,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.folio.common.utils.SemverUtils;
 import org.folio.integration.kafka.model.ResourceEvent;
+import org.folio.integration.kafka.model.ResourceResultEvent;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
-import org.folio.scheduler.integration.kafka.model.TimerProcessingResultEvent;
 import org.folio.scheduler.service.RequestOrigin;
 import org.folio.scheduler.service.SchedulerTimerService;
 import org.springframework.context.ApplicationEventPublisher;
@@ -43,7 +44,7 @@ public class KafkaEventService {
 
     createModuleSystemTimers(newTimers.getTimers(), moduleName, moduleId);
 
-    publishTimerProcessedEvent(event, moduleId);
+    publishResourceResultEvent(event, moduleId);
   }
 
   public void updateTimers(ResourceEvent<?> event) {
@@ -56,7 +57,7 @@ public class KafkaEventService {
 
     createModuleSystemTimers(newTimers.getTimers(), moduleName, moduleId);
 
-    publishTimerProcessedEvent(event, moduleId);
+    publishResourceResultEvent(event, moduleId);
   }
 
   public void deleteTimers(ResourceEvent<?> event) {
@@ -71,7 +72,7 @@ public class KafkaEventService {
       deleteModuleSystemTimers(moduleName);
     }
 
-    publishTimerProcessedEvent(event, moduleId);
+    publishResourceResultEvent(event, moduleId);
   }
 
   public void enableTimers(EntitlementEvent event) {
@@ -128,8 +129,16 @@ public class KafkaEventService {
     }
   }
 
-  private void publishTimerProcessedEvent(ResourceEvent<?> resourceEvent, String moduleId) {
-    eventPublisher.publishEvent(TimerProcessingResultEvent.success(resourceEvent, moduleId, this));
+  private void publishResourceResultEvent(ResourceEvent<?> resourceEvent, String moduleId) {
+    var resultEvent = ResourceResultEvent.builder()
+      .id(resourceEvent.getId())
+      .tenant(resourceEvent.getTenant())
+      .resourceName(resourceEvent.getResourceName())
+      .moduleId(moduleId)
+      .status(SUCCESS)
+      .build();
+
+    eventPublisher.publishEvent(resultEvent);
   }
 
   private static TimerDescriptor createTimerDescriptor(RoutingEntry routingEntry, String moduleName, String moduleId) {
