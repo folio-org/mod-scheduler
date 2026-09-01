@@ -9,11 +9,19 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProp
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Log4j2
 public class EventConfirmationConfiguration {
 
+  /**
+   * Enables asynchronous confirmation sending along with the {@link #taskExecutor()} it runs on.
+   *
+   * <p>{@code @EnableAsync} is scoped here rather than to the application class because
+   * {@link KafkaEventConfirmationSender} is the module's only {@code @Async} component.</p>
+   */
+  @EnableAsync
   @Configuration
   @ConditionalOnBooleanProperty(prefix = "application.event-confirmation", name = "enabled")
   public static class Enabled {

@@ -48,11 +48,20 @@ public class KafkaConfiguration {
 
   private final KafkaProperties kafkaProperties;
   private final RetryConfigurationProperties retryConfiguration;
-  
+
+  /**
+   * Composes the timer recoverers into a single {@link ConsumerRecordRecoverer}.
+   *
+   * <p>Composed explicitly rather than via {@link java.util.function.BiConsumer#andThen}, whose returned lambda
+   * implements only {@code BiConsumer} and cannot be cast to this sub-interface.</p>
+   */
   @Bean
   public ConsumerRecordRecoverer timersRecoverer(TimerResourceEventRecoverer mainRecoverer,
     @Qualifier("loggingRecoverer") ConsumerRecordRecoverer loggingRecoverer) {
-    return (ConsumerRecordRecoverer) mainRecoverer.andThen(loggingRecoverer);
+    return (consumerRecord, exception) -> {
+      mainRecoverer.accept(consumerRecord, exception);
+      loggingRecoverer.accept(consumerRecord, exception);
+    };
   }
 
   /**
