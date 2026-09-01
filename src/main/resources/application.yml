@@ -32,6 +32,15 @@ spring:
       key-store-location: ${KAFKA_SSL_KEYSTORE_LOCATION:}
       trust-store-password: ${KAFKA_SSL_TRUSTSTORE_PASSWORD:}
       trust-store-location: ${KAFKA_SSL_TRUSTSTORE_LOCATION:}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        retries: 5
+        spring.json.add.type.headers: false
   quartz:
     startup-delay: ${QUARTZ_STARTUP_DELAY:0s}
     auto-startup: true
@@ -140,6 +149,9 @@ application:
       initial: ${TOKEN_CACHE_INITIAL_CAPACITY:10}
       max: ${TOKEN_CACHE_MAX_CAPACITY:50}
     refresh-before-expiry-sec: ${TOKEN_CACHE_REFRESH_PRIOR_EXPIRATION:25}
+  event-confirmation:
+    enabled: ${EVENT_CONFIRMATION_ENABLED:false}
+    topic: ${EVENT_CONFIRMATION_TOPIC:mgr-tenant-entitlements.resource-result}
 
 cache:
   keycloak-user-id:

@@ -16,8 +16,10 @@ import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
+import org.folio.scheduler.integration.kafka.model.TimerProcessingResultEvent;
 import org.folio.scheduler.service.RequestOrigin;
 import org.folio.scheduler.service.SchedulerTimerService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -31,6 +33,7 @@ public class KafkaEventService {
   private final SchedulerTimerService schedulerTimerService;
   private final TimerTableCheckService timerTableCheckService;
   private final ObjectMapper objectMapper;
+  private final ApplicationEventPublisher eventPublisher;
 
   public void createTimers(ResourceEvent<?> event) {
     var newTimers = objectMapper.convertValue(event.getNewValue(), ScheduledTimers.class);
@@ -39,6 +42,8 @@ public class KafkaEventService {
     var moduleName = SemverUtils.getName(moduleId);
 
     createModuleSystemTimers(newTimers.getTimers(), moduleName, moduleId);
+
+    publishTimerProcessedEvent(event, moduleId);
   }
 
   public void updateTimers(ResourceEvent<?> event) {
@@ -50,20 +55,23 @@ public class KafkaEventService {
     deleteModuleSystemTimers(moduleName);
 
     createModuleSystemTimers(newTimers.getTimers(), moduleName, moduleId);
+
+    publishTimerProcessedEvent(event, moduleId);
   }
 
   public void deleteTimers(ResourceEvent<?> event) {
     var tenant = event.getTenant();
-    var moduleName = SemverUtils.getName(
-      objectMapper.convertValue(event.getOldValue(), ScheduledTimers.class).getModuleId());
+    var moduleId = objectMapper.convertValue(event.getOldValue(), ScheduledTimers.class).getModuleId();
+    var moduleName = SemverUtils.getName(moduleId);
 
     if (!timerTableCheckService.tableExists()) {
       log.debug("Cannot delete system timers for given module and tenant because the timer table is missing: "
         + "module = {}, tenant = {}. Operation is ignored.", moduleName, tenant);
-      return;
+    } else {
+      deleteModuleSystemTimers(moduleName);
     }
 
-    deleteModuleSystemTimers(moduleName);
+    publishTimerProcessedEvent(event, moduleId);
   }
 
   public void enableTimers(EntitlementEvent event) {
@@ -118,6 +126,10 @@ public class KafkaEventService {
       log.info("Timers were switched to new state: count = {}, state = {}, module = {}, tenant = {}",
         switched, enable ? "enable" : "disable", moduleName, tenantName);
     }
+  }
+
+  private void publishTimerProcessedEvent(ResourceEvent<?> resourceEvent, String moduleId) {
+    eventPublisher.publishEvent(TimerProcessingResultEvent.success(resourceEvent, moduleId, this));
   }
 
   private static TimerDescriptor createTimerDescriptor(RoutingEntry routingEntry, String moduleName, String moduleId) {

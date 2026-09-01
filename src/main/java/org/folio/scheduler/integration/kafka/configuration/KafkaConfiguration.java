@@ -17,12 +17,14 @@ import org.folio.integration.kafka.consumer.filter.TenantsAreDisabledException;
 import org.folio.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties.RetryProperties;
+import org.folio.scheduler.integration.kafka.TimerResourceEventRecoverer;
 import org.folio.scheduler.integration.kafka.TimerTableCheckService;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.spring.FolioExecutionContext;
 import org.folio.spring.exception.LiquibaseMigrationException;
 import org.hibernate.exception.SQLGrammarException;
 import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.kafka.autoconfigure.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,11 +34,11 @@ import org.springframework.kafka.KafkaException.Level;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.FixedBackOff;
-import tools.jackson.databind.ObjectMapper;
 
 @Log4j2
 @Configuration
@@ -46,7 +48,12 @@ public class KafkaConfiguration {
 
   private final KafkaProperties kafkaProperties;
   private final RetryConfigurationProperties retryConfiguration;
-  private final ObjectMapper objectMapper;
+  
+  @Bean
+  public ConsumerRecordRecoverer timersRecoverer(TimerResourceEventRecoverer mainRecoverer,
+    @Qualifier("loggingRecoverer") ConsumerRecordRecoverer loggingRecoverer) {
+    return (ConsumerRecordRecoverer) mainRecoverer.andThen(loggingRecoverer);
+  }
 
   /**
    * Creates and configures {@link ConcurrentKafkaListenerContainerFactory} as Spring bean for consuming resource events
@@ -55,11 +62,11 @@ public class KafkaConfiguration {
    * @return {@link ConcurrentKafkaListenerContainerFactory} object as Spring bean.
    */
   @Bean
-  @SuppressWarnings("rawtypes")
-  public ConcurrentKafkaListenerContainerFactory<String, ResourceEvent<?>> kafkaListenerContainerFactory() {
+  public ConcurrentKafkaListenerContainerFactory<String, ResourceEvent<?>> kafkaListenerContainerFactory(
+    @Qualifier("timersRecoverer") ConsumerRecordRecoverer recoverer) {
     var factory = new ConcurrentKafkaListenerContainerFactory<String, ResourceEvent<?>>();
     factory.setConsumerFactory(jsonNodeConsumerFactory());
-    factory.setCommonErrorHandler(errorHandler(ResourceEvent.class));
+    factory.setCommonErrorHandler(errorHandler(ResourceEvent.class, recoverer));
     return factory;
   }
 
@@ -70,10 +77,11 @@ public class KafkaConfiguration {
    * @return {@link ConcurrentKafkaListenerContainerFactory} object as Spring bean.
    */
   @Bean
-  public ConcurrentKafkaListenerContainerFactory<String, EntitlementEvent> listenerContainerFactoryEntitlementEvent() {
+  public ConcurrentKafkaListenerContainerFactory<String, EntitlementEvent> listenerContainerFactoryEntitlementEvent(
+    @Qualifier("loggingRecoverer") ConsumerRecordRecoverer recoverer) {
     var factory = new ConcurrentKafkaListenerContainerFactory<String, EntitlementEvent>();
     factory.setConsumerFactory(consumerFactoryEntitlementEvent());
-    factory.setCommonErrorHandler(errorHandler(EntitlementEvent.class));
+    factory.setCommonErrorHandler(errorHandler(EntitlementEvent.class, recoverer));
     return factory;
   }
 
@@ -115,9 +123,8 @@ public class KafkaConfiguration {
     return new DefaultKafkaConsumerFactory<>(config, new StringDeserializer(), deserializer);
   }
 
-  private DefaultErrorHandler errorHandler(Class<?> eventClass) {
-    var errorHandler = new DefaultErrorHandler((message, exception) ->
-      log.error("Failed to process event [record: {}]", message, exception));
+  private DefaultErrorHandler errorHandler(Class<?> eventClass, ConsumerRecordRecoverer recoverer) {
+    var errorHandler = new DefaultErrorHandler(recoverer);
     errorHandler.setBackOffFunction((message, exception) -> getBackOff(exception, eventClass));
     errorHandler.setLogLevel(Level.INFO);
 
