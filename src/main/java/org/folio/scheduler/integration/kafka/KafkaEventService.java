@@ -139,6 +139,7 @@ public class KafkaEventService {
       .build();
 
     eventPublisher.publishEvent(resultEvent);
+    log.debug("Published resource result event: {}", () -> resultEvent);
   }
 
   private static TimerDescriptor createTimerDescriptor(RoutingEntry routingEntry, String moduleName, String moduleId) {

@@ -9,10 +9,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 public interface EventConfirmationSender {
 
-  @TransactionalEventListener(condition = "#event.status == 'SUCCESS'", phase = AFTER_COMMIT)
+  @TransactionalEventListener(
+    condition = "#event.status == T(org.folio.integration.kafka.model.ResourceResultStatus).SUCCESS",
+    phase = AFTER_COMMIT)
   void onSuccessfulResourceResult(ResourceResultEvent event);
 
-  @EventListener(condition = "#event.status == 'FAILURE'")
+  @EventListener(condition = "#event.status == T(org.folio.integration.kafka.model.ResourceResultStatus).FAILURE")
   void onFailedResourceResult(ResourceResultEvent event);
 
   @Log4j2

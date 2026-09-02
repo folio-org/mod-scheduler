@@ -14,9 +14,6 @@ spring:
   jpa:
     show-sql: true
 
-folio:
-  environment: it
-
 cache:
   keycloak-user-id:
     ttl: 1800s
@@ -33,6 +30,7 @@ okapi:
   token: test-token
 
 application:
+  environment: it
   secret-store:
     type: EPHEMERAL
     ephemeral:

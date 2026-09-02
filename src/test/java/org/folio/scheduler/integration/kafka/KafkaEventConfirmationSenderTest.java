@@ -31,7 +31,7 @@ class KafkaEventConfirmationSenderTest {
 
   @BeforeEach
   void setUp() {
-    sender = new KafkaEventConfirmationSender(TOPIC_BASE, kafkaTemplate);
+    sender = new KafkaEventConfirmationSender(TOPIC, kafkaTemplate);
   }
 
   @Test

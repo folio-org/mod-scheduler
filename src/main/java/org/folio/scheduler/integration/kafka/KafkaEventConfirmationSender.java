@@ -1,7 +1,5 @@
 package org.folio.scheduler.integration.kafka;
 
-import static org.folio.common.configuration.properties.FolioEnvironment.getFolioEnvName;
-
 import lombok.extern.log4j.Log4j2;
 import org.folio.integration.kafka.model.ResourceResultEvent;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -15,7 +13,7 @@ public class KafkaEventConfirmationSender implements EventConfirmationSender {
 
   public KafkaEventConfirmationSender(String confirmationTopic,
     KafkaTemplate<String, ResourceResultEvent> kafkaTemplate) {
-    this.confirmationTopic = String.format("%s.%s", getFolioEnvName(), confirmationTopic);
+    this.confirmationTopic = confirmationTopic;
     this.kafkaTemplate = kafkaTemplate;
   }
 
