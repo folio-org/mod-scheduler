@@ -127,6 +127,22 @@ class KafkaEventConfirmationIT extends BaseIntegrationTest {
     awaitConfirmation(EVENT_ID, TENANT_ID, RESOURCE_NAME, MODULE_ID, FAILURE, true);
   }
 
+  @Test
+  @WireMockStub("/wiremock/stubs/timer-endpoint.json")
+  @KeycloakRealms("/json/keycloak/test-realm.json")
+  void deleteTimers_negative_processingFailure_publishesFailureConfirmation() {
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, resourceEvent(CREATE));
+    awaitConfirmation(EVENT_ID, TENANT_ID, RESOURCE_NAME, MODULE_ID, SUCCESS, false);
+    FakeKafkaConsumer.removeAllEvents();
+
+    doThrow(new RuntimeException("timer deletion failed"))
+      .when(schedulerTimerService).delete(any(), eq(RequestOrigin.KAFKA));
+
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, resourceEvent(DELETE));
+
+    awaitConfirmation(EVENT_ID, TENANT_ID, RESOURCE_NAME, MODULE_ID, FAILURE, true);
+  }
+
   private static void awaitConfirmation(String id, String tenant, String resourceName,
     String moduleId, ResourceResultStatus status, boolean withDetails) {
     await().untilAsserted(() -> {
