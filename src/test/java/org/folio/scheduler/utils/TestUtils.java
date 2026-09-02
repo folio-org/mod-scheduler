@@ -42,6 +42,11 @@ public class TestUtils {
   }
 
   @SneakyThrows
+  public static <T> T parse(String value, TypeReference<T> type) {
+    return OBJECT_MAPPER.readValue(value, type);
+  }
+
+  @SneakyThrows
   public static <T> T parseResponse(MvcResult result, Class<T> type) {
     return OBJECT_MAPPER.readValue(result.getResponse().getContentAsString(), type);
   }
@@ -56,16 +61,6 @@ public class TestUtils {
     try (var resource = TestUtils.class.getClassLoader().getResourceAsStream(path)) {
       return IOUtils.toString(resource, StandardCharsets.UTF_8);
     }
-  }
-
-  @SneakyThrows
-  public static <T> T convertValue(Object value, TypeReference<T> toValueTypeRef) {
-    return OBJECT_MAPPER.convertValue(value, toValueTypeRef);
-  }
-
-  @SneakyThrows
-  public static <T> T convertValue(Object value, Class<T> clazz) {
-    return OBJECT_MAPPER.convertValue(value, clazz);
   }
 
   public static void cleanUpCaches(CacheManager cacheManager) {

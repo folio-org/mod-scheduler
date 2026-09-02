@@ -6,7 +6,6 @@ import static org.awaitility.Durations.TEN_SECONDS;
 import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.ENTITLE;
 import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.REVOKE;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
-import static org.folio.scheduler.utils.TestUtils.asJsonString;
 import static org.folio.scheduler.utils.TestUtils.await;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.atLeast;
@@ -48,7 +47,7 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
   private static final String MOD_BAR_JOB_GROUP = TENANT_ID + "#mod-bar";
 
   @Autowired
-  private KafkaTemplate<String, String> kafkaTemplate;
+  private KafkaTemplate<String, EntitlementEvent> kafkaTemplate;
   @Autowired
   private Scheduler scheduler;
   @MockitoBean
@@ -76,7 +75,7 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
   @KeycloakRealms("/json/keycloak/test-realm.json")
   @WireMockStub("/wiremock/stubs/timer-call-targets.json")
   void handleEntitleRevokeEvents_positive() {
-    kafkaTemplate.send(ENTITLEMENT_EVENTS_TOPIC, asJsonString(entitlementEvent()));
+    kafkaTemplate.send(ENTITLEMENT_EVENTS_TOPIC, entitlementEvent());
 
     await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
       .untilAsserted(() -> {
@@ -89,7 +88,7 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
     await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
       .untilAsserted(() -> assertThat(scheduler.getJobKeys(anyJobGroup())).hasSize(3));
 
-    kafkaTemplate.send(ENTITLEMENT_EVENTS_TOPIC, asJsonString(entitlementEvent().setType(REVOKE)));
+    kafkaTemplate.send(ENTITLEMENT_EVENTS_TOPIC, entitlementEvent().setType(REVOKE));
     await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
       .untilAsserted(() -> {
         checkTimerEnabled("123e4567-e89b-12d3-a456-426614174000", false);
@@ -107,7 +106,7 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
   void handleEntitlementEvent_positive_retriesWhileLiquibaseMigrationIsRunning() {
     when(liquibaseMigrationLockService.isMigrationRunning()).thenReturn(true, false);
 
-    kafkaTemplate.send(ENTITLEMENT_EVENTS_TOPIC, asJsonString(entitlementEvent()));
+    kafkaTemplate.send(ENTITLEMENT_EVENTS_TOPIC, entitlementEvent());
 
     await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)
       .untilAsserted(() -> {
@@ -126,7 +125,7 @@ class KafkaMessageListenerEntitlementEventsIT extends BaseIntegrationTest {
   void handleEntitleEvent_positive_skipsUserTimerWithoutUserId() throws Exception {
     var timerWithUserId = "123e4567-e89b-12d3-a456-4266141740a0";
 
-    kafkaTemplate.send(ENTITLEMENT_EVENTS_TOPIC, asJsonString(entitlementEvent().setModuleId("mod-bar-1.0.0")));
+    kafkaTemplate.send(ENTITLEMENT_EVENTS_TOPIC, entitlementEvent().setModuleId("mod-bar-1.0.0"));
 
     // the USER timer that carries a user id is enabled and scheduled
     await().atMost(TEN_SECONDS).pollDelay(ONE_HUNDRED_MILLISECONDS)

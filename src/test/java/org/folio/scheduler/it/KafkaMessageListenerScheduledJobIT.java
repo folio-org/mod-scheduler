@@ -12,7 +12,6 @@ import static org.folio.scheduler.support.TestConstants.TENANT_ID;
 import static org.folio.scheduler.utils.TestUtils.asJsonString;
 import static org.folio.scheduler.utils.TestUtils.await;
 import static org.folio.scheduler.utils.TestUtils.awaitFor;
-import static org.folio.scheduler.utils.TestUtils.convertValue;
 import static org.folio.scheduler.utils.TestUtils.parse;
 import static org.folio.scheduler.utils.TestUtils.readString;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -70,6 +69,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.ResultActions;
+import tools.jackson.core.type.TypeReference;
 
 @Log4j2
 @EnableKeycloakTlsMode
@@ -80,11 +80,13 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
   private static final String SCHEDULED_TIMER_TOPIC = "it.test.mgr-tenant-entitlements.scheduled-job";
   private static final String MODULE_ID = "mod-foo-1.0.0";
   private static final String MODULE_NAME = "mod-foo";
+  private static final TypeReference<ResourceEvent<ScheduledTimers>> SCHEDULED_TIMERS_EVENT =
+    new TypeReference<>() {};
 
   @MockitoSpyBean private SchedulerTimerService schedulerTimerService;
   @MockitoBean private LiquibaseMigrationLockService liquibaseMigrationLockService;
   @Autowired private Scheduler scheduler;
-  @Autowired private KafkaTemplate<String, String> kafkaTemplate;
+  @Autowired private KafkaTemplate<String, ResourceEvent<ScheduledTimers>> kafkaTemplate;
 
   @BeforeAll
   static void beforeAll(@Autowired KafkaAdmin kafkaAdmin) {
@@ -110,7 +112,7 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
   @WireMockStub("/wiremock/stubs/timer-endpoint.json")
   @KeycloakRealms("/json/keycloak/test-realm.json")
   void handleScheduledJobEvent_positive_createsSystemTimerViaKafka() throws Exception {
-    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, asJsonString(resourceEvent()));
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, resourceEvent());
     await().untilAsserted(() -> getScheduledTimers(timerDescriptorList(timerDescriptor()))
       .andExpect(jsonPath("$.timerDescriptors[0].id").hasJsonPath()));
 
@@ -128,7 +130,7 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
   void handleScheduledJobEvent_positive_retriesWhileLiquibaseMigrationIsRunning() {
     when(liquibaseMigrationLockService.isMigrationRunning()).thenReturn(true, false);
 
-    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, asJsonString(resourceEvent()));
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, resourceEvent());
 
     await().untilAsserted(() -> getScheduledTimers(timerDescriptorList(timerDescriptor()))
       .andExpect(jsonPath("$.timerDescriptors[0].id").hasJsonPath()));
@@ -139,13 +141,13 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
   @WireMockStub("/wiremock/stubs/timer-endpoint.json")
   @KeycloakRealms("/json/keycloak/test-realm.json")
   void handleScheduledJobEvent_positive_eventIsSentWhenTenantIsDisabled() {
-    var resourceEventJson = asJsonString(resourceEvent());
+    var scheduledJobEvent = resourceEvent();
     var expectedTimerDescriptors = timerDescriptorList(timerDescriptor());
-    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, resourceEventJson);
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, scheduledJobEvent);
     await().untilAsserted(() -> getScheduledTimers(expectedTimerDescriptors));
 
     removeTenant();
-    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, resourceEventJson);
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, scheduledJobEvent);
     awaitFor(FIVE_HUNDRED_MILLISECONDS);
 
     setUpTenant();
@@ -156,17 +158,15 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
   @WireMockStub("/wiremock/stubs/event-timer-endpoint.json")
   @KeycloakRealms("/json/keycloak/test-realm.json")
   void handleScheduledJobEvent_positive_upgradeEvent_updatesSystemTimersViaKafka() {
-    var newTimerEvent = readString("json/events/folio-app1/mod-foo/create-timer-event.json");
+    var newTimerEvent = parse(readString("json/events/folio-app1/mod-foo/create-timer-event.json"),
+      SCHEDULED_TIMERS_EVENT);
     kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, newTimerEvent);
-    var scheduledTimers1 = parse(newTimerEvent, ResourceEvent.class);
-    var routingEntries1 = convertValue(scheduledTimers1.getNewValue(), ScheduledTimers.class);
-    await().untilAsserted(() -> getScheduledTimers(timerDescriptorList(routingEntries1)));
+    await().untilAsserted(() -> getScheduledTimers(timerDescriptorList(newTimerEvent.getNewValue())));
 
-    var upgradeEvent = readString("json/events/folio-app1/mod-foo/upgrade-timer-event.json");
+    var upgradeEvent = parse(readString("json/events/folio-app1/mod-foo/upgrade-timer-event.json"),
+      SCHEDULED_TIMERS_EVENT);
     kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, upgradeEvent);
-    var scheduledTimers2 = parse(upgradeEvent, ResourceEvent.class);
-    var routingEntries2 = convertValue(scheduledTimers2.getNewValue(), ScheduledTimers.class);
-    await().untilAsserted(() -> getScheduledTimers(timerDescriptorList(routingEntries2)));
+    await().untilAsserted(() -> getScheduledTimers(timerDescriptorList(upgradeEvent.getNewValue())));
   }
 
   @Test
@@ -180,15 +180,15 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
       .andExpect(content().contentType(MediaType.APPLICATION_JSON))
       .andExpect(jsonPath("$.id").hasJsonPath());
 
-    var createTimerEvent = readString("json/events/folio-app1/mod-foo/create-timer-event.json");
+    var createTimerEvent = parse(readString("json/events/folio-app1/mod-foo/create-timer-event.json"),
+      SCHEDULED_TIMERS_EVENT);
     kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, createTimerEvent);
-    var scheduledTimers1 = parse(createTimerEvent, ResourceEvent.class);
-    var routingEntries1 = convertValue(scheduledTimers1.getNewValue(), ScheduledTimers.class);
-    var timerDescList1 =
-      timerDescriptorList(routingEntries1).addTimerDescriptorsItem(userTimerDescriptorRequest).totalRecords(2);
+    var timerDescList1 = timerDescriptorList(createTimerEvent.getNewValue())
+      .addTimerDescriptorsItem(userTimerDescriptorRequest).totalRecords(2);
     await().untilAsserted(() -> getScheduledTimers(timerDescList1));
 
-    var deleteTimerEvent = readString("json/events/folio-app1/mod-foo/delete-timer-event.json");
+    var deleteTimerEvent = parse(readString("json/events/folio-app1/mod-foo/delete-timer-event.json"),
+      SCHEDULED_TIMERS_EVENT);
     kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, deleteTimerEvent);
     var userTimer = timerDescriptorList(userTimerDescriptorRequest);
     await().untilAsserted(() -> getScheduledTimers(userTimer));
@@ -200,7 +200,7 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
   @DisplayName("handleScheduledJobEvent_negative_parameterizedForNonRetryableExceptions")
   void handleScheduledJobEvent_negative_parameterized(@SuppressWarnings("unused") String name, Throwable throwable)
     throws Exception {
-    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, asJsonString(resourceEvent()));
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, resourceEvent());
     doThrow(throwable).when(schedulerTimerService).create(any(), eq(RequestOrigin.KAFKA));
 
     awaitFor(ONE_SECOND);
@@ -252,7 +252,7 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
   @KeycloakRealms("/json/keycloak/test-realm.json")
   void kafkaEvent_positive_createsTimerWithAuditFields() {
     // Arrange
-    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, asJsonString(resourceEvent()));
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, resourceEvent());
 
     // Act & Assert - Wait for timer to be created
     await().untilAsserted(() -> {

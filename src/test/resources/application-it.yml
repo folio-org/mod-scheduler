@@ -1,6 +1,10 @@
 spring:
   application:
     version: 0.0.1-TEST
+  kafka:
+    consumer:
+      auto-offset-reset: earliest
+      group-id: it-test-group
   datasource:
     username: folio_admin
     password: qwerty123
