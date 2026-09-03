@@ -1,6 +1,10 @@
 spring:
   application:
     version: 0.0.1-TEST
+  kafka:
+    consumer:
+      auto-offset-reset: earliest
+      group-id: it-test-group
   datasource:
     username: folio_admin
     password: qwerty123
@@ -9,9 +13,6 @@ spring:
       preparedStatementCacheQueries: 0
   jpa:
     show-sql: true
-
-folio:
-  environment: it
 
 cache:
   keycloak-user-id:
@@ -29,6 +30,7 @@ okapi:
   token: test-token
 
 application:
+  environment: it
   secret-store:
     type: EPHEMERAL
     ephemeral:

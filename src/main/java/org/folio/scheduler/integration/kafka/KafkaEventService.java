@@ -3,6 +3,7 @@ package org.folio.scheduler.integration.kafka;
 import static java.lang.Boolean.TRUE;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.folio.common.utils.CollectionUtils.mapItems;
+import static org.folio.integration.kafka.model.ResourceResultStatus.SUCCESS;
 import static org.folio.scheduler.domain.model.TimerType.SYSTEM;
 import static org.folio.scheduler.utils.OkapiRequestUtils.getStaticPath;
 
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.folio.common.utils.SemverUtils;
 import org.folio.integration.kafka.model.ResourceEvent;
+import org.folio.integration.kafka.model.ResourceResultEvent;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.domain.dto.TimerDescriptor;
 import org.folio.scheduler.domain.dto.TimerType;
@@ -18,6 +20,7 @@ import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
 import org.folio.scheduler.service.RequestOrigin;
 import org.folio.scheduler.service.SchedulerTimerService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -31,6 +34,7 @@ public class KafkaEventService {
   private final SchedulerTimerService schedulerTimerService;
   private final TimerTableCheckService timerTableCheckService;
   private final ObjectMapper objectMapper;
+  private final ApplicationEventPublisher eventPublisher;
 
   public void createTimers(ResourceEvent<?> event) {
     var newTimers = objectMapper.convertValue(event.getNewValue(), ScheduledTimers.class);
@@ -39,6 +43,8 @@ public class KafkaEventService {
     var moduleName = SemverUtils.getName(moduleId);
 
     createModuleSystemTimers(newTimers.getTimers(), moduleName, moduleId);
+
+    publishResourceResultEvent(event, moduleId);
   }
 
   public void updateTimers(ResourceEvent<?> event) {
@@ -50,20 +56,23 @@ public class KafkaEventService {
     deleteModuleSystemTimers(moduleName);
 
     createModuleSystemTimers(newTimers.getTimers(), moduleName, moduleId);
+
+    publishResourceResultEvent(event, moduleId);
   }
 
   public void deleteTimers(ResourceEvent<?> event) {
     var tenant = event.getTenant();
-    var moduleName = SemverUtils.getName(
-      objectMapper.convertValue(event.getOldValue(), ScheduledTimers.class).getModuleId());
+    var moduleId = objectMapper.convertValue(event.getOldValue(), ScheduledTimers.class).getModuleId();
+    var moduleName = SemverUtils.getName(moduleId);
 
     if (!timerTableCheckService.tableExists()) {
       log.debug("Cannot delete system timers for given module and tenant because the timer table is missing: "
         + "module = {}, tenant = {}. Operation is ignored.", moduleName, tenant);
-      return;
+    } else {
+      deleteModuleSystemTimers(moduleName);
     }
 
-    deleteModuleSystemTimers(moduleName);
+    publishResourceResultEvent(event, moduleId);
   }
 
   public void enableTimers(EntitlementEvent event) {
@@ -118,6 +127,19 @@ public class KafkaEventService {
       log.info("Timers were switched to new state: count = {}, state = {}, module = {}, tenant = {}",
         switched, enable ? "enable" : "disable", moduleName, tenantName);
     }
+  }
+
+  private void publishResourceResultEvent(ResourceEvent<?> resourceEvent, String moduleId) {
+    var resultEvent = ResourceResultEvent.builder()
+      .id(resourceEvent.getId())
+      .tenant(resourceEvent.getTenant())
+      .resourceName(resourceEvent.getResourceName())
+      .moduleId(moduleId)
+      .status(SUCCESS)
+      .build();
+
+    eventPublisher.publishEvent(resultEvent);
+    log.debug("Published resource result event: {}", () -> resultEvent);
   }
 
   private static TimerDescriptor createTimerDescriptor(RoutingEntry routingEntry, String moduleName, String moduleId) {

@@ -59,7 +59,10 @@ public class KafkaMessageListener {
         case CREATE -> eventService.createTimers(resourceEvent);
         case UPDATE -> eventService.updateTimers(resourceEvent);
         case DELETE -> eventService.deleteTimers(resourceEvent);
-        default -> logUnsupportedOperationType(consumerRecord);
+        // Thrown rather than logged so the timers recoverer publishes a FAILURE confirmation. Silently ignoring the
+        // event would leave the originating entitlement stage waiting for a confirmation that never arrives.
+        default -> throw new UnsupportedOperationException(
+          "Unsupported scheduled job operation type: " + operationType);
       }
     }
   }

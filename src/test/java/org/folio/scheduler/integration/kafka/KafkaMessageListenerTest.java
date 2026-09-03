@@ -3,6 +3,7 @@ package org.folio.scheduler.integration.kafka;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.folio.integration.kafka.model.ResourceEventType.CREATE;
 import static org.folio.integration.kafka.model.ResourceEventType.DELETE;
+import static org.folio.integration.kafka.model.ResourceEventType.DELETE_ALL;
 import static org.folio.integration.kafka.model.ResourceEventType.UPDATE;
 import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.ENTITLE;
 import static org.folio.scheduler.integration.kafka.model.EntitlementEventType.REVOKE;
@@ -218,6 +219,18 @@ class KafkaMessageListenerTest {
         .hasMessage("Liquibase migration is still running for tenant: " + TENANT_ID);
 
       verify(liquibaseMigrationLockService).isMigrationRunning();
+    }
+
+    @Test
+    void handleScheduledJobEvent_negative_unsupportedOperationType_throwsUnsupportedOperationException() {
+      var event = createResourceEvent(DELETE_ALL);
+      var consumerRecord = new ConsumerRecord<String, ResourceEvent<?>>(TOPIC_NAME, 0, 0, TENANT_ID, event);
+
+      assertThatThrownBy(() -> kafkaMessageListener.handleScheduledJobEvent(consumerRecord))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("DELETE_ALL");
+
+      verifyNoInteractions(eventService);
     }
   }
 

@@ -7,7 +7,6 @@ import static org.awaitility.Durations.TWO_SECONDS;
 import static org.folio.integration.kafka.model.ResourceEventType.CREATE;
 import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
-import static org.folio.scheduler.utils.TestUtils.asJsonString;
 import static org.folio.scheduler.utils.TestUtils.await;
 import static org.hamcrest.Matchers.is;
 import static org.quartz.impl.matchers.GroupMatcher.anyJobGroup;
@@ -53,7 +52,7 @@ class KafkaMessageFilteringIT extends BaseIntegrationTest {
 
   @MockitoBean private LiquibaseMigrationLockService liquibaseMigrationLockService;
   @Autowired private Scheduler scheduler;
-  @Autowired private KafkaTemplate<String, String> kafkaTemplate;
+  @Autowired private KafkaTemplate<String, ResourceEvent<ScheduledTimers>> kafkaTemplate;
 
   @BeforeAll
   static void beforeAll(@Autowired KafkaAdmin kafkaAdmin) {
@@ -82,8 +81,8 @@ class KafkaMessageFilteringIT extends BaseIntegrationTest {
   })
   @KeycloakRealms("/json/keycloak/test-realm.json")
   void shouldFilterMessageForDisabledTenant_andProcessMessageForEnabledTenant() {
-    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, asJsonString(resourceEvent("disabled-tenant")));
-    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, asJsonString(resourceEvent(TENANT_ID)));
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, resourceEvent("disabled-tenant"));
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, resourceEvent(TENANT_ID));
 
     await().untilAsserted(() -> doGet("/scheduler/timers")
       .andExpect(status().isOk())

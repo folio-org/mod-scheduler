@@ -152,6 +152,8 @@ docker run \
 | KAFKA_TENANT_FILTER_TENANT_DISABLED_STRATEGY      | skip                                                                 | Strategy when a message's tenant is not in the entitled set. `skip` silently discards the record; `fail` throws an exception and retries with backoff.     |
 | KAFKA_TENANT_FILTER_ALL_TENANTS_DISABLED_STRATEGY | fail                                                                 | Strategy when no tenants at all are entitled (e.g. during startup). `skip` discards the record; `fail` retries with backoff until tenants become entitled. |
 | MODULE_VERSION                                    | -                                                                    | Module version used for tenant-entitlement filter queries (e.g. `1.0.0`). Typically injected by the deployment pipeline.                                   |
+| EVENT_CONFIRMATION_ENABLED                        | false                                                                | Enables publishing a `ResourceResultEvent` to Kafka after each scheduled-job event is processed (CREATE, UPDATE, DELETE). When `false`, confirmations are not sent. |
+| EVENT_CONFIRMATION_TOPIC                          | `{application.environment}.mgr-tenant-entitlements.resource-result`  | Kafka topic where confirmation events are published. Only relevant when `EVENT_CONFIRMATION_ENABLED=true`.                                                  |
 
 #### Kafka tenant filtering
 

@@ -7,7 +7,6 @@ import static org.awaitility.Durations.TWO_SECONDS;
 import static org.folio.integration.kafka.model.ResourceEventType.CREATE;
 import static org.folio.scheduler.domain.dto.TimerUnit.SECOND;
 import static org.folio.scheduler.support.TestConstants.TENANT_ID;
-import static org.folio.scheduler.utils.TestUtils.asJsonString;
 import static org.folio.scheduler.utils.TestUtils.await;
 import static org.hamcrest.Matchers.is;
 import static org.quartz.impl.matchers.GroupMatcher.anyJobGroup;
@@ -86,7 +85,7 @@ class KafkaMessageFilteringFailStrategyIT extends BaseIntegrationTest {
 
   @MockitoBean private LiquibaseMigrationLockService liquibaseMigrationLockService;
   @Autowired private Scheduler scheduler;
-  @Autowired private KafkaTemplate<String, String> kafkaTemplate;
+  @Autowired private KafkaTemplate<String, ResourceEvent<ScheduledTimers>> kafkaTemplate;
 
   @BeforeAll
   static void beforeAll(@Autowired KafkaAdmin kafkaAdmin) {
@@ -114,7 +113,7 @@ class KafkaMessageFilteringFailStrategyIT extends BaseIntegrationTest {
   void shouldRetryMessage_untilTenantBecomesEnabled() {
     wmAdminClient.addStubMapping(ENTITLEMENT_STUB_DISABLED);
 
-    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, asJsonString(resourceEvent()));
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, resourceEvent());
 
     // wait until the filter has retried at least 3 times (proves FAIL strategy causes retries)
     var entitlementRequestCriteria = RequestCriteria.builder()
