@@ -1,6 +1,9 @@
 package org.folio.scheduler.integration.kafka.configuration;
 
+import static lombok.AccessLevel.PRIVATE;
+
 import java.util.concurrent.Executor;
+import lombok.NoArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.folio.integration.kafka.model.ResourceResultEvent;
 import org.folio.scheduler.integration.kafka.EventConfirmationSender;
@@ -13,6 +16,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Log4j2
+@NoArgsConstructor(access = PRIVATE)
 public class EventConfirmationConfiguration {
 
   /**

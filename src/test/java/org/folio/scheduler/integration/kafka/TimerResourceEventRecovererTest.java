@@ -51,10 +51,10 @@ class TimerResourceEventRecovererTest {
       .resourceName(RESOURCE_NAME)
       .newValue(scheduledTimers)
       .build();
-    var record = new ConsumerRecord<String, Object>(TOPIC, 0, 0L, TENANT_ID, event);
+    var rec = new ConsumerRecord<String, Object>(TOPIC, 0, 0L, TENANT_ID, event);
     var exception = new RuntimeException("processing failed");
 
-    recoverer.accept(record, exception);
+    recoverer.accept(rec, exception);
 
     verify(eventPublisher).publishEvent((Object) argThat(e ->
       e instanceof ResourceResultEvent r
@@ -69,9 +69,9 @@ class TimerResourceEventRecovererTest {
 
   @Test
   void accept_negative_nonResourceEventValue_doesNotPublish() {
-    var record = new ConsumerRecord<String, Object>(TOPIC, 0, 0L, TENANT_ID, "plain-string-value");
+    var rec = new ConsumerRecord<String, Object>(TOPIC, 0, 0L, TENANT_ID, "plain-string-value");
 
-    recoverer.accept(record, new RuntimeException("error"));
+    recoverer.accept(rec, new RuntimeException("error"));
 
     // verifyNoMoreInteractions in tearDown asserts no publish happened
   }
@@ -84,9 +84,9 @@ class TimerResourceEventRecovererTest {
       .tenant(TENANT_ID)
       .oldValue(oldTimers)
       .build();
-    var record = new ConsumerRecord<String, Object>(TOPIC, 0, 0L, TENANT_ID, event);
+    var rec = new ConsumerRecord<String, Object>(TOPIC, 0, 0L, TENANT_ID, event);
 
-    recoverer.accept(record, new RuntimeException("error"));
+    recoverer.accept(rec, new RuntimeException("error"));
 
     verify(eventPublisher).publishEvent((Object) argThat(e ->
       e instanceof ResourceResultEvent r && MODULE_ID.equals(r.getModuleId())
@@ -102,9 +102,9 @@ class TimerResourceEventRecovererTest {
       .tenant(TENANT_ID)
       .newValue(new ScheduledTimers())
       .build();
-    var record = new ConsumerRecord<String, Object>(TOPIC, 0, 0L, TENANT_ID, event);
+    var rec = new ConsumerRecord<String, Object>(TOPIC, 0, 0L, TENANT_ID, event);
 
-    recoverer.accept(record, new RuntimeException("error"));
+    recoverer.accept(rec, new RuntimeException("error"));
 
     verify(eventPublisher).publishEvent((Object) argThat(e ->
       e instanceof ResourceResultEvent r && r.getModuleId() == null
