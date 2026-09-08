@@ -153,6 +153,8 @@ application:
   event-confirmation:
     enabled: ${EVENT_CONFIRMATION_ENABLED:false}
     topic: ${EVENT_CONFIRMATION_TOPIC:${application.environment}.mgr-tenant-entitlements.resource-result}
+    success-listener:
+      transactional: true
 
 cache:
   keycloak-user-id:

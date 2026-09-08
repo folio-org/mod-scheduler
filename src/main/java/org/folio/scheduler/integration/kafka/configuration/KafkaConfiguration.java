@@ -14,10 +14,11 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.folio.integration.kafka.consumer.EnableKafkaConsumer;
 import org.folio.integration.kafka.consumer.filter.TenantIsDisabledException;
 import org.folio.integration.kafka.consumer.filter.TenantsAreDisabledException;
+import org.folio.integration.kafka.consumer.recover.LoggingRecoverer;
+import org.folio.integration.kafka.consumer.recover.ResourceResultEventPublishingRecoverer;
 import org.folio.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties.RetryProperties;
-import org.folio.scheduler.integration.kafka.TimerResourceEventRecoverer;
 import org.folio.scheduler.integration.kafka.TimerTableCheckService;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.spring.FolioExecutionContext;
@@ -56,8 +57,8 @@ public class KafkaConfiguration {
    * implements only {@code BiConsumer} and cannot be cast to this sub-interface.</p>
    */
   @Bean
-  public ConsumerRecordRecoverer timersRecoverer(TimerResourceEventRecoverer mainRecoverer,
-    @Qualifier("loggingRecoverer") ConsumerRecordRecoverer loggingRecoverer) {
+  public ConsumerRecordRecoverer timersRecoverer(ResourceResultEventPublishingRecoverer mainRecoverer,
+    LoggingRecoverer loggingRecoverer) {
     return (consumerRecord, exception) -> {
       mainRecoverer.accept(consumerRecord, exception);
       loggingRecoverer.accept(consumerRecord, exception);
@@ -87,7 +88,7 @@ public class KafkaConfiguration {
    */
   @Bean
   public ConcurrentKafkaListenerContainerFactory<String, EntitlementEvent> listenerContainerFactoryEntitlementEvent(
-    @Qualifier("loggingRecoverer") ConsumerRecordRecoverer recoverer) {
+    LoggingRecoverer recoverer) {
     var factory = new ConcurrentKafkaListenerContainerFactory<String, EntitlementEvent>();
     factory.setConsumerFactory(consumerFactoryEntitlementEvent());
     factory.setCommonErrorHandler(errorHandler(EntitlementEvent.class, recoverer));

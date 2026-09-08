@@ -1,7 +1,7 @@
 ---
 feature_id: timer-event-confirmation
 title: Timer Event Confirmation
-updated: 2026-09-02
+updated: 2026-09-08
 ---
 
 # Timer Event Confirmation
@@ -25,28 +25,27 @@ stage out of `IN_PROGRESS`. Without it the stage would wait indefinitely.
 ## Business rules and constraints
 - Only scheduled-job events (CREATE, UPDATE, DELETE) produce confirmations. Entitlement
   events (ENTITLE, REVOKE, UPGRADE) do not.
-- A SUCCESS confirmation is published via a `@TransactionalEventListener(AFTER_COMMIT)`:
-  it is sent only after the database transaction commits, so a rollback never produces a
-  false SUCCESS.
-- A FAILURE confirmation is published via a plain `@EventListener` when retries are
-  exhausted, carrying the exception message in the `details` field.
+- A SUCCESS confirmation is published after the database transaction commits
+  (`success-listener.transactional=true`), so a rollback never produces a false SUCCESS.
+- A FAILURE confirmation is published immediately when all retries are exhausted,
+  carrying the exception message in the `details` field.
 - An unsupported operation type in a scheduled-job event also produces a FAILURE
   confirmation.
-- Confirmation is sent asynchronously on a dedicated thread pool (`AsyncEvt-` prefix) and
-  does not block the Kafka consumer thread.
+- Confirmation is dispatched asynchronously on a dedicated thread pool (`AsyncEvt-` prefix)
+  so the Kafka consumer or transaction callback thread is never blocked by producer I/O.
 - The `moduleId` in the confirmation is extracted from `newValue` for CREATE and UPDATE
   events, and from `oldValue` for DELETE events.
 
 ## Error behavior
 - If the Kafka send itself fails, the error is logged at ERROR level with the event ID,
   tenant, module ID, and status. The original Kafka record is not reprocessed.
-- When the feature is disabled, all confirmation events are silently dropped and
-  logged at DEBUG level only.
+- When the feature is disabled (`EVENT_CONFIRMATION_ENABLED=false`), no confirmation
+  listeners are registered and all Spring result events are silently discarded.
 
 ## Configuration
 | Variable | Purpose |
 |----------|---------|
-| `EVENT_CONFIRMATION_ENABLED` | Enables confirmation publishing; default `false`. When `false`, a no-op sender is wired and no messages are produced. |
+| `EVENT_CONFIRMATION_ENABLED` | Enables confirmation publishing; default `false`. When `false`, no confirmation listeners are registered and no messages are produced. |
 | `EVENT_CONFIRMATION_TOPIC` | Kafka topic for outgoing confirmations; default `{application.environment}.mgr-tenant-entitlements.resource-result`. |
 
 ## Dependencies and interactions
