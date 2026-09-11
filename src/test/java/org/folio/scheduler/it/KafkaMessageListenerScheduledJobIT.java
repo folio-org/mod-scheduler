@@ -200,8 +200,8 @@ class KafkaMessageListenerScheduledJobIT extends BaseIntegrationTest {
   @DisplayName("handleScheduledJobEvent_negative_parameterizedForNonRetryableExceptions")
   void handleScheduledJobEvent_negative_parameterized(@SuppressWarnings("unused") String name, Throwable throwable)
     throws Exception {
-    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, resourceEvent());
     doThrow(throwable).when(schedulerTimerService).create(any(), eq(RequestOrigin.KAFKA));
+    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, resourceEvent());
 
     awaitFor(ONE_SECOND);
 
