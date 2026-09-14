@@ -14,8 +14,6 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.folio.integration.kafka.consumer.EnableKafkaConsumer;
 import org.folio.integration.kafka.consumer.filter.TenantIsDisabledException;
 import org.folio.integration.kafka.consumer.filter.TenantsAreDisabledException;
-import org.folio.integration.kafka.consumer.recover.LoggingRecoverer;
-import org.folio.integration.kafka.consumer.recover.ResourceResultEventPublishingRecoverer;
 import org.folio.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties.RetryProperties;
@@ -57,8 +55,9 @@ public class KafkaConfiguration {
    * implements only {@code BiConsumer} and cannot be cast to this sub-interface.</p>
    */
   @Bean
-  public ConsumerRecordRecoverer timersRecoverer(ResourceResultEventPublishingRecoverer mainRecoverer,
-    LoggingRecoverer loggingRecoverer) {
+  public ConsumerRecordRecoverer timersRecoverer(
+    @Qualifier("resultEventPublishingRecoverer") ConsumerRecordRecoverer mainRecoverer,
+    @Qualifier("loggingRecoverer") ConsumerRecordRecoverer loggingRecoverer) {
     return (consumerRecord, exception) -> {
       mainRecoverer.accept(consumerRecord, exception);
       loggingRecoverer.accept(consumerRecord, exception);
@@ -88,7 +87,7 @@ public class KafkaConfiguration {
    */
   @Bean
   public ConcurrentKafkaListenerContainerFactory<String, EntitlementEvent> listenerContainerFactoryEntitlementEvent(
-    LoggingRecoverer recoverer) {
+    @Qualifier("loggingRecoverer") ConsumerRecordRecoverer recoverer) {
     var factory = new ConcurrentKafkaListenerContainerFactory<String, EntitlementEvent>();
     factory.setConsumerFactory(consumerFactoryEntitlementEvent());
     factory.setCommonErrorHandler(errorHandler(EntitlementEvent.class, recoverer));
