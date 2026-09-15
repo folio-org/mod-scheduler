@@ -37,11 +37,6 @@ application:
       content:
         folio_master_folio-backend-admin-client: ${KC_ADMIN_CLIENT_SECRET:supersecret}
         folio_test_impersonation-client: impersonation-client-secret
-  kafka:
-    consumer:
-      filtering:
-        tenant-filter:
-          enabled: false
   retry:
     config:
       system-user:
