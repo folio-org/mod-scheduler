@@ -1,7 +1,7 @@
 spring:
   application:
-    name: mod-scheduler
-    version: ${MODULE_VERSION:}
+    name: @project.artifactId@
+    version: ${MODULE_VERSION:@project.version@}
   jackson:
     default-property-inclusion: non_null
     deserialization:
@@ -110,18 +110,12 @@ application:
       listener:
         scheduled-jobs:
           topic-pattern: ${KAFKA_JOB_CONSUMER_PATTERN:(${application.environment}\.)(.*\.)?mgr-tenant-entitlements\.scheduled-job}
-          group-id: ${application.environment}-mod-scheduler-job-group
+          group-id: ${application.environment}-mod-scheduler-job-group-${spring.application.version}
           concurrency: ${KAFKA_JOB_CONCURRENCY:1}
         entitlement-events:
           topic-pattern: ${KAFKA_ENTITLEMENT_CONSUMER_PATTERN:(${application.environment}\.)(.*\.)?entitlement}
-          group-id: ${application.environment}-mod-scheduler-entitlement-group
+          group-id: ${application.environment}-mod-scheduler-entitlement-group-${spring.application.version}
           concurrency: ${KAFKA_ENTITLEMENT_CONCURRENCY:1}
-      filtering:
-        tenant-filter:
-          enabled: ${KAFKA_TENANT_FILTER_ENABLED:false}
-          ignore-empty-batch: true
-          tenant-disabled-strategy: ${KAFKA_TENANT_FILTER_TENANT_DISABLED_STRATEGY:skip}
-          all-tenants-disabled-strategy: ${KAFKA_TENANT_FILTER_ALL_TENANTS_DISABLED_STRATEGY:fail}
   retry:
     config:
       system-user:
@@ -174,6 +168,12 @@ server:
 
 folio:
   environment: ${ENV:folio}
+  kafka:
+    tenant-filter:
+      enabled: false
+      ignore-empty-batch: true
+      tenant-disabled-strategy: skip
+      all-tenants-disabled-strategy: fail
   exchange:
     enabled: true
   logging:

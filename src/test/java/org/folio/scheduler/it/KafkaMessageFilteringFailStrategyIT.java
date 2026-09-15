@@ -43,8 +43,8 @@ import org.springframework.test.context.jdbc.Sql;
 @EnableKeycloakTlsMode
 @IntegrationTest
 @TestPropertySource(properties = {
-  "application.kafka.consumer.filtering.tenant-filter.enabled=true",
-  "application.kafka.consumer.filtering.tenant-filter.tenant-disabled-strategy=FAIL",
+  "folio.kafka.tenant-filter.enabled=true",
+  "folio.kafka.tenant-filter.tenant-disabled-strategy=FAIL",
   "application.retry.config.scheduled-timer-event.retry-delay=100ms"
 })
 @Sql(scripts = "classpath:/sql/truncate-tables.sql", executionPhase = AFTER_TEST_METHOD)
