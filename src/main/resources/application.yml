@@ -1,6 +1,6 @@
 spring:
   application:
-    name: @project.artifactId@
+    name: mod-scheduler
     version: ${MODULE_VERSION:@project.version@}
   jackson:
     default-property-inclusion: non_null

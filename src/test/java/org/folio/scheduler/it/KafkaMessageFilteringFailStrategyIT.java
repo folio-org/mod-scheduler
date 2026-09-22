@@ -15,11 +15,15 @@ import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.AFTER_TES
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.nio.charset.StandardCharsets;
 import lombok.extern.log4j.Log4j2;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.folio.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.domain.dto.RoutingEntry;
 import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
 import org.folio.scheduler.support.base.BaseIntegrationTest;
+import org.folio.spring.integration.XOkapiHeaders;
 import org.folio.spring.liquibase.LiquibaseMigrationLockService;
 import org.folio.test.extensions.EnableKeycloakTlsMode;
 import org.folio.test.extensions.KeycloakRealms;
@@ -45,6 +49,7 @@ import org.springframework.test.context.jdbc.Sql;
 @TestPropertySource(properties = {
   "folio.kafka.tenant-filter.enabled=true",
   "folio.kafka.tenant-filter.tenant-disabled-strategy=FAIL",
+  "folio.kafka.tenant-filter.entitlement-refresh-interval-seconds=1",
   "application.retry.config.scheduled-timer-event.retry-delay=100ms"
 })
 @Sql(scripts = "classpath:/sql/truncate-tables.sql", executionPhase = AFTER_TEST_METHOD)
@@ -108,12 +113,15 @@ class KafkaMessageFilteringFailStrategyIT extends BaseIntegrationTest {
   }
 
   @Test
-  @WireMockStub("/wiremock/stubs/timer-endpoint.json")
+  @WireMockStub({
+    "/wiremock/stubs/get-enabled-tenants-test.json",
+    "/wiremock/stubs/timer-endpoint.json"
+  })
   @KeycloakRealms("/json/keycloak/test-realm.json")
   void shouldRetryMessage_untilTenantBecomesEnabled() {
     wmAdminClient.addStubMapping(ENTITLEMENT_STUB_DISABLED);
 
-    kafkaTemplate.send(SCHEDULED_TIMER_TOPIC, resourceEvent());
+    kafkaTemplate.send(resourceEvent());
 
     // wait until the filter has retried at least 3 times (proves FAIL strategy causes retries)
     var entitlementRequestCriteria = RequestCriteria.builder()
@@ -135,13 +143,16 @@ class KafkaMessageFilteringFailStrategyIT extends BaseIntegrationTest {
       .untilAsserted(BaseIntegrationTest::verifyTimerRequestCallsCount);
   }
 
-  private static ResourceEvent<ScheduledTimers> resourceEvent() {
-    return ResourceEvent.<ScheduledTimers>baseBuilder()
+  private static ProducerRecord<String, ResourceEvent<ScheduledTimers>> resourceEvent() {
+    var event = ResourceEvent.<ScheduledTimers>baseBuilder()
       .resourceName("Scheduled Job")
       .tenant(TENANT_ID)
       .type(CREATE)
       .newValue(scheduledTimers())
       .build();
+    var producerRecord = new ProducerRecord<String, ResourceEvent<ScheduledTimers>>(SCHEDULED_TIMER_TOPIC, null, event);
+    producerRecord.headers().add(new RecordHeader(XOkapiHeaders.TENANT, TENANT_ID.getBytes(StandardCharsets.UTF_8)));
+    return producerRecord;
   }
 
   private static ScheduledTimers scheduledTimers() {
