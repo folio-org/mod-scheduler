@@ -11,9 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.Strings;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.folio.integration.kafka.consumer.EnableKafkaConsumer;
-import org.folio.integration.kafka.consumer.filter.TenantIsDisabledException;
-import org.folio.integration.kafka.consumer.filter.TenantsAreDisabledException;
+import org.folio.integration.kafka.consumer.configuration.EventConfirmationConfiguration;
+import org.folio.integration.kafka.consumer.configuration.KafkaConsumerPropertiesConfiguration;
 import org.folio.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties.RetryProperties;
@@ -21,12 +20,15 @@ import org.folio.scheduler.integration.kafka.TimerTableCheckService;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.spring.FolioExecutionContext;
 import org.folio.spring.exception.LiquibaseMigrationException;
+import org.folio.spring.kafka.filtering.filter.TenantIsDisabledException;
+import org.folio.spring.kafka.filtering.filter.TenantsAreDisabledException;
 import org.hibernate.exception.SQLGrammarException;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.kafka.autoconfigure.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.dao.InvalidDataAccessResourceUsageException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.KafkaException.Level;
@@ -41,7 +43,7 @@ import org.springframework.util.backoff.FixedBackOff;
 
 @Log4j2
 @Configuration
-@EnableKafkaConsumer
+@Import({KafkaConsumerPropertiesConfiguration.class, EventConfirmationConfiguration.class})
 @RequiredArgsConstructor
 public class KafkaConfiguration {
 

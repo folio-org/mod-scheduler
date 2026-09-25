@@ -1,6 +1,6 @@
 package org.folio.scheduler.integration.kafka.model;
 
-import static com.github.jknack.handlebars.internal.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;

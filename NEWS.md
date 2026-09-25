@@ -7,6 +7,8 @@
 * Retry transient timer execution failures with backoff and prevent timers overlapping themselves (MODSCHED-70)
 * Delay first invocation of SYSTEM timers (MODSCHED-76)
 * Async entitlement processing feedback loop (MODSCHED-60)
+* Filter Kafka messages by tenant entitlements - using `folio-spring-kafka` library (MODSCHED-97)
+
 ---
 
 ## Version `v4.0.0` (17.04.2026)
