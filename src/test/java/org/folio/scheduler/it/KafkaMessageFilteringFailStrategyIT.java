@@ -25,9 +25,9 @@ import org.folio.scheduler.integration.kafka.model.ScheduledTimers;
 import org.folio.scheduler.support.base.BaseIntegrationTest;
 import org.folio.spring.integration.XOkapiHeaders;
 import org.folio.spring.liquibase.LiquibaseMigrationLockService;
+import org.folio.test.TestUtils;
 import org.folio.test.extensions.EnableKeycloakTlsMode;
 import org.folio.test.extensions.KeycloakRealms;
-import org.folio.test.extensions.WireMockStub;
 import org.folio.test.extensions.impl.WireMockAdminClient.RequestCriteria;
 import org.folio.test.types.IntegrationTest;
 import org.junit.jupiter.api.AfterAll;
@@ -113,12 +113,12 @@ class KafkaMessageFilteringFailStrategyIT extends BaseIntegrationTest {
   }
 
   @Test
-  @WireMockStub({
-    "/wiremock/stubs/get-enabled-tenants-test.json",
-    "/wiremock/stubs/timer-endpoint.json"
-  })
   @KeycloakRealms("/json/keycloak/test-realm.json")
   void shouldRetryMessage_untilTenantBecomesEnabled() {
+    // discards any stray request the background entitlement-refresh task made before this test's own
+    // stubs were registered.
+    wmAdminClient.resetAll();
+    wmAdminClient.addStubMapping(TestUtils.readString("wiremock/stubs/timer-endpoint.json"));
     wmAdminClient.addStubMapping(ENTITLEMENT_STUB_DISABLED);
 
     kafkaTemplate.send(resourceEvent());
