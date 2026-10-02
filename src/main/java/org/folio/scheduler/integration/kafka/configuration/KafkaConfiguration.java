@@ -20,8 +20,6 @@ import org.folio.scheduler.integration.kafka.TimerTableCheckService;
 import org.folio.scheduler.integration.kafka.model.EntitlementEvent;
 import org.folio.spring.FolioExecutionContext;
 import org.folio.spring.exception.LiquibaseMigrationException;
-import org.folio.spring.kafka.filtering.filter.TenantIsDisabledException;
-import org.folio.spring.kafka.filtering.filter.TenantsAreDisabledException;
 import org.hibernate.exception.SQLGrammarException;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -157,13 +155,6 @@ public class KafkaConfiguration {
     if (relationDoesNotExistsMessage.isPresent()) {
       var retryProperties = getRetryProperties(eventClass);
       log.warn("Tenant table is not found, retrying until created [message: {}]", relationDoesNotExistsMessage.get());
-      return getFixedBackOff(retryProperties);
-    }
-
-    if (hasCause(exception, TenantsAreDisabledException.class)
-      || hasCause(exception, TenantIsDisabledException.class)) {
-      var retryProperties = getRetryProperties(eventClass);
-      log.warn("Tenant(s) is disabled, retrying Kafka event", exception);
       return getFixedBackOff(retryProperties);
     }
 

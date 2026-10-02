@@ -17,17 +17,20 @@ public class SchedulerTenantService extends TenantService {
 
   private final KafkaAdminService kafkaAdminService;
   private final SchedulerTimerService schedulerTimerService;
+  private final TenantModuleVersionService tenantModuleVersionService;
 
   public SchedulerTenantService(JdbcTemplate jdbcTemplate, FolioExecutionContext context,
     FolioSpringLiquibase folioSpringLiquibase, KafkaAdminService kafkaAdminService,
-    SchedulerTimerService schedulerTimerService) {
+    SchedulerTimerService schedulerTimerService, TenantModuleVersionService tenantModuleVersionService) {
     super(jdbcTemplate, context, folioSpringLiquibase);
     this.kafkaAdminService = kafkaAdminService;
     this.schedulerTimerService = schedulerTimerService;
+    this.tenantModuleVersionService = tenantModuleVersionService;
   }
 
   @Override
   protected void afterTenantUpdate(TenantAttributes tenantAttributes) {
+    tenantModuleVersionService.markCurrentVersion();
     kafkaAdminService.restartEventListeners();
     log.info("Tenant init has been completed");
   }
@@ -35,6 +38,7 @@ public class SchedulerTenantService extends TenantService {
   @Override
   protected void beforeTenantDeletion(TenantAttributes tenantAttributes) {
     schedulerTimerService.deleteAll();
+    tenantModuleVersionService.clear();
     log.info("Tenant scheduled timers have been deleted");
   }
 }

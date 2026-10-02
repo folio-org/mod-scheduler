@@ -18,12 +18,14 @@ class SchedulerTenantServiceTest {
   @InjectMocks private SchedulerTenantService schedulerTenantService;
   @Mock private KafkaAdminService kafkaAdminService;
   @Mock private SchedulerTimerService schedulerTimerService;
+  @Mock private TenantModuleVersionService tenantModuleVersionService;
 
   @Test
   void afterTenantUpdate_positive() {
     var tenantAttributes = new TenantAttributes().moduleTo("mod-scheduler");
     schedulerTenantService.afterTenantUpdate(tenantAttributes);
 
+    verify(tenantModuleVersionService).markCurrentVersion();
     verify(kafkaAdminService).restartEventListeners();
   }
 
@@ -32,5 +34,6 @@ class SchedulerTenantServiceTest {
     var tenantAttributes = new TenantAttributes().moduleTo("mod-scheduler");
     schedulerTenantService.beforeTenantDeletion(tenantAttributes);
     verify(schedulerTimerService).deleteAll();
+    verify(tenantModuleVersionService).clear();
   }
 }
