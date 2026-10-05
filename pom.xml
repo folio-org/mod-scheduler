@@ -48,7 +48,6 @@
     <kafka.version>4.2.0</kafka.version>
 
     <!-- Test dependencies versions -->
-    <mockito.version>5.24.0</mockito.version>
     <awaitility.version>4.3.0</awaitility.version>
 
     <!-- Plugins versions -->
@@ -93,13 +92,6 @@
         <groupId>org.folio</groupId>
         <artifactId>applications-poc-tools</artifactId>
         <version>${applications-poc-tools.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-      <dependency>
-        <groupId>org.mockito</groupId>
-        <artifactId>mockito-bom</artifactId>
-        <version>${mockito.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -518,7 +510,7 @@
         <configuration>
           <useSystemClassLoader>false</useSystemClassLoader>
           <groups>unit</groups>
-          <argLine>@{argLine} -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar</argLine>
+          <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
         </configuration>
       </plugin>
 
@@ -528,7 +520,7 @@
         <version>${maven-failsafe-plugin.version}</version>
         <configuration>
           <groups>integration</groups>
-          <argLine>@{argLine} -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar -Djdk.internal.httpclient.disableHostnameVerification=true</argLine>
+          <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -Djdk.internal.httpclient.disableHostnameVerification=true</argLine>
         </configuration>
       </plugin>
 
@@ -559,6 +551,18 @@
                 <source>${project.build.directory}/generated-sources</source>
               </sources>
             </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>properties</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
