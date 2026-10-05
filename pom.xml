@@ -31,13 +31,13 @@
     <mapstruct.version>1.6.3</mapstruct.version>
     <hypersistence-utils.version>3.16.0</hypersistence-utils.version>
     <swagger-annotations.version>2.2.55</swagger-annotations.version>
-    <openapi-tools.jackson-databind-nullable.version>0.2.11</openapi-tools.jackson-databind-nullable.version>
+    <openapi-tools.jackson-databind-nullable.version>0.2.12</openapi-tools.jackson-databind-nullable.version>
     <folio-spring-support.version>10.1.0-SNAPSHOT</folio-spring-support.version>
     <commons-lang3.version>3.20.0</commons-lang3.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <applications-poc-tools.version>4.1.0-SNAPSHOT</applications-poc-tools.version>
     <spring-retry.version>2.0.13</spring-retry.version>
-    <aws.version>2.55.6</aws.version>
+    <aws.version>2.55.9</aws.version>
     <vault.version>5.1.0</vault.version>
     <cron-utils.version>9.2.1</cron-utils.version>
 
@@ -55,7 +55,7 @@
     <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
     <maven-resources-plugin.version>3.5.0</maven-resources-plugin.version>
     <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
-    <maven-checkstyle.version>14.1.0</maven-checkstyle.version>
+    <maven-checkstyle.version>14.3.0</maven-checkstyle.version>
     <copy-rename-maven-plugin.version>1.0.1</copy-rename-maven-plugin.version>
     <maven-surefire-plugin.version>3.6.0</maven-surefire-plugin.version>
     <maven-failsafe-plugin.version>3.6.0</maven-failsafe-plugin.version>
