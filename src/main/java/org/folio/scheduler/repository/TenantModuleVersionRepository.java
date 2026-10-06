@@ -1,6 +1,5 @@
 package org.folio.scheduler.repository;
 
-import jakarta.transaction.Transactional;
 import java.util.Optional;
 import org.folio.scheduler.domain.entity.TenantModuleVersionEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,7 +11,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface TenantModuleVersionRepository extends JpaRepository<TenantModuleVersionEntity, Integer> {
 
-  @Transactional
   @Modifying
   @Query(value = "INSERT INTO tenant_module_version (id, module_id) VALUES (1, :moduleId) "
     + "ON CONFLICT (id) DO UPDATE SET module_id = EXCLUDED.module_id, updated_date = CURRENT_TIMESTAMP",
@@ -22,7 +20,6 @@ public interface TenantModuleVersionRepository extends JpaRepository<TenantModul
   @Query("SELECT e.moduleId FROM TenantModuleVersionEntity e WHERE e.id = 1")
   Optional<String> findModuleId();
 
-  @Transactional
   @Modifying
   @Query("DELETE FROM TenantModuleVersionEntity")
   void deleteOwner();

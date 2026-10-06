@@ -8,6 +8,7 @@ import org.folio.spring.FolioExecutionContext;
 import org.folio.spring.FolioModuleMetadata;
 import org.springframework.dao.InvalidDataAccessResourceUsageException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Records which module version initialized a tenant and tells whether the tenant is entitled to the running version.
@@ -37,6 +38,7 @@ public class TenantModuleVersionService {
   /**
    * Records the running module version as the owner of the current tenant.
    */
+  @Transactional
   public void markCurrentVersion() {
     repository.upsert(moduleId);
     log.info("Tenant is now owned by module version: tenant = {}, moduleId = {}", context.getTenantId(), moduleId);
@@ -45,6 +47,7 @@ public class TenantModuleVersionService {
   /**
    * Removes the ownership record of the current tenant.
    */
+  @Transactional
   public void clear() {
     var tenant = context.getTenantId();
     tenantsWithMarkerTable.remove(tenant);
