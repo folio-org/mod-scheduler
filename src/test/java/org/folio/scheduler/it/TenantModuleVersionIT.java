@@ -79,7 +79,7 @@ class TenantModuleVersionIT extends BaseIntegrationTest {
       // simulates another instance deleting the tenant; this instance still has it cached
       jdbcTemplate.execute("DROP SCHEMA " + folioModuleMetadata.getDBSchemaName(DROPPED_TENANT_ID) + " CASCADE");
 
-      assertThat(tenantModuleVersionService.isDifferentModuleVersion()).isFalse();
+      assertThat(tenantModuleVersionService.isDifferentModuleVersion()).isTrue();
     }
   }
 

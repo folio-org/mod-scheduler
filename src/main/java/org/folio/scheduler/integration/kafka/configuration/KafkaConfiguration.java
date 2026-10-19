@@ -13,8 +13,6 @@ import org.apache.commons.lang3.Strings;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.folio.integration.kafka.consumer.EnableKafkaConsumer;
 import org.folio.integration.kafka.consumer.configuration.TenantModuleVersionConfiguration;
-import org.folio.integration.kafka.consumer.filter.TenantInitializationDetector;
-import org.folio.integration.kafka.consumer.filter.TenantModuleVersionRepository;
 import org.folio.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties.RetryProperties;
@@ -124,11 +122,6 @@ public class KafkaConfiguration {
   @Bean
   public TimerTableCheckService timerTableCheckService(JdbcTemplate jdbcTemplate, FolioExecutionContext context) {
     return new TimerTableCheckService(jdbcTemplate, context);
-  }
-
-  @Bean
-  public TenantInitializationDetector tenantInitializationDetector(TenantModuleVersionRepository repository) {
-    return () -> repository.tableExists("timer");
   }
 
   private <T> DefaultKafkaConsumerFactory<String, T> getConsumerFactory(Class<T> eventClass) {
