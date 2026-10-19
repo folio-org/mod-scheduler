@@ -40,7 +40,7 @@ public class KafkaMessageListener {
     topicPattern = "#{kafkaConsumerProperties.listener['scheduled-jobs'].topicPattern}",
     groupId = "#{kafkaConsumerProperties.listener['scheduled-jobs'].groupId}",
     concurrency = "#{kafkaConsumerProperties.listener['scheduled-jobs'].concurrency}",
-    filter = "tenantAwareMessageFilter")
+    filter = "markerTableBasedTenantAwareMessageFilter")
   public void handleScheduledJobEvent(ConsumerRecord<String, ResourceEvent<?>> consumerRecord) {
     var resourceEvent = consumerRecord.value();
     var tenant = resourceEvent.getTenant();
@@ -78,7 +78,7 @@ public class KafkaMessageListener {
     topicPattern = "#{kafkaConsumerProperties.listener['entitlement-events'].topicPattern}",
     groupId = "#{kafkaConsumerProperties.listener['entitlement-events'].groupId}",
     concurrency = "#{kafkaConsumerProperties.listener['entitlement-events'].concurrency}",
-    filter = "tenantAwareMessageFilter")
+    filter = "markerTableBasedTenantAwareMessageFilter")
   public void handleEntitlementEvent(ConsumerRecord<String, EntitlementEvent> consumerRecord) {
     var event = consumerRecord.value();
     var tenant = event.getTenantName();

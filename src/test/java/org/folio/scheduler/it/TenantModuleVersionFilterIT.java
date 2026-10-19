@@ -35,7 +35,7 @@ import org.springframework.test.context.TestPropertySource;
 
 @IntegrationTest
 @TestPropertySource(properties = "folio.kafka.tenant-filter.enabled=true")
-class TenantOwnershipFilterIT extends BaseIntegrationTest {
+class TenantModuleVersionFilterIT extends BaseIntegrationTest {
 
   private static final String SCHEDULED_TIMER_TOPIC = "it.test.mgr-tenant-entitlements.scheduled-job";
   private static final String FOREIGN_TENANT_ID = "foreign";
