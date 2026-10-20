@@ -1,3 +1,8 @@
+## Version `v4.0.3` (20.10.2026)
+### Changes:
+* Trillium CSP#1 - Upgrade to SpringBoot 4.1 (MODSCHED-98)
+
+
 ## Version `v4.0.2` (26.05.2026)
 ### Changes:
 * Retry user impersonation token retrieval and prevent scheduled timer calls without a valid token (MODSCHED-83)
