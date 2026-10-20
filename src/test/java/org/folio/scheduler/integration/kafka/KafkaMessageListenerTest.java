@@ -64,16 +64,16 @@ class KafkaMessageListenerTest {
   private static ResourceEvent<ScheduledTimers> createResourceEvent(ResourceEventType type) {
     var scheduledTimers = getTimers();
     return switch (type) {
-      case CREATE -> ResourceEvent.<ScheduledTimers>builder()
+      case CREATE -> ResourceEvent.<ScheduledTimers>baseBuilder()
         .type(type).resourceName("Scheduled Job").tenant(TENANT_ID)
         .newValue(scheduledTimers).build();
-      case UPDATE -> ResourceEvent.<ScheduledTimers>builder()
+      case UPDATE -> ResourceEvent.<ScheduledTimers>baseBuilder()
         .type(type).resourceName("Scheduled Job").tenant(TENANT_ID)
         .oldValue(scheduledTimers).newValue(scheduledTimersAfterUpgrade()).build();
-      case DELETE -> ResourceEvent.<ScheduledTimers>builder()
+      case DELETE -> ResourceEvent.<ScheduledTimers>baseBuilder()
         .type(type).resourceName("Scheduled Job").tenant(TENANT_ID)
         .oldValue(scheduledTimers).build();
-      default -> ResourceEvent.<ScheduledTimers>builder()
+      default -> ResourceEvent.<ScheduledTimers>baseBuilder()
         .type(type).resourceName("Scheduled Job").tenant(TENANT_ID).build();
     };
   }
