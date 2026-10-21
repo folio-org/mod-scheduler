@@ -11,8 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.Strings;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.folio.integration.kafka.consumer.configuration.EventConfirmationConfiguration;
-import org.folio.integration.kafka.consumer.configuration.KafkaConsumerPropertiesConfiguration;
+import org.folio.integration.kafka.consumer.EnableKafkaConsumer;
+import org.folio.integration.kafka.consumer.configuration.TenantModuleVersionConfiguration;
 import org.folio.integration.kafka.model.ResourceEvent;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties;
 import org.folio.scheduler.configuration.properties.RetryConfigurationProperties.RetryProperties;
@@ -41,7 +41,8 @@ import org.springframework.util.backoff.FixedBackOff;
 
 @Log4j2
 @Configuration
-@Import({KafkaConsumerPropertiesConfiguration.class, EventConfirmationConfiguration.class})
+@EnableKafkaConsumer
+@Import(TenantModuleVersionConfiguration.class)
 @RequiredArgsConstructor
 public class KafkaConfiguration {
 
@@ -128,7 +129,7 @@ public class KafkaConfiguration {
     Map<String, Object> config = new HashMap<>(kafkaProperties.buildConsumerProperties());
     config.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     config.put(VALUE_DESERIALIZER_CLASS_CONFIG, deserializer);
-    config.put(AUTO_OFFSET_RESET_CONFIG, "earliest");
+    config.put(AUTO_OFFSET_RESET_CONFIG, "latest");
     return new DefaultKafkaConsumerFactory<>(config, new StringDeserializer(), deserializer);
   }
 

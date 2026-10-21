@@ -2,6 +2,7 @@ package org.folio.scheduler.service;
 
 import static org.mockito.Mockito.verify;
 
+import org.folio.integration.kafka.consumer.filter.TenantModuleVersionService;
 import org.folio.scheduler.integration.kafka.KafkaAdminService;
 import org.folio.tenant.domain.dto.TenantAttributes;
 import org.folio.test.types.UnitTest;

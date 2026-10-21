@@ -147,9 +147,9 @@ docker run \
 | KAFKA_JOB_CONCURRENCY                                | 1                                                                    | Number of concurrent threads for the scheduled-job Kafka consumer.                                                                                                                                                                                                                                                                                                                                                                               |
 | KAFKA_ENTITLEMENT_CONSUMER_PATTERN                   | (${folio.environment}\.)(.*\.)entitlement                            | Custom subscription pattern for the entitlement-events Kafka consumer.                                                                                                                                                                                                                                                                                                                                                                           |
 | KAFKA_ENTITLEMENT_CONCURRENCY                        | 1                                                                    | Number of concurrent threads for the entitlement-events Kafka consumer.                                                                                                                                                                                                                                                                                                                                                                          |
-| MODULE_VERSION                                       | -                                                                    | Module version used for tenant-entitlement filter queries (e.g. `1.0.0`). Typically injected by the deployment pipeline.                                                                                                                                                                                                                                                                                                                         |
+| MODULE_VERSION                                       | -                                                                    | Deployed module version. Required for mixed-version deployments and must exactly match `MODULE_VERSION` in the associated sidecar.                                                                                                                                                                                                                                                                                                                |
 | KAFKA_CONSUMER_MAX_POLL_RECORDS                      | 200                                                                  | Maximum number of records returned in a single call to poll().                                                                                                                                                                                                                                                                                                                                                                                   |
-| KAFKA_TENANT_FILTER_ENABLED                          | false                                                                | Enables the tenant ownership filter for Kafka events, see [Kafka tenant filtering](#kafka-tenant-filtering). When `false`, every event is delivered to the listeners.                                                                                                                                                                                                                                                                                  |
+| KAFKA_TENANT_FILTER_ENABLED                          | false                                                                | Enables marker-table-based Kafka tenant filtering. Set to `true` in mixed-version deployments.                                                                                                                                                                                                                                                                                                                                                     |
 | EVENT_CONFIRMATION_ENABLED                           | false                                                                | Enables publishing a `ResourceResultEvent` to Kafka after each scheduled-job event is processed (CREATE, UPDATE, DELETE). When `false`, no confirmation listeners are registered and no messages are produced.                                                                                                                                                                                                                                   |
 | EVENT_CONFIRMATION_TOPIC                             | `{application.environment}.mgr-tenant-entitlements.resource-result`  | Kafka topic where confirmation events are published. Only relevant when `EVENT_CONFIRMATION_ENABLED=true`.                                                                                                                                                                                                                                                                                                                                       |
 
@@ -157,23 +157,21 @@ docker run \
 
 In a mixed-version deployment, multiple versions of the module consume the same `scheduled-job` and `entitlement`
 topics, each using a separate consumer group identified by the module version. Each version processes events only for
-tenants assigned to that version.
+tenants initialized by that version.
 
-The `/_/tenant` API stores the module version that initialized the tenant in the tenant's `tenant_module_version`
-table and removes it when the tenant is deleted. Because the entitlement flow completes this API call before
-publishing Kafka events, the version information is available before events are consumed, avoiding
-cache synchronization issues.
+##### How it works
 
-When `KAFKA_TENANT_FILTER_ENABLED=true`, `TenantAwareMessageFilter` runs before both listeners. It determines
-the tenant from the `x-okapi-tenant` header, falling back to `folio.tenantId`, and compares the tenant's
-stored module version with the current module version:
+1. During tenant initialization, the module stores its full module ID,
+   `<spring.application.name>-<spring.application.version>`, in the tenant’s `tenant_module_version` table.
+2. Events are processed when the recorded module ID matches the running version.
+3. Events owned by another module version are skipped.
 
-- **Different version** — skip the event because another module version owns the tenant.
-- **Otherwise** (same version, or the tenant is not yet initialized) — the event reaches the listener. While the
-  tenant's schema is not ready, the listener retries it with backoff.
+When `KAFKA_TENANT_FILTER_ENABLED=true`, `MarkerTableBasedTenantAwareMessageFilter` reads the tenant from the
+`x-okapi-tenant` Kafka header, falling back to `folio.tenantId`, and skips the message when the recorded module ID
+belongs to another version.
 
-For tenant schemas created before `tenant_module_version` was introduced, the table may not exist. Events for
-these tenants are skipped by this module version until the tenant is initialized by it.
+`MODULE_VERSION` (`spring.application.version`) must exactly match the value supplied to the module's
+associated sidecar container.
 
 ### Retry environment variables
 

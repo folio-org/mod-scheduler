@@ -1,6 +1,7 @@
 package org.folio.scheduler.service;
 
 import lombok.extern.log4j.Log4j2;
+import org.folio.integration.kafka.consumer.filter.TenantModuleVersionService;
 import org.folio.scheduler.integration.kafka.KafkaAdminService;
 import org.folio.spring.FolioExecutionContext;
 import org.folio.spring.liquibase.FolioSpringLiquibase;
