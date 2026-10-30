@@ -8,6 +8,7 @@
 * Delay first invocation of SYSTEM timers (MODSCHED-76)
 * Async entitlement processing feedback loop (MODSCHED-60)
 * Add marker-table-based Kafka tenant filtering for mixed-version deployments (MODSCHED-97)
+* Add DeployConfig.json following ADR-0013 module configuration management (MODSCHED-94)
 
 ---
 
