@@ -1,0 +1,702 @@
+{
+  "_disclaimer": "Default values are calibrated against a reference bugfest environment. See ADR-0013 (Module configuration management) for the governance model behind this file. Resource values and JVM limits must be adjusted to the target host capacity.",
+  "description": "mod-scheduler configuration template",
+  "moduleDefaults": {
+    "resources": [
+      {
+        "name": "cpu",
+        "value": "64",
+        "description": "CPU request/limit for the mod-scheduler container"
+      },
+      {
+        "name": "memory",
+        "value": "1024",
+        "description": "Memory hard limit for the mod-scheduler container in MiB"
+      },
+      {
+        "name": "memoryReservation",
+        "value": "896",
+        "description": "Memory reservation (soft limit) for the mod-scheduler container in MiB"
+      }
+    ],
+    "java": [
+      {
+        "name": "xmx",
+        "value": "512m",
+        "description": "Maximum Java heap size"
+      },
+      {
+        "name": "MaxMetaspaceSize",
+        "value": "256m",
+        "description": "Maximum Java metaspace size"
+      },
+      {
+        "name": "MetaspaceSize",
+        "value": "88m",
+        "description": "Initial Java metaspace size"
+      }
+    ],
+    "deployment": {
+      "isHaSupported": true,
+      "replicasRecommendedCount": 2,
+      "description": "mod-scheduler uses a clustered Quartz JDBC job store, so replicas coordinate through PostgreSQL and each timer fires on exactly one replica; a single timer never overlaps itself across the cluster. Kafka consumers share a consumer group per module version, so scheduled-job and entitlement events are processed once across replicas. Keycloak/system-user/client-secret/token caches are local to each replica. Two replicas are recommended for availability."
+    },
+    "kong": {
+      "timeouts": {
+        "connect": "60s",
+        "send": "60s",
+        "read": "60s"
+      },
+      "description": "Default Kong proxy timeouts are sufficient; the timer REST API only persists timer descriptors and schedules Quartz jobs, and timer HTTP calls are executed asynchronously by Quartz rather than through Kong."
+    },
+    "EnvVars": [
+      {
+        "name": "DB_HOST",
+        "value": null,
+        "description": "PostgreSQL database host",
+        "type": "DB",
+        "essential": true
+      },
+      {
+        "name": "DB_PORT",
+        "value": "5432",
+        "description": "PostgreSQL database port",
+        "type": "DB",
+        "essential": true
+      },
+      {
+        "name": "DB_USERNAME",
+        "value": null,
+        "description": "PostgreSQL database username (sourced from secret store)",
+        "type": "DB",
+        "essential": true
+      },
+      {
+        "name": "DB_PASSWORD",
+        "value": null,
+        "description": "PostgreSQL database password (sourced from secret store)",
+        "type": "DB",
+        "essential": true
+      },
+      {
+        "name": "DB_DATABASE",
+        "value": null,
+        "description": "PostgreSQL database name holding the mod-scheduler tenant schemas and the Quartz schema (sys_quartz_mod_scheduler)",
+        "type": "DB",
+        "essential": true
+      },
+      {
+        "name": "KAFKA_HOST",
+        "value": null,
+        "description": "Kafka broker host. Used to consume scheduled-job and entitlement events and to publish event-confirmation results",
+        "type": "KAFKA",
+        "essential": true
+      },
+      {
+        "name": "KAFKA_PORT",
+        "value": "9092",
+        "description": "Kafka broker port",
+        "type": "KAFKA",
+        "essential": true
+      },
+      {
+        "name": "KAFKA_SECURITY_PROTOCOL",
+        "value": "PLAINTEXT",
+        "description": "Security protocol used to communicate with Kafka brokers (PLAINTEXT or SSL)",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "KAFKA_SSL_KEYSTORE_LOCATION",
+        "value": null,
+        "description": "Filesystem path to the Kafka client key store. Applies when KAFKA_SECURITY_PROTOCOL requires SSL client authentication",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "KAFKA_SSL_KEYSTORE_PASSWORD",
+        "value": null,
+        "description": "Password for the Kafka client key store",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "KAFKA_SSL_TRUSTSTORE_LOCATION",
+        "value": null,
+        "description": "Filesystem path to the Kafka client trust store. Applies when KAFKA_SECURITY_PROTOCOL is SSL",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "KAFKA_SSL_TRUSTSTORE_PASSWORD",
+        "value": null,
+        "description": "Password for the Kafka client trust store",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "KAFKA_CONSUMER_MAX_POLL_RECORDS",
+        "value": "200",
+        "description": "Maximum number of records returned in a single Kafka consumer poll() call",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "KAFKA_JOB_CONSUMER_PATTERN",
+        "value": "(${application.environment}\\.)(.*\\.)?mgr-tenant-entitlements\\.scheduled-job",
+        "description": "Topic name pattern for the scheduled-job topic filled by mgr-tenant-entitlements",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "KAFKA_JOB_CONCURRENCY",
+        "value": "1",
+        "description": "Number of concurrent threads for the scheduled-job Kafka consumer",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "KAFKA_ENTITLEMENT_CONSUMER_PATTERN",
+        "value": "(${application.environment}\\.)(.*\\.)?entitlement",
+        "description": "Topic name pattern for the entitlement topic filled by mgr-tenant-entitlements",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "KAFKA_ENTITLEMENT_CONCURRENCY",
+        "value": "1",
+        "description": "Number of concurrent threads for the entitlement-events Kafka consumer",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "KAFKA_TENANT_FILTER_ENABLED",
+        "value": "false",
+        "description": "Enables marker-table-based Kafka tenant filtering for mixed-version deployments. Set to true when this deployment shares a Kafka cluster/topic with another module version",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "EVENT_CONFIRMATION_ENABLED",
+        "value": "false",
+        "description": "Enables publishing of SUCCESS/FAILURE confirmations to mgr-tenant-entitlements after processing a scheduled-job event",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "EVENT_CONFIRMATION_TOPIC",
+        "value": "${ENV}.mgr-tenant-entitlements.resource-result",
+        "description": "Kafka topic used to publish scheduled-job event confirmation results. Applies when EVENT_CONFIRMATION_ENABLED is true",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "ENV",
+        "value": "folio",
+        "description": "Logical deployment name, used as the Kafka topic prefix and as the default first segment of the secure store key; must match the value used by the other modules",
+        "type": "CONFIG",
+        "essential": true
+      },
+      {
+        "name": "OKAPI_URL",
+        "value": "http://localhost:9130",
+        "description": "Base URL used to perform HTTP requests for scheduled timers (Okapi or API gateway). Required for timer execution",
+        "type": "CONFIG",
+        "essential": true
+      },
+      {
+        "name": "MODULE_VERSION",
+        "value": null,
+        "description": "Deployed module version. Required for mixed-version deployments and must exactly match MODULE_VERSION of the associated sidecar",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SERVER_PORT",
+        "value": "8081",
+        "description": "HTTP port the module listens on",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "JAVA_OPTIONS",
+        "value": null,
+        "description": "Additional JVM options for the mod-scheduler process (heap sizing, GC, agent flags, etc.)",
+        "type": "CONFIG",
+        "essential": true
+      },
+      {
+        "name": "QUARTZ_STARTUP_DELAY",
+        "value": "0s",
+        "description": "Delay before the Quartz scheduler starts after application startup",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "QUARTZ_SCHEDULER_IDLE_WAIT_TIME",
+        "value": "10000",
+        "description": "Time in milliseconds the Quartz scheduler waits before re-querying for available triggers when idle",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "QUARTZ_MISFIRE_THRESHOLD",
+        "value": "250",
+        "description": "Number of milliseconds the scheduler tolerates a trigger passing its next fire time before treating it as misfired",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "QUARTZ_CLUSTER_CHECKIN_INTERVAL",
+        "value": "15000",
+        "description": "Frequency in milliseconds at which this instance checks in with the other instances of the Quartz cluster. Affects how quickly failed instances are detected",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "QUARTZ_POOL_THREAD_COUNT",
+        "value": "5",
+        "description": "Number of threads available for concurrent execution of jobs",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "SCHEDULER_API_ALLOW_SYSTEM_TIMER_MUTATION",
+        "value": "false",
+        "description": "Allow REST APIs to create, update and delete SYSTEM timers",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "SCHEDULER_API_ALLOW_USER_ID_UPDATE",
+        "value": "false",
+        "description": "Allow a USER timer's userId to be refreshed to the updating user on update. When false, userId is set once on creation and preserved across updates",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "SCHEDULER_SYSTEM_TIMER_INITIAL_DELAY",
+        "value": "0s",
+        "description": "Initial delay for SYSTEM delay-based timers. Skipped for USER timers, cron timers and SYSTEM timers whose interval is less than or equal to the configured delay",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "SYSTEM_USER_USERNAME_TEMPLATE",
+        "value": "{tenantId}-system-user",
+        "description": "Template used to generate the system user username for each tenant",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "SYSTEM_USER_RETRY_DELAY",
+        "value": "1s",
+        "description": "Retry delay between attempts to retrieve the system user",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "SYSTEM_USER_MAX_DELAY",
+        "value": "1m",
+        "description": "Maximum delay between attempts to retrieve the system user",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "SYSTEM_USER_RETRY_ATTEMPTS",
+        "value": "2147483647",
+        "description": "Number of retry attempts to retrieve the system user (default is effectively infinite)",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "SYSTEM_USER_RETRY_MULTIPLIER",
+        "value": "1.5",
+        "description": "Retry delay multiplier for attempts to retrieve the system user",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "USER_IMPERSONATION_RETRY_DELAY",
+        "value": "1s",
+        "description": "Retry delay between attempts to obtain a user impersonation token for scheduled job execution",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "USER_IMPERSONATION_MAX_DELAY",
+        "value": "30s",
+        "description": "Maximum delay between attempts to obtain a user impersonation token",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "USER_IMPERSONATION_RETRY_ATTEMPTS",
+        "value": "3",
+        "description": "Number of retry attempts to obtain a user impersonation token",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "USER_IMPERSONATION_RETRY_MULTIPLIER",
+        "value": "1.5",
+        "description": "Retry delay multiplier for attempts to obtain a user impersonation token",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "SCHEDULED_TIMER_EVENT_RETRY_DELAY",
+        "value": "1s",
+        "description": "Retry delay between attempts to process an event from the scheduled-job Kafka topic",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "SCHEDULED_TIMER_EVENT_ATTEMPTS",
+        "value": "2147483647",
+        "description": "Number of attempts to process an event from the scheduled-job Kafka topic (default is effectively infinite)",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "ENTITLEMENT_EVENT_RETRY_DELAY",
+        "value": "1s",
+        "description": "Retry delay between attempts to process an event from the entitlement Kafka topic",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "ENTITLEMENT_EVENT_ATTEMPTS",
+        "value": "2147483647",
+        "description": "Number of attempts to process an event from the entitlement Kafka topic (default is effectively infinite)",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "TIMER_EXECUTION_RETRY_DELAY",
+        "value": "3s",
+        "description": "Initial backoff before the first retry of a timer HTTP call",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "TIMER_EXECUTION_RETRY_MAX_DELAY",
+        "value": "10s",
+        "description": "Ceiling for the backoff between timer HTTP call retries",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "TIMER_EXECUTION_RETRY_ATTEMPTS",
+        "value": "4",
+        "description": "Number of attempts for a timer HTTP call, including the initial one; 1 disables retries",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "TIMER_EXECUTION_RETRY_MULTIPLIER",
+        "value": "2",
+        "description": "Exponential multiplier applied to the backoff between timer HTTP call retries",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "CLIENT_SECRET_KEY_CACHE_TTL",
+        "value": "6000s",
+        "description": "Time to live for cached client secrets read from the secure store",
+        "type": "CACHE",
+        "essential": false
+      },
+      {
+        "name": "CLIENT_SECRET_KEY_CACHE_MAX_SIZE",
+        "value": "200",
+        "description": "Maximum number of cached client secrets",
+        "type": "CACHE",
+        "essential": false
+      },
+      {
+        "name": "TOKEN_CACHE_INITIAL_CAPACITY",
+        "value": "10",
+        "description": "Initial capacity of the impersonation token cache",
+        "type": "CACHE",
+        "essential": false
+      },
+      {
+        "name": "TOKEN_CACHE_MAX_CAPACITY",
+        "value": "50",
+        "description": "Maximum capacity of the impersonation token cache",
+        "type": "CACHE",
+        "essential": false
+      },
+      {
+        "name": "TOKEN_CACHE_REFRESH_PRIOR_EXPIRATION",
+        "value": "25",
+        "description": "Number of seconds before token expiration at which a cached token is invalidated and refreshed",
+        "type": "CACHE",
+        "essential": false
+      },
+      {
+        "name": "KC_INTEGRATION_ENABLED",
+        "value": "true",
+        "description": "Enables Keycloak integration. When false, all Keycloak-related beans are excluded from the Spring context",
+        "type": "KC",
+        "essential": false
+      },
+      {
+        "name": "KC_URL",
+        "value": "http://keycloak:8080",
+        "description": "Keycloak base URL used to perform Keycloak requests",
+        "type": "KC",
+        "essential": true
+      },
+      {
+        "name": "KC_IMPERSONATION_CLIENT",
+        "value": "impersonation-client",
+        "description": "Keycloak client with permission to impersonate users, used to obtain tokens for scheduled job execution",
+        "type": "KC",
+        "essential": false
+      },
+      {
+        "name": "KC_ADMIN_CLIENT_ID",
+        "value": "be-admin-client",
+        "description": "Keycloak admin client ID used for issuing admin tokens. Its secret is read from the secure store, not from an environment variable",
+        "type": "KC",
+        "essential": true
+      },
+      {
+        "name": "KC_CLIENT_TLS_ENABLED",
+        "value": "false",
+        "description": "Enables TLS for the Keycloak clients",
+        "type": "KC",
+        "essential": false
+      },
+      {
+        "name": "KC_CLIENT_TLS_TRUSTSTORE_PATH",
+        "value": null,
+        "description": "Truststore file path for the Keycloak clients. Required when KC_CLIENT_TLS_ENABLED is true",
+        "type": "KC",
+        "essential": false
+      },
+      {
+        "name": "KC_CLIENT_TLS_TRUSTSTORE_PASSWORD",
+        "value": null,
+        "description": "Truststore password for the Keycloak clients",
+        "type": "KC",
+        "essential": false
+      },
+      {
+        "name": "KC_CLIENT_TLS_TRUSTSTORE_TYPE",
+        "value": null,
+        "description": "Truststore file type for the Keycloak clients (e.g. JKS, PKCS12)",
+        "type": "KC",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_TYPE",
+        "value": null,
+        "description": "Secure store backend holding client secrets (e.g. the Keycloak admin client secret). Supported values: EPHEMERAL, AWS_SSM, VAULT, FSSP. The application falls back to VAULT when unset",
+        "type": "CONFIG",
+        "essential": true
+      },
+      {
+        "name": "SECURE_STORE_ENV",
+        "value": null,
+        "description": "First segment of the secure store key, for example prod or test. Defaults to the value of ENV, with fallback to 'folio'",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_AWS_SSM_REGION",
+        "value": null,
+        "description": "AWS region of the SSM client. Applies when SECRET_STORE_TYPE=AWS_SSM; when unset the AWS default region provider chain is used",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_AWS_SSM_USE_IAM",
+        "value": "true",
+        "description": "Use the IAM role of the running task for SSM authorization instead of explicit credentials. Applies when SECRET_STORE_TYPE=AWS_SSM",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_AWS_SSM_ECS_CREDENTIALS_ENDPOINT",
+        "value": null,
+        "description": "The HTTP endpoint used to retrieve AWS credentials. Ignored when SECRET_STORE_AWS_SSM_USE_IAM is true",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_AWS_SSM_ECS_CREDENTIALS_PATH",
+        "value": null,
+        "description": "Path component of the credentials endpoint URI, appended to SECRET_STORE_AWS_SSM_ECS_CREDENTIALS_ENDPOINT",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_VAULT_TOKEN",
+        "value": null,
+        "description": "Token for accessing Vault, may be a root token. Required when SECRET_STORE_TYPE=VAULT",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_VAULT_ADDRESS",
+        "value": null,
+        "description": "Address of the Vault instance. Required when SECRET_STORE_TYPE=VAULT",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_VAULT_ENABLE_SSL",
+        "value": "false",
+        "description": "Whether to use SSL when connecting to Vault",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_VAULT_PEM_FILE_PATH",
+        "value": null,
+        "description": "Path to an X.509 certificate in unencrypted PEM format (UTF-8), used for Vault SSL verification",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_VAULT_KEYSTORE_PASSWORD",
+        "value": null,
+        "description": "Password used to access the Vault client JKS keystore",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_VAULT_KEYSTORE_FILE_PATH",
+        "value": null,
+        "description": "Path to a JKS keystore file containing a Vault client cert and private key",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_VAULT_TRUSTSTORE_FILE_PATH",
+        "value": null,
+        "description": "Path to a JKS truststore file containing trusted Vault server certs",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_FSSP_ADDRESS",
+        "value": null,
+        "description": "Base URL of the Folio Secure Store Proxy (FSSP). Required when SECRET_STORE_TYPE=FSSP",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_FSSP_SECRET_PATH",
+        "value": "secure-store/entries",
+        "description": "Path within FSSP where module secrets are stored/retrieved",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_FSSP_ENABLE_SSL",
+        "value": "false",
+        "description": "Whether to use SSL when connecting to FSSP",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_FSSP_TRUSTSTORE_PATH",
+        "value": null,
+        "description": "Path to the truststore file used for the FSSP SSL connection",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_FSSP_TRUSTSTORE_FILE_TYPE",
+        "value": null,
+        "description": "Truststore file type for the FSSP client (e.g. JKS, PKCS12)",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SECRET_STORE_FSSP_TRUSTSTORE_PASSWORD",
+        "value": null,
+        "description": "Password for the FSSP truststore file",
+        "type": "CONFIG",
+        "essential": false
+      }
+    ]
+  },
+  "sidecarDefaults": {
+    "resources": [
+      {
+        "name": "cpu",
+        "value": "64",
+        "description": "CPU request/limit for the sidecar container"
+      },
+      {
+        "name": "memory",
+        "value": "1024",
+        "description": "Memory hard limit for the sidecar container, in MB"
+      },
+      {
+        "name": "memoryReservation",
+        "value": "512",
+        "description": "Memory reservation for the sidecar container, in MB"
+      }
+    ],
+    "java": [
+      {
+        "name": "xms",
+        "value": "128m",
+        "description": "Initial Java heap size"
+      },
+      {
+        "name": "xmx",
+        "value": "256m",
+        "description": "Maximum Java heap size"
+      },
+      {
+        "name": "MaxMetaspaceSize",
+        "value": "96m",
+        "description": "Maximum Java metaspace size"
+      }
+    ],
+    "EnvVars": [
+      {
+        "name": "ENV",
+        "value": null,
+        "description": "Deployment environment identifier",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "JAVA_OPTS",
+        "value": null,
+        "description": "Additional JVM options for the sidecar process",
+        "type": "CONFIG",
+        "essential": true
+      },
+      {
+        "name": "MODULE_NAME",
+        "value": "mod-scheduler",
+        "description": "Name of the backend module the sidecar fronts",
+        "type": "CONFIG",
+        "essential": true
+      },
+      {
+        "name": "MODULE_URL",
+        "value": null,
+        "description": "Internal URL (host:port) at which the mod-scheduler backend container is reachable from its sidecar",
+        "type": "CONFIG",
+        "essential": true
+      },
+      {
+        "name": "MODULE_VERSION",
+        "value": null,
+        "description": "Version of the mod-scheduler module deployed alongside this sidecar. Must exactly match the backend container's own MODULE_VERSION",
+        "type": "CONFIG",
+        "essential": true
+      }
+    ]
+  }
+}
