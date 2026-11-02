@@ -46,5 +46,5 @@ Run locally needs PostgreSQL + env (`DB_*`, `okapi.url`); Docker build `docker b
 
 ## Testing
 
-- Unit (`*Test.java`, `@Tag("unit")`): Mockito. Guide: https://github.com/folio-org/folio-eureka-ai-dev/blob/master/docs/testing/unit-testing.md
+- Unit (`*Test.java`, `@Tag("unit")`): Mockito.
 - Integration (`*IT.java`, `@Tag("integration")`): Testcontainers (Postgres, Kafka), WireMock, Keycloak realms; extend `BaseIntegrationTest`. Annotations: `@IntegrationTest`, `@WireMockStub`, `@KeycloakRealms`, `@Sql`.
