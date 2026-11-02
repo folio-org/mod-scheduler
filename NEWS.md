@@ -1,7 +1,10 @@
+## Version `v4.0.4` (02.11.2026)
+### Changes:
+* Add DeployConfig.json following ADR-0013 module configuration management (MODSCHED-94)
+
 ## Version `v4.0.3` (20.10.2026)
 ### Changes:
 * Trillium CSP#1 - Upgrade to SpringBoot 4.1 (MODSCHED-98)
-
 
 ## Version `v4.0.2` (26.05.2026)
 ### Changes:
