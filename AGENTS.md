@@ -1,6 +1,6 @@
 # mod-scheduler
 
-Spring Boot microservice providing scheduled job execution for FOLIO. Quartz Scheduler for jobs, Kafka for event-driven provisioning, Keycloak for auth, PostgreSQL/Liquibase.
+Java/Spring Boot microservice providing scheduled job execution for FOLIO. Quartz Scheduler for jobs, Kafka for event-driven provisioning, Keycloak for auth, PostgreSQL/Liquibase.
 
 ## Build & Test
 
