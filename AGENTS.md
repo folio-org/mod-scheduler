@@ -1,6 +1,6 @@
 # mod-scheduler
 
-Spring Boot 4.1.0 microservice (Java 21) providing scheduled job execution for FOLIO. Quartz Scheduler for jobs, Kafka for event-driven provisioning, Keycloak for auth, PostgreSQL/Liquibase.
+Java/Spring Boot microservice providing scheduled job execution for FOLIO. Quartz Scheduler for jobs, Kafka for event-driven provisioning, Keycloak for auth, PostgreSQL/Liquibase.
 
 ## Build & Test
 
@@ -8,8 +8,8 @@ Spring Boot 4.1.0 microservice (Java 21) providing scheduled job execution for F
 mvn clean install              # full build
 mvn clean install -DskipTests=true  # skip tests
 mvn test                       # unit tests (*Test.java, @Tag("unit"))
-mvn verify                     # integration tests (*IT.java, @Tag("integration"))
-mvn clean install -Pcoverage   # coverage (JaCoCo 80% min)
+mvn verify                     # unit and integration tests (*IT.java, @Tag("integration")); needs Docker
+mvn clean install -Pcoverage   # coverage (JaCoCo; the 80% check does not fail the build)
 mvn checkstyle:check           # auto-runs during install
 ```
 
@@ -19,20 +19,14 @@ Run locally needs PostgreSQL + env (`DB_*`, `okapi.url`); Docker build `docker b
 
 **Multi-tenancy**: `FolioExecutionContext` for isolation; tenant-specific schemas (`tenant_modulename.timer`); Quartz tables in `sys_quartz_mod_scheduler`; lifecycle via `SchedulerTenantService`.
 
-**Core components** (`org.folio.scheduler`):
-- Controllers: `SchedulerTimerController` (`/scheduler/timers`).
-- Services: `SchedulerTimerService` (persistence/validation), `JobSchedulingService` (Quartz schedule/reschedule/delete), `SchedulerTenantService` (init/cleanup), `UserImpersonationService` (job tokens via Keycloak).
-- Repository: `SchedulerTimerRepository` (JSONB queries on timer descriptors).
-- Domain: `TimerDescriptorEntity` (JSONB column); DTOs generated to `org.folio.scheduler.domain.dto`.
-
 **Quartz**: JDBC job store, clustered for horizontal scaling; schema via `changelog-quartz.xml`; pool `QUARTZ_POOL_THREAD_COUNT` (default 5). Flow: timer created → `SchedulerTimerService.create()` → `JobSchedulingService.schedule()` → trigger fires → `OkapiHttpRequestExecutor.execute()` → HTTP via `OkapiClient` with tenant/user context. Triggers: delay-based (simple repeat) or schedule-based (cron, Unix or Quartz format, timezone-aware).
 
 **Kafka**:
 - `scheduled-job` topic: module descriptor CREATE/UPDATE/DELETE → manages SYSTEM timers from routing entries.
 - `entitlement` topic: tenant enable/revoke → enable/disable + reschedule jobs.
-- `KafkaMessageListener` with retry (retries on uninitialized tenant schema "relation does not exist"); concurrency via `KAFKA_JOB_CONCURRENCY`; tenant injected via `FolioExecutionContextSetter`.
+- `KafkaMessageListener` with retry (retries while a Liquibase migration runs or the tenant table does not exist yet: "relation ... does not exist"); concurrency via `KAFKA_JOB_CONCURRENCY` / `KAFKA_ENTITLEMENT_CONCURRENCY`; tenant injected via `FolioExecutionContextSetter`.
 
-**Keycloak**: `KeycloakUserService`, `SystemUserService` (retry), `ClientSecretService` (secure store, cached), `KeycloakUserImpersonationService`. System user `{tenantId}-system-user` created at tenant init; tokens cached (refresh 25s before expiry).
+**Keycloak**: jobs run with impersonated user tokens (`UserImpersonationService`); client secrets come from the secure store (cached). System user `{tenantId}-system-user` is looked up in Keycloak, not created by this module; tokens cached (refresh 25s before expiry).
 
 **Secure store** (`SECRET_STORE_TYPE`): Vault (default) / AWS-SSM / FSSP — OAuth client secrets and Keycloak admin creds.
 
@@ -40,11 +34,10 @@ Run locally needs PostgreSQL + env (`DB_*`, `okapi.url`); Docker build `docker b
 
 - **Natural-key dedup**: `{type}#{moduleName}#{methods}#{path}` — runtime lowercases the type (e.g. `system#mod-foo#POST#/timers`); legacy migration-`07` rows use an uppercase `SYSTEM#…` prefix, a known case mismatch vs the case-sensitive `natural_key_index` (see MODSCHED-88).
 - **JSONB queries**: native PG JSONB operators in `@Query`.
-- **Retry**: Spring Retry w/ exponential backoff (`SYSTEM_USER_RETRY_*`, `SCHEDULED_TIMER_EVENT_*`).
+- **Retry**: Spring Retry w/ exponential backoff (`SYSTEM_USER_RETRY_*`); Kafka events use a fixed backoff (`SCHEDULED_TIMER_EVENT_*`).
 - **Caching**: Caffeine TTL — Keycloak/system-user IDs (30m), client secrets (6000s), tokens (refresh 25s before expiry).
-- **MapStruct** (`TimerDescriptorMapper`), global `ApiExceptionHandler` (`@RestControllerAdvice`).
-- **Cron**: Unix (`m h dom mon dow`) auto-converted to Quartz (`s m h dom mon dow [year]`) via `CronUtils.convertToQuartzFormat()`.
-- **Timer types**: SYSTEM (from module descriptors via Kafka) / USER (via REST). Routing entries specify exactly one HTTP method; delay- or schedule-based trigger (not both).
+- **Cron**: Unix (`m h dom mon dow`) auto-converted to Quartz (`s m h dom mon dow [year]`) via `CronUtils.convertToQuartz()`.
+- **Timer types**: SYSTEM (from module descriptors via Kafka) / USER (via REST). Routing entries specify at most one HTTP method (`POST` when none); delay- or schedule-based trigger (not both).
 
 ## Codegen & DB
 
@@ -53,9 +46,5 @@ Run locally needs PostgreSQL + env (`DB_*`, `okapi.url`); Docker build `docker b
 
 ## Testing
 
-- Unit (`*Test.java`, `@Tag("unit")`): Mockito. Guide: https://github.com/folio-org/folio-eureka-ai-dev/blob/master/doc/testing/UnitTesting.md
+- Unit (`*Test.java`, `@Tag("unit")`): Mockito.
 - Integration (`*IT.java`, `@Tag("integration")`): Testcontainers (Postgres, Kafka), WireMock, Keycloak realms; extend `BaseIntegrationTest`. Annotations: `@IntegrationTest`, `@WireMockStub`, `@KeycloakRealms`, `@Sql`.
-
-## Dependencies of Note
-
-`folio-spring-support`, `applications-poc-tools`, `spring-boot-starter-quartz`, `spring-kafka`, `keycloak-admin-client`, `cron-utils`, `hypersistence-utils-hibernate-63` (JSONB).
